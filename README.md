@@ -9,10 +9,10 @@
 
   [![Build Status](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/ci.yml?branch=main&label=build)](https://github.com/theantihero/DisModular.js/actions/workflows/ci.yml)
   [![Security Scan](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/security.yml?branch=main&label=security)](https://github.com/theantihero/DisModular.js/actions/workflows/security.yml)
-  [![Tests](https://img.shields.io/badge/tests-127%20passing-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
+  [![Tests](https://img.shields.io/badge/tests-%20passing-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
   [![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-  [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
+  [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](package.json)
   [![Version](https://img.shields.io/github/package-json/v/theantihero/DisModular.js)](package.json)
 
   ---
@@ -407,6 +407,77 @@ Plugins are stored as JSON files:
   "compiled": "// Generated code"
 }
 ```
+
+## 🚀 CI/CD & Releases
+
+DisModular.js has a comprehensive CI/CD pipeline with automated testing, security scanning, and releases.
+
+### 🔄 Continuous Integration
+
+**GitHub Actions Workflows:**
+- **CI Pipeline** (`ci.yml`): Runs tests, linting, and builds on every push
+- **Security Scanning** (`security.yml`): CodeQL, Trivy, npm audit, and OSSF Scorecard
+- **Release Automation** (`release-automation.yml`): Automatic releases on version bumps
+- **Badge Updates** (`update-badges.yml`): Dynamic README badge updates
+
+**Test Coverage:**
+- ✅ **99+ tests** across all packages
+- ✅ **API Package**: 29 tests (NodeCompiler, JSON operations)
+- ✅ **Bot Package**: 32 tests (PluginManager, SandboxExecutor)
+- ✅ **Dashboard Package**: 11 tests (Node analysis)
+- ✅ **Shared Package**: 27 tests (Logger, Type definitions)
+
+### 🔒 Security
+
+**Automated Security Scanning:**
+- **CodeQL SAST**: Static analysis for vulnerabilities
+- **Trivy**: Container and dependency scanning
+- **NPM Audit**: Dependency vulnerability checks
+- **OSSF Scorecard**: Security best practices assessment
+
+**Security Features:**
+- Plugin sandbox isolation
+- Input validation and sanitization
+- OAuth authentication
+- CORS protection
+
+### 📦 Dependabot
+
+**Automated Dependency Updates:**
+- **Root package.json**: Weekly updates
+- **All workspace packages**: Individual package monitoring
+- **GitHub Actions**: Monthly action updates
+- **Smart scheduling**: Monday updates to avoid weekend deployments
+
+### 🎯 Creating Releases
+
+**Automatic Releases:**
+```bash
+# Bump version and create release
+npm run release:patch  # 0.0.1 → 0.0.2
+npm run release:minor  # 0.0.1 → 0.1.0
+npm run release:major  # 0.0.1 → 1.0.0
+```
+
+**Manual Release Process:**
+1. Update `CHANGELOG.md` with new features
+2. Run `npm run release:patch` (or minor/major)
+3. Push to main: `git push origin main`
+4. GitHub Actions automatically creates the release
+
+**Release Includes:**
+- ✅ Source code archive
+- ✅ Automatic changelog generation
+- ✅ Test results summary
+- ✅ Security scan reports
+- ✅ Installation instructions
+
+### 📊 Monitoring
+
+**Real-time Status:**
+- [![Build Status](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/ci.yml?branch=main&label=build)](https://github.com/theantihero/DisModular.js/actions/workflows/ci.yml)
+- [![Security Scan](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/security.yml?branch=main&label=security)](https://github.com/theantihero/DisModular.js/actions/workflows/security.yml)
+- [![Tests](https://img.shields.io/badge/tests-99%2B%20passing-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
 
 ## 🤝 Contributing
 

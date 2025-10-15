@@ -5,10 +5,19 @@
  * @date 2025-10-14
  */
 
-import { describe, it, before, after } from 'node:test';
-import assert from 'node:assert';
+// Load .env file if it exists (for local development)
+import { config } from 'dotenv';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { mkdir, rm } from 'fs/promises';
+
+const envPath = join(process.cwd(), '.env');
+if (existsSync(envPath)) {
+  config({ path: envPath });
+}
+
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert';
 import { PluginModel } from '../packages/bot/src/models/PluginModel.js';
 import { PluginManager } from '../packages/bot/src/plugins/PluginManager.js';
 import { NodeCompiler } from '../packages/api/src/services/NodeCompiler.js';
@@ -80,10 +89,7 @@ describe('Integration Tests', () => {
         version: '1.0.0',
         type: 'slash',
         enabled: true,
-        trigger: {
-          type: 'command',
-          command: 'hello'
-        },
+        trigger_command: 'hello',
         nodes,
         edges,
         compiled
@@ -165,10 +171,7 @@ describe('Integration Tests', () => {
         version: '1.0.0',
         type: 'slash',
         enabled: true,
-        trigger: {
-          type: 'command',
-          command: 'greet'
-        },
+        trigger_command: 'greet',  // Changed from trigger.command to trigger_command
         nodes,
         edges,
         compiled
@@ -183,6 +186,20 @@ describe('Integration Tests', () => {
   describe('Plugin State Management', () => {
     it('should save and retrieve plugin state', () => {
       const pluginId = 'test-state-plugin';
+      
+      // First create the plugin in the database
+      const pluginData = {
+        id: pluginId,
+        name: 'Test State Plugin',
+        version: '1.0.0',
+        type: 'slash',
+        enabled: true,
+        trigger_command: 'teststate',
+        nodes: [],
+        edges: [],
+        compiled: '// Test plugin'
+      };
+      pluginModel.upsert(pluginData);
 
       // Save state
       pluginModel.setState(pluginId, 'counter', 42);
@@ -198,6 +215,19 @@ describe('Integration Tests', () => {
 
     it('should update existing state', () => {
       const pluginId = 'test-update-state';
+      
+      // First create the plugin in the database
+      const pluginData = {
+        id: pluginId,
+        name: 'Test Update State Plugin',
+        version: '1.0.0',
+        type: 'slash',
+        enabled: true,
+        trigger_command: 'testupdate',
+        edges: [],
+        compiled: '// Test plugin'
+      };
+      pluginModel.upsert(pluginData);
 
       pluginModel.setState(pluginId, 'value', 10);
       assert.strictEqual(pluginModel.getState(pluginId, 'value'), 10);
@@ -220,10 +250,7 @@ describe('Integration Tests', () => {
         version: '1.0.0',
         type: 'slash',
         enabled: true,
-        trigger: {
-          type: 'command',
-          command: 'lifecycle'
-        },
+        trigger_command: 'lifecycle',  // Changed from trigger.command to trigger_command
         nodes: [
           { id: '1', type: 'trigger', data: {} },
           { id: '2', type: 'response', data: { config: { message: 'Test' } } }
@@ -259,10 +286,7 @@ describe('Integration Tests', () => {
         version: '1.0.0',
         type: 'slash',
         enabled: true,
-        trigger: {
-          type: 'command',
-          command: 'reload'
-        },
+        trigger_command: 'reload',  // Changed from trigger.command to trigger_command
         nodes: [
           { id: '1', type: 'trigger', data: {} },
           { id: '2', type: 'response', data: { config: { message: 'Test' } } }
@@ -380,7 +404,7 @@ describe('Integration Tests', () => {
         version: '1.0.0',
         type: 'slash',
         enabled: true,
-        trigger: { type: 'command', command: 'delete' },
+        trigger_command: 'delete',
         nodes: [],
         edges: [],
         compiled: ''

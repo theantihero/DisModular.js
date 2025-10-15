@@ -5,6 +5,15 @@
  * @date 2025-10-14
  */
 
+// Load .env file if it exists (for local development)
+import { config } from 'dotenv';
+import { existsSync } from 'fs';
+import { join } from 'path';
+const envPath = join(process.cwd(), '../../.env');
+if (existsSync(envPath)) {
+  config({ path: envPath });
+}
+
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { NodeCompiler } from '../src/services/NodeCompiler.js';

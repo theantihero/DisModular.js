@@ -1,6 +1,6 @@
 {
   "name": "dismodular.js",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "DisModular.js - A professional modular Discord bot framework with visual node-based plugin creation",
   "author": "fkndean_",
   "license": "MIT",
@@ -20,14 +20,18 @@
     "setup:db": "node packages/api/scripts/setup-db.js",
     "kill-ports": "node scripts/kill-ports.js",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "release": "node scripts/bump-version.js",
+    "release:patch": "node scripts/bump-version.js patch",
+    "release:minor": "node scripts/bump-version.js minor",
+    "release:major": "node scripts/bump-version.js major"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "@aashari/nodejs-geocoding": "^2.7.2",

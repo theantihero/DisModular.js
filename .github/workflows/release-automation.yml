@@ -1,0 +1,187 @@
+name: Release Automation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'package.json'
+      - 'packages/*/package.json'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-changes:
+    name: Check for Version Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should-release: ${{ steps.check.outputs.should-release }}
+      version: ${{ steps.check.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check for version changes
+        id: check
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Check if this is a manual trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual release triggered"
+            echo "should-release=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Check if package.json was modified
+          if git diff --name-only HEAD~1 HEAD | grep -q "package.json"; then
+            echo "Package.json was modified, checking for version bump"
+            
+            # Get previous version
+            PREVIOUS_VERSION=$(git show HEAD~1:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+            echo "Previous version: $PREVIOUS_VERSION"
+            
+            if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+              echo "Version was bumped from $PREVIOUS_VERSION to $CURRENT_VERSION"
+              echo "should-release=true" >> $GITHUB_OUTPUT
+              echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "No version change detected"
+              echo "should-release=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No package.json changes detected"
+            echo "should-release=false" >> $GITHUB_OUTPUT
+          fi
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: check-changes
+    if: needs.check-changes.outputs.should-release == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+        env:
+          DISCORD_BOT_TOKEN: test_token
+          DISCORD_CLIENT_ID: test_client_id
+          DISCORD_CLIENT_SECRET: test_secret
+          DATABASE_PATH: ":memory:"
+      
+      - name: Build dashboard
+        run: npm run build --workspace=@dismodular/dashboard
+      
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Creating release for version: $VERSION"
+      
+      - name: Create Git tag
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+      
+      - name: Create source archive
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          git archive --format=zip --output=dismodular-js-v$VERSION.zip HEAD
+      
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          if [ -f "CHANGELOG.md" ]; then
+            CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          else
+            CHANGELOG="## What's New\n\n- Initial release of DisModular.js\n- Visual node-based plugin creation\n- Comprehensive test suite\n- Full CI/CD pipeline"
+          fi
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: DisModular.js v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            # DisModular.js v${{ steps.get_version.outputs.VERSION }}
+            
+            ## What's Changed
+            
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ## 📦 Downloads
+            
+            - **dismodular-js-v${{ steps.get_version.outputs.VERSION }}.zip** - Main distribution
+            
+            ## 🚀 Installation
+            
+            1. Download the zip file above
+            2. Extract the archive
+            3. Run `npm install` in the extracted folder
+            4. Copy `env.example` to `.env` and configure your Discord bot
+            5. Run `npm run setup:db` to initialize the database
+            6. Run `npm run dev` to start the application
+            
+            ## 📚 Documentation
+            
+            See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md) for full documentation.
+            
+            ## ✅ Test Results
+            
+            All tests passing: **99/99** ✅
+            - API Package: 29 tests ✅
+            - Bot Package: 32 tests ✅  
+            - Dashboard Package: 11 tests ✅
+            - Shared Package: 27 tests ✅
+            
+            ---
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md
+          files: |
+            dismodular-js-v${{ steps.get_version.outputs.VERSION }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

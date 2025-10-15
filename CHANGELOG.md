@@ -1,97 +1,55 @@
 # Changelog
 
-All notable changes to DisModular.js will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.1] - 2025-10-14
+## [0.0.2] - 2025-10-15
+
+### Changed
+- Version bump to 0.0.2
+
+## [Unreleased]
 
 ### Added
-- 🎨 **Modern Admin Dashboard** with gradient design and glass morphism effects
-- 👑 **Admin Management System** - Add/remove admin privileges for users
-- 📊 **Real-time Analytics Dashboard** with command tracking and metrics
-- ⚙️ **Settings Page** with full bot configuration management
-- 📱 **Mobile Responsive Design** - Full mobile navigation and touch-friendly interface
-- 🔌 **Visual Plugin Editor** - Node-based workflow creator with 20+ node types
-- 📤 **Export/Import Workflows** - Share plugin JSON files with the community
+- Comprehensive test suite with 99+ tests
+- Complete CI/CD pipeline with GitHub Actions
+- Dependabot configuration for automated dependency updates
+- Security scanning with CodeQL, Trivy, and npm audit
+- Release automation workflow
 
-### Sample Plugins
-- 🌤️ **Weather Command Plugin** - Example using Open-Meteo API and HTTP requests
-- 📊 **Poll Command Plugin** - Advanced polls with multiple options and time limits
-- ⏰ **Reminder Command Plugin** - Set reminders with flexible time parsing
-- 🎲 **Dice Roller Plugin** - Roll dice with customizable sides
-- 👋 **Hello World Plugin** - Simple example for getting started
-- 🔢 **Counter Plugin** - Track counts with persistent state
-
-### Features
-- **Node Types**:
-  - Core: Trigger, Response, Variable, Condition, Action, Data
-  - HTTP: HTTP Request for external API calls
-  - Discord: Embed Builder, Embed Response, Discord Actions
-  - Control Flow: For Loop, While Loop, Comparison
-  - Data Manipulation: Array, String, Object, Math operations
-  - Database: Database queries and state management
-  - Utilities: JSON parsing and manipulation
-
-- **Admin Features**:
-  - User management with admin privileges
-  - Real-time analytics and metrics
-  - Bot configuration settings
-  - Command execution tracking
-  - Audit logging
-
-- **Editor Features**:
-  - Context menus (right-click)
-  - Keyboard shortcuts (Ctrl+S, Ctrl+C, Ctrl+V, etc.)
-  - Collapsible node palette with categories
-  - Test compile functionality
-  - Export/import workflows
-
-### Technical
-- **Architecture**: Monorepo with bot, API, dashboard, and shared packages
-- **Security**: Discord OAuth, admin-only routes, sandboxed plugin execution
-- **Database**: SQLite with better-sqlite3, WAL mode enabled
-- **Frontend**: React with Tailwind CSS, React Flow, Zustand
-- **Backend**: Express.js with passport authentication
-- **Bot**: Discord.js v14 with configurable intents
+### Changed
+- Updated all workflows to Node 20.x for better compatibility
+- Fixed cache configuration for monorepo structure
+- Resolved all test failures and CI issues
 
 ### Fixed
-- Slash command options now register correctly with Discord API
-- Admin panel database connection issues resolved
-- Plugin editor route matching fixed
-- SandboxExecutor function cloning error fixed
-- Environment variable loading across all packages
-- Database path resolution for workspace root
+- Foreign key constraint errors in integration tests
+- Plugin data structure mismatches
+- Environment variable loading in CI
+- OSSF Scorecard authentication issues
 
-### Security
-- Admin authentication with Discord OAuth
-- Role-based access control (admin-only endpoints)
-- Session management with secure cookies
-- Input validation and sanitization
-- Sandboxed plugin execution with isolated-vm
+## [0.0.1] - 2025-10-15
 
----
+### Added
+- Initial release of DisModular.js
+- Visual node-based Discord bot plugin creation system
+- React dashboard for plugin development
+- Plugin management system with database persistence
+- Sandbox execution environment for plugin safety
+- Node compiler for converting visual flows to executable code
+- Comprehensive logging system
+- Type definitions and shared utilities
+- Security validation for plugin code
+- Integration test suite
 
-## Future Releases
-
-### Planned for v0.1.0
-- User role management
-- Plugin marketplace
-- Advanced analytics with graphs
-- Webhook integrations
-- Database backup automation
-- Plugin versioning system
-- Custom node creation
-
----
-
-**Legend:**
-- 🎨 UI/UX
-- 👑 Admin
-- 📊 Analytics
-- ⚙️ Settings
-- 🔌 Plugins
-- 📱 Mobile
-- 🔧 Technical
-
+### Features
+- **Visual Plugin Creation**: Drag-and-drop interface for building Discord bot plugins
+- **Node Types**: Trigger, Action, Condition, Variable, Response, Data nodes
+- **Plugin Management**: Enable/disable, reload, and lifecycle management
+- **Security**: Code validation and sandbox execution
+- **Database**: SQLite-based plugin and state persistence
+- **API**: REST API for plugin management
+- **Dashboard**: React-based web interface
+- **Testing**: Comprehensive test coverage across all packages
