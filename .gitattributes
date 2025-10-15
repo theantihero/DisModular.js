@@ -1,0 +1,17 @@
+# Exclude from archives
+.git* export-ignore
+.github/ export-ignore
+node_modules/ export-ignore
+data/*.db export-ignore
+data/*.db-* export-ignore
+dist/ export-ignore
+build/ export-ignore
+coverage/ export-ignore
+logs/ export-ignore
+*.log export-ignore
+tests/ export-ignore
+*.test.js export-ignore
+*.test.mjs export-ignore
+.vscode/ export-ignore
+.idea/ export-ignore
+

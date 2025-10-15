@@ -1,0 +1,668 @@
+{
+  "id": "example-poll",
+  "name": "Advanced Poll",
+  "version": "1.0.0",
+  "description": "Create polls with multiple options, time limits, and custom emojis",
+  "author": "fkndean_",
+  "type": "slash",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "poll",
+    "event": null,
+    "pattern": null
+  },
+  "options": [
+    {
+      "name": "question",
+      "description": "The poll question",
+      "type": 3,
+      "required": true
+    },
+    {
+      "name": "options",
+      "description": "Poll options separated by | (e.g., Red|Blue|Green)",
+      "type": 3,
+      "required": true
+    },
+    {
+      "name": "duration",
+      "description": "How long the poll runs (e.g., '5 minutes', '1 hour')",
+      "type": 3,
+      "required": true
+    }
+  ],
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "Poll Command",
+        "config": {
+          "command": "poll"
+        }
+      },
+      "width": 200,
+      "height": 120
+    },
+    {
+      "id": "variable_1",
+      "type": "variable",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "data": {
+        "label": "Get Question",
+        "config": {
+          "name": "question",
+          "type": "user_input"
+        }
+      },
+      "width": 180,
+      "height": 140
+    },
+    {
+      "id": "variable_2",
+      "type": "variable",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "data": {
+        "label": "Get Options",
+        "config": {
+          "name": "options",
+          "type": "user_input"
+        }
+      },
+      "width": 180,
+      "height": 140
+    },
+    {
+      "id": "variable_3",
+      "type": "variable",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "data": {
+        "label": "Get Duration",
+        "config": {
+          "name": "duration",
+          "type": "user_input"
+        }
+      },
+      "width": 180,
+      "height": 140
+    },
+    {
+      "id": "string_operation_1",
+      "type": "string_operation",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "data": {
+        "label": "Parse Options",
+        "config": {
+          "operation": "split",
+          "input": "{options}",
+          "delimiter": "|",
+          "resultVar": "options_array"
+        }
+      },
+      "width": 180,
+      "height": 84
+    },
+    {
+      "id": "string_operation_2",
+      "type": "string_operation",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "data": {
+        "label": "Parse Duration",
+        "config": {
+          "operation": "split",
+          "input": "{duration}",
+          "delimiter": " ",
+          "resultVar": "duration_parts"
+        }
+      },
+      "width": 180,
+      "height": 84
+    },
+    {
+      "id": "string_operation_2b",
+      "type": "string_operation",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "data": {
+        "label": "Get Time Unit",
+        "config": {
+          "operation": "lowercase",
+          "input": "{duration_parts[1]}",
+          "resultVar": "time_unit"
+        }
+      },
+      "width": 180,
+      "height": 84
+    },
+    {
+      "id": "string_operation_2c",
+      "type": "string_operation",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "data": {
+        "label": "Map Unit to Multiplier",
+        "config": {
+          "operation": "condition",
+          "input": "{time_unit}",
+          "conditions": [
+            {
+              "if": "second,seconds,sec,secs,s",
+              "then": "1000"
+            },
+            {
+              "if": "minute,minutes,min,mins,m",
+              "then": "60000"
+            },
+            {
+              "if": "hour,hours,hr,hrs,h",
+              "then": "3600000"
+            }
+          ],
+          "default": "60000",
+          "resultVar": "time_multiplier"
+        }
+      },
+      "width": 225,
+      "height": 84
+    },
+    {
+      "id": "math_operation_1",
+      "type": "math_operation",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "data": {
+        "label": "Calculate Duration",
+        "config": {
+          "operation": "multiply",
+          "value1": "{duration_parts[0]}",
+          "value2": "{time_multiplier}",
+          "resultVar": "duration_ms"
+        }
+      },
+      "width": 204,
+      "height": 84
+    },
+    {
+      "id": "array_operation_1",
+      "type": "array_operation",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "data": {
+        "label": "Create Reaction Emojis",
+        "config": {
+          "operation": "map",
+          "arrayVar": "options_array",
+          "expression": "['🔴', '🟦', '🟩', '🟡', '🟣', '🟠', '⚫', '⚪'][index] || '👍'",
+          "resultVar": "reaction_emojis"
+        }
+      },
+      "width": 241,
+      "height": 84
+    },
+    {
+      "id": "array_operation_1b",
+      "type": "array_operation",
+      "position": {
+        "x": 3000,
+        "y": 0
+      },
+      "data": {
+        "label": "Format Options with Emojis",
+        "config": {
+          "operation": "map",
+          "arrayVar": "options_array",
+          "expression": "['🔴', '🟦', '🟩', '🟡', '🟣', '🟠', '⚫', '⚪'][index] + ' ' + item",
+          "resultVar": "formatted_options_array"
+        }
+      },
+      "width": 275,
+      "height": 84
+    },
+    {
+      "id": "string_operation_3",
+      "type": "string_operation",
+      "position": {
+        "x": 3300,
+        "y": 0
+      },
+      "data": {
+        "label": "Join Options",
+        "config": {
+          "operation": "join",
+          "arrayVar": "formatted_options_array",
+          "separator": "\\n",
+          "resultVar": "formatted_options"
+        }
+      },
+      "width": 180,
+      "height": 84
+    },
+    {
+      "id": "condition_1",
+      "type": "condition",
+      "position": {
+        "x": 3564.6823501033623,
+        "y": -206.00254368839774
+      },
+      "data": {
+        "label": "Check Question & Options",
+        "config": {
+          "condition": "variables['question'] && variables['question'].length > 0 && variables['options_array'] && variables['options_array'].length >= 2"
+        }
+      },
+      "width": 268,
+      "height": 132,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 3564.6823501033623,
+        "y": -206.00254368839774
+      },
+      "dragging": false
+    },
+    {
+      "id": "response_2",
+      "type": "response",
+      "position": {
+        "x": 3952.000000537093,
+        "y": -304.00000313992416
+      },
+      "data": {
+        "label": "Invalid Input Error",
+        "config": {
+          "message": "❌ Invalid poll setup!\n\nPlease provide:\n- A question\n- At least 2 options separated by |\n\nExample: `/poll question:\"Favorite color?\" options:\"Red|Blue|Green\" duration:\"5 minutes\"`"
+        }
+      },
+      "width": 318,
+      "height": 120,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 3952.000000537093,
+        "y": -304.00000313992416
+      },
+      "dragging": false
+    },
+    {
+      "id": "embed_builder_1",
+      "type": "embed_builder",
+      "position": {
+        "x": 3508.999995961479,
+        "y": 187.00000038216183
+      },
+      "data": {
+        "label": "Build Poll Embed",
+        "config": {
+          "embedVar": "poll_embed",
+          "title": "📊 Poll",
+          "description": "{question}",
+          "color": "#5865F2",
+          "fields": [
+            {
+              "name": "Options",
+              "value": "{formatted_options}",
+              "inline": false
+            },
+            {
+              "name": "How to Vote",
+              "value": "React with the colored circle that matches your choice. You can change your vote by removing your previous reaction and adding a new one.",
+              "inline": false
+            }
+          ],
+          "footer": {
+            "text": "React to vote! (One choice only) Poll ends in {duration}"
+          },
+          "timestamp": true
+        }
+      },
+      "width": 200,
+      "height": 104,
+      "selected": true,
+      "positionAbsolute": {
+        "x": 3508.999995961479,
+        "y": 187.00000038216183
+      },
+      "dragging": false
+    },
+    {
+      "id": "embed_response_1",
+      "type": "embed_response",
+      "position": {
+        "x": 4200,
+        "y": 0
+      },
+      "data": {
+        "label": "Send Poll Embed",
+        "config": {
+          "embedVar": "poll_embed",
+          "ephemeral": false
+        }
+      },
+      "width": 193,
+      "height": 84
+    },
+    {
+      "id": "discord_action_1",
+      "type": "discord_action",
+      "position": {
+        "x": 4500,
+        "y": 0
+      },
+      "data": {
+        "label": "Add Dynamic Reactions",
+        "config": {
+          "actionType": "add_multiple_reactions",
+          "emojis": "{reaction_emojis}"
+        }
+      },
+      "width": 246,
+      "height": 84
+    },
+    {
+      "id": "discord_action_2",
+      "type": "discord_action",
+      "position": {
+        "x": 4800,
+        "y": 0
+      },
+      "data": {
+        "label": "Setup Single-Choice Voting",
+        "config": {
+          "actionType": "setup_single_choice_voting",
+          "emojis": "{reaction_emojis}",
+          "duration": "{duration_ms}"
+        }
+      },
+      "width": 271,
+      "height": 84
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "variable_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e1b",
+      "source": "variable_1",
+      "target": "variable_3",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e4",
+      "source": "variable_2",
+      "target": "string_operation_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e5",
+      "source": "variable_3",
+      "target": "string_operation_2",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e6",
+      "source": "string_operation_2",
+      "target": "string_operation_2b",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e6b",
+      "source": "string_operation_2b",
+      "target": "string_operation_2c",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e6c",
+      "source": "string_operation_2c",
+      "target": "math_operation_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e6a",
+      "source": "math_operation_1",
+      "target": "variable_2",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e7",
+      "source": "string_operation_1",
+      "target": "array_operation_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e8",
+      "source": "array_operation_1",
+      "target": "array_operation_1b",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e8b",
+      "source": "array_operation_1b",
+      "target": "string_operation_3",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e9",
+      "source": "string_operation_3",
+      "target": "condition_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e10",
+      "source": "condition_1",
+      "target": "embed_builder_1",
+      "sourceHandle": "true",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e11",
+      "source": "embed_builder_1",
+      "target": "embed_response_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e12",
+      "source": "embed_response_1",
+      "target": "discord_action_1",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 3,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e14",
+      "source": "discord_action_1",
+      "target": "discord_action_2",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 3,
+        "strokeDasharray": "8 4"
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    },
+    {
+      "id": "e17",
+      "source": "condition_1",
+      "target": "response_2",
+      "sourceHandle": "false",
+      "type": "smoothstep",
+      "animated": true,
+      "style": {
+        "stroke": "#60a5fa",
+        "strokeWidth": 2
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#60a5fa"
+      }
+    }
+  ],
+  "compiled": "// Auto-generated plugin code\n// DO NOT EDIT MANUALLY\n\nlet variables = {};\nlet __pendingResponse = null;\n\n(async function execute() {\n  // Trigger: Poll Command\n  console.log('Plugin executed');\n  // Variable: question\n  variables['question'] = interaction?.options?.getString('question') || message?.content || '';\n  // Variable: duration\n  variables['duration'] = interaction?.options?.getString('duration') || message?.content || '';\n  // String Operation: split\n  variables['duration_parts'] = `${variables['duration']}`.split(' ');\n  // String Operation: lowercase\n  variables['time_unit'] = `${variables['duration_parts'][1]}`.toLowerCase();\n  // String Operation: condition\n  // String condition mapping\n  const condValue = `${variables['time_unit']}`;\n  let time_multiplier_result = '60000';\n  if (condValue === 'second' || condValue === 'seconds' || condValue === 'sec' || condValue === 'secs' || condValue === 's') {\n    time_multiplier_result = '1000';\n  }\n  else if (condValue === 'minute' || condValue === 'minutes' || condValue === 'min' || condValue === 'mins' || condValue === 'm') {\n    time_multiplier_result = '60000';\n  }\n  else if (condValue === 'hour' || condValue === 'hours' || condValue === 'hr' || condValue === 'hrs' || condValue === 'h') {\n    time_multiplier_result = '3600000';\n  }\n  variables['time_multiplier'] = time_multiplier_result;\n  // Math: multiply\n  variables['duration_ms'] = Number(`${variables['duration_parts'][0]}`) * Number(`${variables['time_multiplier']}`);\n  // Variable: options\n  variables['options'] = interaction?.options?.getString('options') || message?.content || '';\n  // String Operation: split\n  variables['options_array'] = `${variables['options']}`.split('|');\n  // Array Operation: map\n  variables['reaction_emojis'] = (variables['options_array'] || []).map((item, index) => ['🔴', '🟦', '🟩', '🟡', '🟣', '🟠', '⚫', '⚪'][index] || '👍');\n  // Array Operation: map\n  variables['formatted_options_array'] = (variables['options_array'] || []).map((item, index) => ['🔴', '🟦', '🟩', '🟡', '🟣', '🟠', '⚫', '⚪'][index] + ' ' + item);\n  // String Operation: join\n  variables['formatted_options'] = (variables['formatted_options_array'] || []).join(\"\\n\");\n  // Condition: Check Question & Options\n  if (variables['question'] && variables['question'].length > 0 && variables['options_array'] && variables['options_array'].length >= 2) {\n    // Build Embed\n    variables['poll_embed'] = {\n      title: `📊 Poll`,\n      description: `${variables['question']}`,\n      color: parseInt('5865F2', 16),\n      footer: {\n        text: `React to vote! (One choice only) Poll ends in ${variables['duration']}`,\n      },\n      timestamp: new Date().toISOString(),\n      fields: [\n        {\n          name: `Options`,\n          value: `${variables['formatted_options']}`,\n          inline: false\n        },\n        {\n          name: `How to Vote`,\n          value: `React with the colored circle that matches your choice. You can change your vote by removing your previous reaction and adding a new one.`,\n          inline: false\n        },\n      ],\n    };\n    // Send Embed (store response, don't resolve yet)\n    __pendingResponse = { embeds: [variables['poll_embed']], ephemeral: false };\n    const sentMessage = await interaction.editReply(__pendingResponse);\n    variables['_sent_message'] = sentMessage;\n    variables['_message_id'] = sentMessage.id;\n    variables['_channel_id'] = sentMessage.channel.id;\n    // Discord Action: add_multiple_reactions\n    // Add Multiple Reactions\n    if (variables['_sent_message'] && variables['reaction_emojis']) {\n      for (const emoji of variables['reaction_emojis']) {\n        try { await variables['_sent_message'].react(emoji); } catch(e) { console.log('Reaction failed:', e); }\n      }\n    } else if (message && variables['reaction_emojis']) {\n      for (const emoji of variables['reaction_emojis']) {\n        try { await message.react(emoji); } catch(e) { console.log('Reaction failed:', e); }\n      }\n    }\n    // Discord Action: setup_single_choice_voting\n    // Setup Single-Choice Voting\n    console.log('[Setup] Checking conditions:', {\n      hasMessage: !!variables['_sent_message'],\n      hasEmojis: !!variables['reaction_emojis'],\n      hasDuration: !!variables['duration_ms'],\n      durationValue: variables['duration_ms'],\n      hasMethod: typeof variables['_sent_message']?.setupSingleChoiceVoting\n    });\n    if (variables['_sent_message'] && variables['reaction_emojis'] && variables['duration_ms']) {\n      try {\n        variables['_sent_message'].setupSingleChoiceVoting(variables['reaction_emojis'], variables['duration_ms']);\n      } catch(e) { console.log('[Setup] Error:', e.message); }\n    }\n  } else {\n    // Response: Invalid Input Error\n    __pendingResponse = `❌ Invalid poll setup!\\n\\nPlease provide:\\n- A question\\n- At least 2 options separated by |\\n\\nExample: \\`/poll question:\"Favorite color?\" options:\"Red|Blue|Green\" duration:\"5 minutes\"\\``;\n  }\n\n  // Send final response\n  if (__pendingResponse !== null) {\n    await __resolve(__pendingResponse);\n  }\n})();"
+}

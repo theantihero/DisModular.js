@@ -1,0 +1,68 @@
+{
+  "id": "example-helloworld",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "A simple hello world plugin example",
+  "author": "fkndean_",
+  "type": "both",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "hello"
+  },
+  "trigger_command": "hello",
+  "options": [],
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "label": "Hello Command",
+        "config": {
+          "command": "hello"
+        }
+      }
+    },
+    {
+      "id": "variable_1",
+      "type": "variable",
+      "position": { "x": 350, "y": 200 },
+      "data": {
+        "label": "Get Username",
+        "config": {
+          "name": "username",
+          "type": "user_name"
+        }
+      }
+    },
+    {
+      "id": "response_1",
+      "type": "response",
+      "position": { "x": 600, "y": 200 },
+      "data": {
+        "label": "Send Greeting",
+        "config": {
+          "message": "Hello, {username}! Welcome to the modular Discord bot!"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "variable_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e2",
+      "source": "variable_1",
+      "target": "response_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    }
+  ]
+}
+

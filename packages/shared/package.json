@@ -1,0 +1,13 @@
+{
+  "name": "@dismodular/shared",
+  "version": "0.0.1",
+  "description": "DisModular.js shared types and utilities",
+  "author": "fkndean_",
+  "license": "MIT",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Tests not implemented yet\" && exit 0"
+  }
+}
+

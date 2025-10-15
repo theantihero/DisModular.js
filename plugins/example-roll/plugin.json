@@ -1,0 +1,80 @@
+{
+  "id": "example-roll",
+  "name": "Dice Roller",
+  "version": "1.0.0",
+  "description": "Roll dice with customizable sides",
+  "author": "fkndean_",
+  "type": "both",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "roll"
+  },
+  "trigger_command": "roll",
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "data": {
+        "label": "Roll Command",
+        "config": {}
+      }
+    },
+    {
+      "id": "variable_1",
+      "type": "variable",
+      "position": { "x": 300, "y": 200 },
+      "data": {
+        "label": "Generate Random Number",
+        "config": {
+          "name": "roll",
+          "type": "random_number",
+          "min": "1",
+          "max": "6"
+        }
+      }
+    },
+    {
+      "id": "variable_2",
+      "type": "variable",
+      "position": { "x": 500, "y": 200 },
+      "data": {
+        "label": "Get Username",
+        "config": {
+          "name": "username",
+          "type": "user_name"
+        }
+      }
+    },
+    {
+      "id": "response_1",
+      "type": "response",
+      "position": { "x": 700, "y": 200 },
+      "data": {
+        "label": "Send Result",
+        "config": {
+          "message": "🎲 {username} rolled a {roll}!"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "variable_1"
+    },
+    {
+      "id": "e2",
+      "source": "variable_1",
+      "target": "variable_2"
+    },
+    {
+      "id": "e3",
+      "source": "variable_2",
+      "target": "response_1"
+    }
+  ]
+}
+

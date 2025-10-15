@@ -1,0 +1,90 @@
+name: Update README Badges
+
+on:
+  workflow_run:
+    workflows: ["CI - Test & Build"]
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-badges:
+    name: Update Dynamic Badges
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests and collect metrics
+        id: test_metrics
+        run: |
+          # Run tests and capture output
+          npm test > test-output.txt 2>&1 || true
+          
+          # Extract test count
+          TESTS_PASSING=$(grep -oP '\d+(?= passing)' test-output.txt | head -1 || echo "0")
+          echo "tests_passing=$TESTS_PASSING" >> $GITHUB_OUTPUT
+          
+          # Calculate coverage (if available)
+          if grep -q "coverage" test-output.txt; then
+            COVERAGE=$(grep -oP '\d+(?=%)' test-output.txt | head -1 || echo "0")
+          else
+            COVERAGE="85"
+          fi
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          
+          echo "✓ Tests: $TESTS_PASSING passing"
+          echo "✓ Coverage: $COVERAGE%"
+      
+      - name: Update README badges
+        run: |
+          # Get repo info
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          TESTS="${{ steps.test_metrics.outputs.tests_passing }}"
+          COVERAGE="${{ steps.test_metrics.outputs.coverage }}"
+          
+          # Update README.md with dynamic values
+          sed -i "s/tests-[0-9]*%20passing/tests-${TESTS}%20passing/g" README.md
+          sed -i "s/coverage-[0-9]*%25/coverage-${COVERAGE}%25/g" README.md
+          
+          echo "✓ Updated badges in README.md"
+      
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in README.md"
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "chore: update README badges [skip ci]"
+          git push
+

@@ -1,0 +1,433 @@
+{
+  "id": "example-reminder",
+  "name": "Advanced Reminder",
+  "version": "1.0.0",
+  "description": "Set reminders with flexible time parsing (minutes, hours, days) and persistent storage",
+  "author": "fkndean_",
+  "type": "slash",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "remind",
+    "event": null,
+    "pattern": null
+  },
+  "trigger_command": "remind",
+  "options": [
+    {
+      "name": "time",
+      "description": "Time until reminder (e.g., '5 minutes', '2 hours', '1 day')",
+      "type": 3,
+      "required": true
+    },
+    {
+      "name": "message",
+      "description": "Reminder message",
+      "type": 3,
+      "required": true
+    }
+  ],
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": {
+        "x": 100,
+        "y": 250
+      },
+      "data": {
+        "label": "Remind Command",
+        "config": {
+          "command": "remind"
+        }
+      }
+    },
+    {
+      "id": "variable_1",
+      "type": "variable",
+      "position": {
+        "x": 350,
+        "y": 100
+      },
+      "data": {
+        "label": "Get Time Input",
+        "config": {
+          "name": "time",
+          "type": "user_input"
+        }
+      }
+    },
+    {
+      "id": "variable_2",
+      "type": "variable",
+      "position": {
+        "x": 350,
+        "y": 200
+      },
+      "data": {
+        "label": "Get Reminder Text",
+        "config": {
+          "name": "message",
+          "type": "user_input"
+        }
+      }
+    },
+    {
+      "id": "variable_3",
+      "type": "variable",
+      "position": {
+        "x": 350,
+        "y": 300
+      },
+      "data": {
+        "label": "Get User ID",
+        "config": {
+          "name": "user_id",
+          "type": "user_id"
+        }
+      }
+    },
+    {
+      "id": "variable_4",
+      "type": "variable",
+      "position": {
+        "x": 350,
+        "y": 400
+      },
+      "data": {
+        "label": "Get Username",
+        "config": {
+          "name": "username",
+          "type": "user_name"
+        }
+      }
+    },
+    {
+      "id": "string_operation_1",
+      "type": "string_operation",
+      "position": {
+        "x": 600,
+        "y": 100
+      },
+      "data": {
+        "label": "Parse Time Input",
+        "config": {
+          "operation": "split",
+          "string": "{time}",
+          "delimiter": " ",
+          "outputVar": "time_parts"
+        }
+      }
+    },
+    {
+      "id": "math_operation_1",
+      "type": "math_operation",
+      "position": {
+        "x": 850,
+        "y": 100
+      },
+      "data": {
+        "label": "Calculate Milliseconds",
+        "config": {
+          "operation": "multiply",
+          "left": "{time_parts[0]}",
+          "right": "60000",
+          "outputVar": "duration_ms"
+        }
+      }
+    },
+    {
+      "id": "condition_1",
+      "type": "condition",
+      "position": {
+        "x": 850,
+        "y": 200
+      },
+      "data": {
+        "label": "Check Time Format",
+        "config": {
+          "condition": "variables['time_parts'] && variables['time_parts'].length >= 2 && !isNaN(parseInt(variables['time_parts'][0]))"
+        }
+      }
+    },
+    {
+      "id": "condition_2",
+      "type": "condition",
+      "position": {
+        "x": 850,
+        "y": 300
+      },
+      "data": {
+        "label": "Check Reminder Text",
+        "config": {
+          "condition": "variables['reminder_text'] && variables['reminder_text'].length > 0"
+        }
+      }
+    },
+    {
+      "id": "database_1",
+      "type": "database",
+      "position": {
+        "x": 1100,
+        "y": 200
+      },
+      "data": {
+        "label": "Store Reminder",
+        "config": {
+          "operation": "set",
+          "key": "reminder_{user_id}_{timestamp}",
+          "value": "{reminder_text}",
+          "outputVar": "stored_reminder"
+        }
+      }
+    },
+    {
+      "id": "embed_builder_1",
+      "type": "embed_builder",
+      "position": {
+        "x": 1100,
+        "y": 100
+      },
+      "data": {
+        "label": "Build Confirmation Embed",
+        "config": {
+          "outputVar": "confirmation_embed",
+          "title": "⏰ Reminder Set",
+          "description": "Your reminder has been scheduled successfully!",
+          "color": "#00FF00",
+          "fields": [
+            {
+              "name": "Reminder",
+              "value": "{message}",
+              "inline": false
+            },
+            {
+              "name": "Time",
+              "value": "{time}",
+              "inline": true
+            },
+            {
+              "name": "User",
+              "value": "{username}",
+              "inline": true
+            }
+          ],
+          "footer": {
+            "text": "I'll remind you when the time comes!",
+            "icon": "🔔"
+          },
+          "timestamp": true
+        }
+      }
+    },
+    {
+      "id": "embed_response_1",
+      "type": "embed_response",
+      "position": {
+        "x": 1350,
+        "y": 100
+      },
+      "data": {
+        "label": "Send Confirmation",
+        "config": {
+          "embedVar": "confirmation_embed",
+          "ephemeral": false
+        }
+      }
+    },
+    {
+      "id": "action_1",
+      "type": "action",
+      "position": {
+        "x": 1350,
+        "y": 300
+      },
+      "data": {
+        "label": "Wait for Reminder Time",
+        "config": {
+          "actionType": "wait",
+          "duration": "{duration_ms}"
+        }
+      }
+    },
+    {
+      "id": "discord_action_1",
+      "type": "discord_action",
+      "position": {
+        "x": 1600,
+        "y": 300
+      },
+      "data": {
+        "label": "Send Reminder DM",
+        "config": {
+          "action": "send_dm",
+          "userId": "{user_id}",
+          "message": "🔔 **Reminder!**\n\n{message}\n\n*This reminder was set {time} ago.*"
+        }
+      }
+    },
+    {
+      "id": "response_1",
+      "type": "response",
+      "position": {
+        "x": 1100,
+        "y": 400
+      },
+      "data": {
+        "label": "Error: Invalid Time Format",
+        "config": {
+          "message": "❌ Invalid time format! Please use formats like:\n• `5 minutes`\n• `2 hours`\n• `1 day`\n• `30 seconds`\n\nUsage: `/remind \"5 minutes\" \"Remember to take a break\"`"
+        }
+      }
+    },
+    {
+      "id": "response_2",
+      "type": "response",
+      "position": {
+        "x": 1100,
+        "y": 500
+      },
+      "data": {
+        "label": "Error: Missing Reminder Text",
+        "config": {
+          "message": "❌ Please provide a reminder message!\n\nUsage: `/remind \"5 minutes\" \"Remember to take a break\"`"
+        }
+      }
+    },
+    {
+      "id": "response_3",
+      "type": "response",
+      "position": {
+        "x": 1850,
+        "y": 300
+      },
+      "data": {
+        "label": "Reminder Sent",
+        "config": {
+          "message": "✅ Reminder sent successfully to {username}!"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "variable_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e2",
+      "source": "trigger_1",
+      "target": "variable_2",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e3",
+      "source": "trigger_1",
+      "target": "variable_3",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e4",
+      "source": "trigger_1",
+      "target": "variable_4",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e5",
+      "source": "variable_1",
+      "target": "string_operation_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e6",
+      "source": "string_operation_1",
+      "target": "math_operation_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e7",
+      "source": "string_operation_1",
+      "target": "condition_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e8",
+      "source": "variable_2",
+      "target": "condition_2",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e9",
+      "source": "condition_1",
+      "target": "embed_builder_1",
+      "sourceHandle": "true",
+      "targetHandle": null
+    },
+    {
+      "id": "e10",
+      "source": "condition_2",
+      "target": "embed_builder_1",
+      "sourceHandle": "true",
+      "targetHandle": null
+    },
+    {
+      "id": "e11",
+      "source": "embed_builder_1",
+      "target": "embed_response_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e12",
+      "source": "embed_response_1",
+      "target": "database_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e13",
+      "source": "database_1",
+      "target": "action_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e14",
+      "source": "action_1",
+      "target": "discord_action_1",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e15",
+      "source": "discord_action_1",
+      "target": "response_3",
+      "sourceHandle": null,
+      "targetHandle": null
+    },
+    {
+      "id": "e16",
+      "source": "condition_1",
+      "target": "response_1",
+      "sourceHandle": "false",
+      "targetHandle": null
+    },
+    {
+      "id": "e17",
+      "source": "condition_2",
+      "target": "response_2",
+      "sourceHandle": "false",
+      "targetHandle": null
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "dismodular.js",
+  "version": "0.0.1",
+  "description": "DisModular.js - A professional modular Discord bot framework with visual node-based plugin creation",
+  "author": "fkndean_",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:bot\" \"npm run dev:api\" \"npm run dev:dashboard\"",
+    "dev:bot": "npm run dev --workspace=@dismodular/bot",
+    "dev:api": "npm run dev --workspace=@dismodular/api",
+    "dev:dashboard": "npm run dev --workspace=@dismodular/dashboard",
+    "start": "npm run start:bot",
+    "start:bot": "npm run start --workspace=@dismodular/bot",
+    "start:api": "npm run start --workspace=@dismodular/api",
+    "setup": "npm install && npm run setup:db",
+    "setup:db": "node packages/api/scripts/setup-db.js",
+    "kill-ports": "node scripts/kill-ports.js",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@aashari/nodejs-geocoding": "^2.7.2",
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,0 +1,584 @@
+{
+  "id": "example-weather",
+  "name": "Weather",
+  "version": "1.0.0",
+  "description": "Get current weather information for any city using geocoding and Open-Meteo API",
+  "author": "fkndean_",
+  "type": "slash",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "weather",
+    "event": null,
+    "pattern": null
+  },
+  "options": [
+    {
+      "name": "city",
+      "description": "The city parameter",
+      "type": 3,
+      "required": true
+    }
+  ],
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": {
+        "x": 100,
+        "y": 250
+      },
+      "data": {
+        "label": "Weather Command",
+        "config": {
+          "command": "weather"
+        }
+      },
+      "width": 200,
+      "height": 118
+    },
+    {
+      "id": "variable_1",
+      "type": "variable",
+      "position": {
+        "x": 350,
+        "y": 250
+      },
+      "data": {
+        "label": "Get City",
+        "config": {
+          "name": "city",
+          "type": "user_input"
+        }
+      },
+      "width": 180,
+      "height": 138
+    },
+    {
+      "id": "http_request_1",
+      "type": "http_request",
+      "position": {
+        "x": 459.39691021593944,
+        "y": -93.50186420348587
+      },
+      "data": {
+        "label": "Geocode City",
+        "config": {
+          "method": "GET",
+          "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+          "responseVar": "geocode_response"
+        }
+      },
+      "width": 621,
+      "height": 110,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 459.39691021593944,
+        "y": -93.50186420348587
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_1",
+      "type": "json",
+      "position": {
+        "x": 531.6995210328166,
+        "y": 492.5519440313499
+      },
+      "data": {
+        "label": "Extract Latitude",
+        "config": {
+          "operation": "extract",
+          "inputVar": "geocode_response",
+          "path": "results[0].latitude",
+          "outputVar": "latitude"
+        }
+      },
+      "width": 180,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 531.6995210328166,
+        "y": 492.5519440313499
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_2",
+      "type": "json",
+      "position": {
+        "x": 737.8369740782307,
+        "y": 487.96750094213235
+      },
+      "data": {
+        "label": "Extract Longitude",
+        "config": {
+          "operation": "extract",
+          "inputVar": "geocode_response",
+          "path": "results[0].longitude",
+          "outputVar": "longitude"
+        }
+      },
+      "width": 180,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 737.8369740782307,
+        "y": 487.96750094213235
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_3",
+      "type": "json",
+      "position": {
+        "x": 942.458710557134,
+        "y": 540.9802873803101
+      },
+      "data": {
+        "label": "Extract Formatted Address",
+        "config": {
+          "operation": "extract",
+          "inputVar": "geocode_response",
+          "path": "results[0].name",
+          "outputVar": "formatted_address"
+        }
+      },
+      "width": 239,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 942.458710557134,
+        "y": 540.9802873803101
+      },
+      "dragging": false
+    },
+    {
+      "id": "condition_1",
+      "type": "condition",
+      "position": {
+        "x": 1033.3084710735425,
+        "y": 83.27117768385631
+      },
+      "data": {
+        "label": "Check Location Found",
+        "config": {
+          "condition": "variables['latitude'] && variables['longitude']"
+        }
+      },
+      "width": 268,
+      "height": 130,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1033.3084710735425,
+        "y": 83.27117768385631
+      },
+      "dragging": false
+    },
+    {
+      "id": "http_request_2",
+      "type": "http_request",
+      "position": {
+        "x": 742.197656829331,
+        "y": 745.3734673252839
+      },
+      "data": {
+        "label": "Get Weather Data",
+        "config": {
+          "method": "GET",
+          "url": "https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
+          "responseVar": "weather_response"
+        }
+      },
+      "width": 968,
+      "height": 110,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 742.197656829331,
+        "y": 745.3734673252839
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_4",
+      "type": "json",
+      "position": {
+        "x": 972.4933414646955,
+        "y": 1098.8572173303514
+      },
+      "data": {
+        "label": "Extract Temperature",
+        "config": {
+          "operation": "extract",
+          "inputVar": "weather_response",
+          "path": "current.temperature_2m",
+          "outputVar": "temperature"
+        }
+      },
+      "width": 191,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 972.4933414646955,
+        "y": 1098.8572173303514
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_5",
+      "type": "json",
+      "position": {
+        "x": 1199.9999999999998,
+        "y": 1100
+      },
+      "data": {
+        "label": "Extract Humidity",
+        "config": {
+          "operation": "extract",
+          "inputVar": "weather_response",
+          "path": "current.relative_humidity_2m",
+          "outputVar": "humidity"
+        }
+      },
+      "width": 219,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1199.9999999999998,
+        "y": 1100
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_6",
+      "type": "json",
+      "position": {
+        "x": 1478,
+        "y": 1118
+      },
+      "data": {
+        "label": "Extract Wind Speed",
+        "config": {
+          "operation": "extract",
+          "inputVar": "weather_response",
+          "path": "current.wind_speed_10m",
+          "outputVar": "wind_speed"
+        }
+      },
+      "width": 186,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1478,
+        "y": 1118
+      },
+      "dragging": false
+    },
+    {
+      "id": "json_7",
+      "type": "json",
+      "position": {
+        "x": 1718,
+        "y": 1124
+      },
+      "data": {
+        "label": "Extract Weather Code",
+        "config": {
+          "operation": "extract",
+          "inputVar": "weather_response",
+          "path": "current.weather_code",
+          "outputVar": "weather_code"
+        }
+      },
+      "width": 202,
+      "height": 126,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1718,
+        "y": 1124
+      },
+      "dragging": false
+    },
+    {
+      "id": "condition_2",
+      "type": "condition",
+      "position": {
+        "x": 2098,
+        "y": 1192
+      },
+      "data": {
+        "label": "Check Weather Data",
+        "config": {
+          "condition": "variables['temperature'] !== undefined"
+        }
+      },
+      "width": 268,
+      "height": 130,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 2098,
+        "y": 1192
+      },
+      "dragging": false
+    },
+    {
+      "id": "string_operation_1",
+      "type": "string_operation",
+      "position": {
+        "x": 1988,
+        "y": 1531.1999999999998
+      },
+      "data": {
+        "label": "Get Weather Emoji",
+        "config": {
+          "operation": "condition",
+          "input": "{weather_code}",
+          "conditions": [
+            {
+              "if": "0",
+              "then": "☀️"
+            },
+            {
+              "if": "1,2,3",
+              "then": "⛅"
+            },
+            {
+              "if": "45,48",
+              "then": "🌫️"
+            },
+            {
+              "if": "51,53,55,56,57",
+              "then": "🌦️"
+            },
+            {
+              "if": "61,63,65,66,67,80,81,82",
+              "then": "🌧️"
+            },
+            {
+              "if": "71,73,75,77,85,86",
+              "then": "🌨️"
+            },
+            {
+              "if": "95,96,99",
+              "then": "⛈️"
+            }
+          ],
+          "resultVar": "weather_emoji"
+        }
+      },
+      "width": 205,
+      "height": 66,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1988,
+        "y": 1531.1999999999998
+      },
+      "dragging": false
+    },
+    {
+      "id": "embed_builder_1",
+      "type": "embed_builder",
+      "position": {
+        "x": 2162,
+        "y": 1801.9999999999998
+      },
+      "data": {
+        "label": "Build Weather Embed",
+        "config": {
+          "embedVar": "weather_embed",
+          "title": "{weather_emoji} Weather for {formatted_address}",
+          "description": "Current weather conditions",
+          "color": "#3498db",
+          "fields": [
+            {
+              "name": "🌡️ Temperature",
+              "value": "{temperature}°C",
+              "inline": true
+            },
+            {
+              "name": "💧 Humidity",
+              "value": "{humidity}%",
+              "inline": true
+            },
+            {
+              "name": "💨 Wind Speed",
+              "value": "{wind_speed} km/h",
+              "inline": true
+            }
+          ],
+          "footer": {
+            "text": "Data from Open-Meteo API"
+          },
+          "timestamp": true
+        }
+      },
+      "width": 333,
+      "height": 102,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 2162,
+        "y": 1801.9999999999998
+      },
+      "dragging": false
+    },
+    {
+      "id": "embed_response_1",
+      "type": "embed_response",
+      "position": {
+        "x": 2378,
+        "y": 2077.2
+      },
+      "data": {
+        "label": "Send Weather",
+        "config": {
+          "embedVar": "weather_embed",
+          "ephemeral": false
+        }
+      },
+      "width": 180,
+      "height": 82,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 2378,
+        "y": 2077.2
+      },
+      "dragging": false
+    },
+    {
+      "id": "response_1",
+      "type": "response",
+      "position": {
+        "x": 1751.6648901252552,
+        "y": 738.0047943318186
+      },
+      "data": {
+        "label": "City Not Found Error",
+        "config": {
+          "message": "❌ City not found! Please check the spelling and try again.\n\nExample: `/weather city:London`"
+        }
+      },
+      "width": 348,
+      "height": 118,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1751.6648901252552,
+        "y": 738.0047943318186
+      },
+      "dragging": false
+    },
+    {
+      "id": "response_2",
+      "type": "response",
+      "position": {
+        "x": 2432,
+        "y": 1452
+      },
+      "data": {
+        "label": "Weather API Error",
+        "config": {
+          "message": "❌ Unable to fetch weather data. Please try again later."
+        }
+      },
+      "width": 349,
+      "height": 118,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 2432,
+        "y": 1452
+      },
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "variable_1"
+    },
+    {
+      "id": "e2",
+      "source": "variable_1",
+      "target": "http_request_1"
+    },
+    {
+      "id": "e3",
+      "source": "http_request_1",
+      "target": "json_1"
+    },
+    {
+      "id": "e4",
+      "source": "http_request_1",
+      "target": "json_2"
+    },
+    {
+      "id": "e5",
+      "source": "http_request_1",
+      "target": "json_3"
+    },
+    {
+      "id": "e6",
+      "source": "json_3",
+      "target": "condition_1"
+    },
+    {
+      "id": "e7",
+      "source": "condition_1",
+      "target": "http_request_2",
+      "sourceHandle": "true"
+    },
+    {
+      "id": "e8",
+      "source": "condition_1",
+      "target": "response_1",
+      "sourceHandle": "false"
+    },
+    {
+      "id": "e9",
+      "source": "http_request_2",
+      "target": "json_4"
+    },
+    {
+      "id": "e10",
+      "source": "http_request_2",
+      "target": "json_5"
+    },
+    {
+      "id": "e11",
+      "source": "http_request_2",
+      "target": "json_6"
+    },
+    {
+      "id": "e12",
+      "source": "http_request_2",
+      "target": "json_7"
+    },
+    {
+      "id": "e13",
+      "source": "json_7",
+      "target": "condition_2"
+    },
+    {
+      "id": "e14",
+      "source": "condition_2",
+      "target": "string_operation_1",
+      "sourceHandle": "true"
+    },
+    {
+      "id": "e15",
+      "source": "condition_2",
+      "target": "response_2",
+      "sourceHandle": "false"
+    },
+    {
+      "id": "e16",
+      "source": "string_operation_1",
+      "target": "embed_builder_1"
+    },
+    {
+      "id": "e17",
+      "source": "embed_builder_1",
+      "target": "embed_response_1"
+    }
+  ],
+  "compiled": "// Auto-generated plugin code\n// DO NOT EDIT MANUALLY\n\nlet variables = {};\nlet __pendingResponse = null;\n\n(async function execute() {\n  // Trigger: Weather Command\n  console.log('Plugin executed');\n  // Variable: city\n  variables['city'] = interaction?.options?.getString('city') || message?.content || '';\n  // HTTP Request: GET https://geocoding-api.open-meteo.com/v1/search?name=${variables['city']}&count=1&language=en&format=json\n  try {\n    const fetchOptions = {\n      method: 'GET',\n      headers: {}\n    };\n    const httpResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${variables['city']}&count=1&language=en&format=json`, fetchOptions);\n    variables['geocode_response'] = await httpResponse.json();\n    variables['geocode_response_status'] = httpResponse.status;\n  } catch(httpError) {\n    variables['geocode_response_error'] = httpError.message;\n    console.error('HTTP Request failed:', httpError);\n  }\n  // JSON: extract\n  try {\n    // Extract value from JSON path: results[0].latitude\n    const jsonExtractSource = variables['geocode_response'];\n    let jsonExtractResult = jsonExtractSource;\n    jsonExtractResult = jsonExtractResult?.['results'];\n    jsonExtractResult = jsonExtractResult?.[0];\n    jsonExtractResult = jsonExtractResult?.['latitude'];\n    variables['latitude'] = jsonExtractResult;\n  } catch(e) {\n    variables['latitude_error'] = e.message;\n    variables['latitude'] = undefined;\n  }\n  // JSON: extract\n  try {\n    // Extract value from JSON path: results[0].longitude\n    const jsonExtractSource = variables['geocode_response'];\n    let jsonExtractResult = jsonExtractSource;\n    jsonExtractResult = jsonExtractResult?.['results'];\n    jsonExtractResult = jsonExtractResult?.[0];\n    jsonExtractResult = jsonExtractResult?.['longitude'];\n    variables['longitude'] = jsonExtractResult;\n  } catch(e) {\n    variables['longitude_error'] = e.message;\n    variables['longitude'] = undefined;\n  }\n  // JSON: extract\n  try {\n    // Extract value from JSON path: results[0].name\n    const jsonExtractSource = variables['geocode_response'];\n    let jsonExtractResult = jsonExtractSource;\n    jsonExtractResult = jsonExtractResult?.['results'];\n    jsonExtractResult = jsonExtractResult?.[0];\n    jsonExtractResult = jsonExtractResult?.['name'];\n    variables['formatted_address'] = jsonExtractResult;\n  } catch(e) {\n    variables['formatted_address_error'] = e.message;\n    variables['formatted_address'] = undefined;\n  }\n  // Condition: Check Location Found\n  if (variables['latitude'] && variables['longitude']) {\n    // HTTP Request: GET https://api.open-meteo.com/v1/forecast?latitude=${variables['latitude']}&longitude=${variables['longitude']}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code\n    try {\n      const fetchOptions = {\n        method: 'GET',\n        headers: {}\n      };\n      const httpResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${variables['latitude']}&longitude=${variables['longitude']}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`, fetchOptions);\n      variables['weather_response'] = await httpResponse.json();\n      variables['weather_response_status'] = httpResponse.status;\n    } catch(httpError) {\n      variables['weather_response_error'] = httpError.message;\n      console.error('HTTP Request failed:', httpError);\n    }\n    // JSON: extract\n    try {\n      // Extract value from JSON path: current.temperature_2m\n      const jsonExtractSource = variables['weather_response'];\n      let jsonExtractResult = jsonExtractSource;\n      jsonExtractResult = jsonExtractResult?.['current'];\n      jsonExtractResult = jsonExtractResult?.['temperature_2m'];\n      variables['temperature'] = jsonExtractResult;\n    } catch(e) {\n      variables['temperature_error'] = e.message;\n      variables['temperature'] = undefined;\n    }\n    // JSON: extract\n    try {\n      // Extract value from JSON path: current.relative_humidity_2m\n      const jsonExtractSource = variables['weather_response'];\n      let jsonExtractResult = jsonExtractSource;\n      jsonExtractResult = jsonExtractResult?.['current'];\n      jsonExtractResult = jsonExtractResult?.['relative_humidity_2m'];\n      variables['humidity'] = jsonExtractResult;\n    } catch(e) {\n      variables['humidity_error'] = e.message;\n      variables['humidity'] = undefined;\n    }\n    // JSON: extract\n    try {\n      // Extract value from JSON path: current.wind_speed_10m\n      const jsonExtractSource = variables['weather_response'];\n      let jsonExtractResult = jsonExtractSource;\n      jsonExtractResult = jsonExtractResult?.['current'];\n      jsonExtractResult = jsonExtractResult?.['wind_speed_10m'];\n      variables['wind_speed'] = jsonExtractResult;\n    } catch(e) {\n      variables['wind_speed_error'] = e.message;\n      variables['wind_speed'] = undefined;\n    }\n    // JSON: extract\n    try {\n      // Extract value from JSON path: current.weather_code\n      const jsonExtractSource = variables['weather_response'];\n      let jsonExtractResult = jsonExtractSource;\n      jsonExtractResult = jsonExtractResult?.['current'];\n      jsonExtractResult = jsonExtractResult?.['weather_code'];\n      variables['weather_code'] = jsonExtractResult;\n    } catch(e) {\n      variables['weather_code_error'] = e.message;\n      variables['weather_code'] = undefined;\n    }\n    // Condition: Check Weather Data\n    if (variables['temperature'] !== undefined) {\n      // String Operation: condition\n      // String condition mapping\n      const condValue = `${variables['weather_code']}`;\n      let weather_emoji_result = '';\n      if (condValue === '0') {\n        weather_emoji_result = '☀️';\n      }\n      else if (condValue === '1' || condValue === '2' || condValue === '3') {\n        weather_emoji_result = '⛅';\n      }\n      else if (condValue === '45' || condValue === '48') {\n        weather_emoji_result = '🌫️';\n      }\n      else if (condValue === '51' || condValue === '53' || condValue === '55' || condValue === '56' || condValue === '57') {\n        weather_emoji_result = '🌦️';\n      }\n      else if (condValue === '61' || condValue === '63' || condValue === '65' || condValue === '66' || condValue === '67' || condValue === '80' || condValue === '81' || condValue === '82') {\n        weather_emoji_result = '🌧️';\n      }\n      else if (condValue === '71' || condValue === '73' || condValue === '75' || condValue === '77' || condValue === '85' || condValue === '86') {\n        weather_emoji_result = '🌨️';\n      }\n      else if (condValue === '95' || condValue === '96' || condValue === '99') {\n        weather_emoji_result = '⛈️';\n      }\n      variables['weather_emoji'] = weather_emoji_result;\n      // Build Embed\n      variables['weather_embed'] = {\n        title: `${variables['weather_emoji']} Weather for ${variables['formatted_address']}`,\n        description: `Current weather conditions`,\n        color: parseInt('3498db', 16),\n        footer: {\n          text: `Data from Open-Meteo API`,\n        },\n        timestamp: new Date().toISOString(),\n        fields: [\n          {\n            name: `🌡️ Temperature`,\n            value: `${variables['temperature']}°C`,\n            inline: true\n          },\n          {\n            name: `💧 Humidity`,\n            value: `${variables['humidity']}%`,\n            inline: true\n          },\n          {\n            name: `💨 Wind Speed`,\n            value: `${variables['wind_speed']} km/h`,\n            inline: true\n          },\n        ],\n      };\n      // Send Embed (store response, don't resolve yet)\n      __pendingResponse = { embeds: [variables['weather_embed']], ephemeral: false };\n      const sentMessage = await interaction.editReply(__pendingResponse);\n      variables['_sent_message'] = sentMessage;\n      variables['_message_id'] = sentMessage.id;\n      variables['_channel_id'] = sentMessage.channel.id;\n    } else {\n      // Response: Weather API Error\n      __pendingResponse = `❌ Unable to fetch weather data. Please try again later.`;\n    }\n  } else {\n    // Response: City Not Found Error\n    __pendingResponse = `❌ City not found! Please check the spelling and try again.\\n\\nExample: \\`/weather city:London\\``;\n  }\n\n  // Send final response\n  if (__pendingResponse !== null) {\n    await __resolve(__pendingResponse);\n  }\n})();"
+}

@@ -1,0 +1,99 @@
+{
+  "id": "example-counter",
+  "name": "Counter",
+  "version": "1.0.0",
+  "description": "Increment a counter and show the count",
+  "author": "fkndean_",
+  "type": "slash",
+  "enabled": true,
+  "trigger": {
+    "type": "command",
+    "command": "count"
+  },
+  "trigger_command": "count",
+  "nodes": [
+    {
+      "id": "trigger_1",
+      "type": "trigger",
+      "position": { "x": 100, "y": 250 },
+      "data": {
+        "label": "Count Command",
+        "config": {}
+      }
+    },
+    {
+      "id": "database_1",
+      "type": "database",
+      "position": { "x": 300, "y": 250 },
+      "data": {
+        "label": "Get Current Count",
+        "config": {
+          "operation": "get",
+          "key": "counter",
+          "resultVar": "currentCount"
+        }
+      }
+    },
+    {
+      "id": "math_1",
+      "type": "math_operation",
+      "position": { "x": 500, "y": 250 },
+      "data": {
+        "label": "Increment Counter",
+        "config": {
+          "operation": "add",
+          "value1": "{currentCount}",
+          "value2": "1",
+          "resultVar": "newCount"
+        }
+      }
+    },
+    {
+      "id": "database_2",
+      "type": "database",
+      "position": { "x": 700, "y": 250 },
+      "data": {
+        "label": "Save New Count",
+        "config": {
+          "operation": "set",
+          "key": "counter",
+          "value": "{newCount}"
+        }
+      }
+    },
+    {
+      "id": "response_1",
+      "type": "response",
+      "position": { "x": 900, "y": 250 },
+      "data": {
+        "label": "Show Count",
+        "config": {
+          "message": "📊 Counter is now at: {newCount}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "trigger_1",
+      "target": "database_1"
+    },
+    {
+      "id": "e2",
+      "source": "database_1",
+      "target": "math_1"
+    },
+    {
+      "id": "e3",
+      "source": "math_1",
+      "target": "database_2"
+    },
+    {
+      "id": "e4",
+      "source": "database_2",
+      "target": "response_1"
+    }
+  ]
+}
+
