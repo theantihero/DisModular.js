@@ -16,7 +16,7 @@
     "axios": "^1.6.7",
     "dagre": "^0.8.5",
     "html-to-image": "^1.11.13",
-    "react": "^18.2.0",
+    "react": "^19.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0",
     "reactflow": "^11.10.4",
