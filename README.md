@@ -5,7 +5,7 @@
 
   A modular Discord bot framework with visual node-based plugin creation. Build sophisticated bot commands and interactions through an intuitive drag-and-drop interface — no coding required!
 
-  **Version:** 0.0.1 • **License:** MIT • **Author:** fkndean_/theantihero
+  **Version:** 0.0.3 • **License:** MIT • **Author:** fkndean_/theantihero
 
   [![Build Status](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/ci.yml?branch=main&label=build)](https://github.com/theantihero/DisModular.js/actions/workflows/ci.yml)
   [![Security Scan](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/security.yml?branch=main&label=security)](https://github.com/theantihero/DisModular.js/actions/workflows/security.yml)
@@ -712,7 +712,16 @@ Set flexible reminders with intelligent time parsing and persistent storage.
 - **Action + Discord Action**: Implement delayed operations with user notifications
 - **Database + Variable**: Store and retrieve persistent data
 
-## 📚 Resources
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) folder:
+
+- **[API Documentation](docs/api.md)** - Complete REST API reference
+- **[Bot Documentation](docs/bot.md)** - Bot architecture and plugin system  
+- **[Dashboard Documentation](docs/dashboard.md)** - Web interface and user management
+- **[Plugin Editor Guide](docs/plugin-editor.md)** - Visual workflow creation tutorial
+
+## 📚 External Resources
 
 - [Discord.js Documentation](https://discord.js.org/)
 - [React Flow Documentation](https://reactflow.dev/)
