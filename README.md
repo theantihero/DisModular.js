@@ -5,7 +5,7 @@
 
   A modular Discord bot framework with visual node-based plugin creation. Build sophisticated bot commands and interactions through an intuitive drag-and-drop interface — no coding required!
 
-  **Version:** 0.0.3 • **License:** MIT • **Author:** fkndean_/theantihero
+  **Version:** 0.0.2 • **License:** MIT • **Author:** fkndean_/theantihero
 
   [![Build Status](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/ci.yml?branch=main&label=build)](https://github.com/theantihero/DisModular.js/actions/workflows/ci.yml)
   [![Security Scan](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/security.yml?branch=main&label=security)](https://github.com/theantihero/DisModular.js/actions/workflows/security.yml)
@@ -68,8 +68,8 @@ dismodular.js/
 
 ## 📋 Prerequisites
 
-- **Node.js** >= 18.0.0
-- **npm** >= 9.0.0
+- **Node.js** >= 20.0.0
+- **npm** >= 10.0.0
 - **Discord Bot Token** (from [Discord Developer Portal](https://discord.com/developers/applications))
 - **Discord OAuth Credentials** (Client ID & Secret)
 
@@ -229,9 +229,9 @@ DisModular.js has a comprehensive CI/CD pipeline with automated testing, securit
 
 **Creating Releases:**
 ```bash
-npm run release:patch  # 0.0.1 → 0.0.2
-npm run release:minor  # 0.0.1 → 0.1.0
-npm run release:major  # 0.0.1 → 1.0.0
+npm run release patch  # 0.0.1 → 0.0.2
+npm run release minor  # 0.0.1 → 0.1.0
+npm run release major  # 0.0.1 → 1.0.0
 ```
 
 *See [GitHub Actions](https://github.com/theantihero/DisModular.js/actions) for workflow status and detailed CI/CD documentation.*

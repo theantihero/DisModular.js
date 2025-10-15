@@ -1,6 +1,17 @@
 # Plugin Editor Guide
 
-The DisModular.js Plugin Editor is a powerful visual interface for creating Discord bot plugins without writing code. This guide will walk you through creating your first workflow from start to finish.
+The DisModular.js Plugin Editor is a powerful visual interface built with React Flow for creating Discord bot plugins without writing code. This comprehensive guide will walk you through creating workflows from basic to advanced, covering all node types and best practices.
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Editor Interface](#editor-interface)
+- [Node Types Reference](#node-types-reference)
+- [Creating Workflows](#creating-workflows)
+- [Advanced Examples](#advanced-examples)
+- [Best Practices](#best-practices)
+- [Troubleshooting](#troubleshooting)
+- [Sharing and Collaboration](#sharing-and-collaboration)
 
 ## Getting Started
 
@@ -157,20 +168,45 @@ Let's create a more complex plugin - a poll system with multiple options and res
 
 ### Core Nodes
 
-**Trigger Node (Green)**
-- Starts plugin execution
-- Configurable command options
-- Supports slash and text commands
+#### Trigger Node (Green)
+**Purpose**: Starts plugin execution when a command is called
+**Inputs**: None
+**Outputs**: Execution flow
+**Configuration**:
+- Command name (e.g., "hello", "poll")
+- Description for slash commands
+- Command type (slash, text, or both)
+- Required permissions
+- Command options (for slash commands)
 
-**Response Node (Blue)**
-- Sends text messages
-- Supports variable interpolation
-- Can include mentions and formatting
+#### Response Node (Blue)
+**Purpose**: Sends a text message back to the user
+**Inputs**: Execution flow, message content
+**Outputs**: None
+**Configuration**:
+- Message content (supports variables like `{{user.username}}`)
+- Ephemeral response (only visible to command user)
+- Reply to original message
+- Message formatting (bold, italic, code blocks)
 
-**Data Node (Cyan)**
-- Stores and retrieves data
-- Persistent across plugin executions
-- Supports complex data structures
+#### Variable Node (Purple)
+**Purpose**: Stores and retrieves data during execution
+**Inputs**: Value to store
+**Outputs**: Stored value
+**Configuration**:
+- Variable name
+- Variable type (string, number, boolean, object, array)
+- Default value
+- Scope (local, global, user, guild)
+
+#### Data Node (Cyan)
+**Purpose**: Retrieves Discord context data
+**Inputs**: None
+**Outputs**: Data object
+**Configuration**:
+- Data type (user info, guild info, channel info, message info)
+- Specific fields to retrieve
+- Fallback values
 
 ### Control Flow
 

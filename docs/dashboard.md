@@ -1,6 +1,20 @@
 # Dashboard Documentation
 
-The DisModular.js Dashboard is a modern React-based web interface for managing plugins, viewing analytics, and configuring bot settings.
+The DisModular.js Dashboard is a modern, responsive React-based web interface built with Vite, React Flow, and Tailwind CSS. It provides an intuitive visual environment for managing plugins, monitoring bot activity, and configuring system settings.
+
+## Table of Contents
+
+- [Architecture Overview](#architecture)
+- [UI/UX Design](#ui-ux-design)
+- [Core Features](#key-features)
+- [Plugin Editor](#visual-plugin-editor)
+- [Analytics & Monitoring](#analytics-dashboard)
+- [User Management](#user-management)
+- [Configuration Management](#settings-management)
+- [Performance & Optimization](#performance--optimization)
+- [Development Guide](#development)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
 
 ## Architecture
 
@@ -9,17 +23,71 @@ The dashboard is built with React 18 and modern web technologies:
 ```
 packages/dashboard/
 ├── src/
-│   ├── components/         # React components
-│   │   ├── Editor/        # Visual plugin editor
-│   │   ├── Analytics/     # Analytics dashboard
-│   │   ├── Settings/      # Settings panels
-│   │   └── common/        # Shared components
+│   ├── components/         # Reusable UI components
+│   │   ├── AdminPanel.jsx       # Admin management interface
+│   │   ├── CommandOptionsManager.jsx # Command configuration
+│   │   ├── ContextMenu.jsx      # Right-click context menus
+│   │   ├── CustomEdge.jsx       # Custom React Flow edges
+│   │   ├── MobileNav.jsx        # Mobile navigation
+│   │   ├── NodeConfigPanel.jsx  # Node configuration panel
+│   │   └── Toast.jsx            # Notification system
+│   ├── contexts/          # React contexts
+│   │   └── ThemeContext.jsx     # Theme management
 │   ├── hooks/             # Custom React hooks
+│   │   ├── useTheme.js          # Theme management hook
+│   │   └── useToast.js          # Toast notification hook
+│   ├── pages/             # Page components
+│   │   ├── Dashboard.jsx        # Main dashboard page
+│   │   ├── PluginEditor.jsx     # Visual plugin editor
+│   │   ├── Analytics.jsx        # Analytics dashboard
+│   │   ├── Settings.jsx         # Settings management
+│   │   ├── Login.jsx            # Authentication page
+│   │   ├── AccessDenied.jsx     # Permission denied page
+│   │   └── AuthCallback.jsx     # OAuth callback handler
 │   ├── services/          # API service layer
+│   │   └── api.js               # API client with error handling
 │   ├── utils/             # Utility functions
-│   └── styles/            # CSS and styling
+│   │   ├── connectionValidation.js # Connection validation
+│   │   ├── layoutUtils.js       # Layout and positioning utilities
+│   │   ├── nodeAnalyzer.js      # Node analysis and validation
+│   │   └── nodeHover.js         # Node hover effects
+│   ├── viewmodels/        # Business logic layer
+│   │   ├── AppViewModel.js      # Main application state
+│   │   └── PluginViewModel.js   # Plugin management logic
+│   ├── views/nodes/       # React Flow node components
+│   │   ├── ActionNode.jsx       # Action node component
+│   │   ├── ArrayOperationNode.jsx # Array operations
+│   │   ├── ComparisonNode.jsx   # Comparison logic
+│   │   ├── ConditionNode.jsx    # Conditional logic
+│   │   ├── DatabaseNode.jsx     # Database operations
+│   │   ├── DataNode.jsx         # Data retrieval
+│   │   ├── DiscordActionNode.jsx # Discord-specific actions
+│   │   ├── EmbedBuilderNode.jsx # Discord embed creation
+│   │   ├── EmbedResponseNode.jsx # Embed response handling
+│   │   ├── ForLoopNode.jsx      # For loop control
+│   │   ├── HTTPRequestNode.jsx  # HTTP requests
+│   │   ├── JSONNode.jsx         # JSON operations
+│   │   ├── MathOperationNode.jsx # Mathematical operations
+│   │   ├── ObjectOperationNode.jsx # Object manipulation
+│   │   ├── PermissionNode.jsx   # Permission checking
+│   │   ├── ResponseNode.jsx     # Text response
+│   │   ├── StringOperationNode.jsx # String manipulation
+│   │   ├── TriggerNode.jsx      # Command triggers
+│   │   ├── VariableNode.jsx     # Variable management
+│   │   └── WhileLoopNode.jsx    # While loop control
+│   ├── models/            # Empty models directory
+│   ├── App.jsx            # Main app component
+│   ├── main.jsx           # Application entry point
+│   └── index.css          # Global styles
 ├── public/                # Static assets
-└── package.json
+├── tests/                 # Test suite
+│   └── nodeAnalyzer.test.js # Node analyzer tests
+├── index.html             # HTML template
+├── package.json
+├── vite.config.js         # Vite configuration
+├── tailwind.config.js     # Tailwind CSS configuration
+├── postcss.config.js      # PostCSS configuration
+└── eslint.config.js       # ESLint configuration
 ```
 
 ## Key Features
