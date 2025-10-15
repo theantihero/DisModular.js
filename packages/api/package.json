@@ -13,7 +13,7 @@
     "test:watch": "node --env-file=../../.env --test --watch tests/"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "express": "^5.1.0",
     "cors": "^2.8.5",
     "express-session": "^1.18.0",
     "passport": "^0.7.0",
