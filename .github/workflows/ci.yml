@@ -38,7 +38,7 @@ jobs:
           DATABASE_PATH: ":memory:"
       
       - name: Run integration tests
-        run: node --test tests/plugins.integration.test.mjs
+        run: node --test tests/integration.test.js
   
   build:
     name: Build All Packages
