@@ -9,7 +9,7 @@
 
   [![Build Status](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/ci.yml?branch=main&label=build)](https://github.com/theantihero/DisModular.js/actions/workflows/ci.yml)
   [![Security Scan](https://img.shields.io/github/actions/workflow/status/theantihero/DisModular.js/security.yml?branch=main&label=security)](https://github.com/theantihero/DisModular.js/actions/workflows/security.yml)
-  [![Tests](https://img.shields.io/badge/tests-127%20passing-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
+  [![Tests](https://img.shields.io/badge/tests-%20passing-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
   [![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)](https://github.com/theantihero/DisModular.js/actions)
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
   [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](package.json)
