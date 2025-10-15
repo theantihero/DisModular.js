@@ -7,7 +7,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Tests not implemented yet\" && exit 0"
+    "test": "node --test tests/"
   }
 }
 
