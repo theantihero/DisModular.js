@@ -560,30 +560,23 @@ describe('Access Request Flow', () => {
     });
 
     it('should get user access status', async () => {
-      // First ensure user exists, then update to pending status
+      // Create user with pending status directly (bypass beforeEach)
       await prisma.user.upsert({
         where: { id: testUserId },
-        update: {},
+        update: {
+          access_status: 'pending',
+          access_requested_at: new Date(),
+          access_request_message: 'Test request message'
+        },
         create: {
           id: testUserId,
           discord_id: '111111111',
           username: 'testuser',
           discriminator: '1234',
-          access_status: 'denied',
-          is_admin: false
-        }
-      });
-      
-      // Add small delay to ensure this runs after beforeEach
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      // Now update to pending status (this will override the beforeEach reset)
-      await prisma.user.update({
-        where: { id: testUserId },
-        data: {
           access_status: 'pending',
           access_requested_at: new Date(),
-          access_request_message: 'Test request message'
+          access_request_message: 'Test request message',
+          is_admin: false
         }
       });
 

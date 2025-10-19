@@ -202,10 +202,12 @@ describe('Multi-Guild Plugin System', () => {
         }
       });
       
-      // Clean up test plugin
+      // Clean up test plugin and template plugin
       await prisma.plugin.deleteMany({
         where: {
-          id: testPluginId
+          id: {
+            in: [testPluginId, templatePluginId]
+          }
         }
       });
     }
