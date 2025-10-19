@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * HUD Overlay Component
  * Sci-fi UI elements including corner brackets, scanlines, and grid
@@ -11,11 +12,15 @@ export function HUDOverlay() {
   const [scanlinePosition, setScanlinePosition] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line no-undef
     const interval = setInterval(() => {
       setScanlinePosition(prev => (prev + 1) % 100);
     }, 50);
 
-    return () => clearInterval(interval);
+    return () => {
+      // eslint-disable-next-line no-undef
+      clearInterval(interval);
+    };
   }, []);
 
   return (

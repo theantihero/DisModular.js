@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import _React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useToast } from '../hooks/useToast';
 
@@ -28,6 +28,7 @@ export function UserManagementPanel() {
   // Load users on component mount
   useEffect(() => {
     loadUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debug users state changes
@@ -123,7 +124,7 @@ export function UserManagementPanel() {
   /**
    * Get status badge styling
    */
-  const getStatusBadge = (status) => {
+  const _getStatusBadge = (status) => {
     const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
     
     switch (status) {

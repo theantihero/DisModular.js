@@ -50,11 +50,11 @@ function validateNodeGraphComplexity(nodes, edges) {
   // Compute node graph depth by BFS from triggers
   // Find trigger nodes as entry points
   const nodeById = Object.create(null);
-  nodes.forEach(n => { if (n && n.id) nodeById[n.id] = n; });
+  nodes.forEach(n => { if (n && n.id) {nodeById[n.id] = n;} });
   const outgoing = Object.create(null);
   edges.forEach(e => {
     if (e && e.source && e.target) {
-      if (!outgoing[e.source]) outgoing[e.source] = [];
+      if (!outgoing[e.source]) {outgoing[e.source] = [];}
       outgoing[e.source].push(e.target);
     }
   });
@@ -66,9 +66,9 @@ function validateNodeGraphComplexity(nodes, edges) {
     const queue = [{id: triggerNode.id, depth: 1}];
     while (queue.length) {
       const cur = queue.shift();
-      if (visited.has(cur.id)) continue;
+      if (visited.has(cur.id)) {continue;}
       visited.add(cur.id);
-      if (cur.depth > maxFoundDepth) maxFoundDepth = cur.depth;
+      if (cur.depth > maxFoundDepth) {maxFoundDepth = cur.depth;}
       if (cur.depth > MAX_DEPTH) {
         return { valid: false, error: `Graph too deep (limit is ${MAX_DEPTH})` };
       }
@@ -107,10 +107,10 @@ export class PluginController {
             select: {
               id: true,
               username: true,
-              discord_id: true
-            }
-          }
-        }
+              discord_id: true,
+            },
+          },
+        },
       });
 
       const formatted = plugins.map(p => ({
@@ -123,19 +123,19 @@ export class PluginController {
           type: p.trigger_type,
           command: p.trigger_command,
           event: p.trigger_event,
-          pattern: p.trigger_pattern
-        }
+          pattern: p.trigger_pattern,
+        },
       }));
 
       res.json({
         success: true,
-        data: formatted
+        data: formatted,
       });
     } catch (error) {
       logger.error('Failed to get plugins:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to retrieve plugins'
+        error: 'Failed to retrieve plugins',
       });
     }
   }
@@ -153,7 +153,7 @@ export class PluginController {
       if (!validatePluginId(id)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid plugin ID format'
+          error: 'Invalid plugin ID format',
         });
       }
 
@@ -164,16 +164,16 @@ export class PluginController {
             select: {
               id: true,
               username: true,
-              discord_id: true
-            }
-          }
-        }
+              discord_id: true,
+            },
+          },
+        },
       });
 
       if (!plugin) {
         return res.status(404).json({
           success: false,
-          error: 'Plugin not found'
+          error: 'Plugin not found',
         });
       }
 
@@ -189,15 +189,15 @@ export class PluginController {
             type: plugin.trigger_type,
             command: plugin.trigger_command,
             event: plugin.trigger_event,
-            pattern: plugin.trigger_pattern
-          }
-        }
+            pattern: plugin.trigger_pattern,
+          },
+        },
       });
     } catch (error) {
       logger.error('Failed to get plugin:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to retrieve plugin'
+        error: 'Failed to retrieve plugin',
       });
     }
   }
@@ -209,13 +209,13 @@ export class PluginController {
    */
   async create(req, res) {
     try {
-      const { name, description, type, trigger, nodes, edges, options, compiled: providedCompiled } = req.body;
+      const { name, description, type, trigger, nodes, edges, options } = req.body;
 
       // Validate required fields
       if (!name || !type || !trigger || !nodes || !edges) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields'
+          error: 'Missing required fields',
         });
       }
 
@@ -225,7 +225,7 @@ export class PluginController {
         return res.status(400).json({
           success: false,
           error: 'Invalid node graph',
-          details: validation.errors
+          details: validation.errors,
         });
       }
 
@@ -234,7 +234,7 @@ export class PluginController {
       if (!graphComplexity.valid) {
         return res.status(400).json({
           success: false,
-          error: graphComplexity.error
+          error: graphComplexity.error,
         });
       }
 
@@ -248,7 +248,7 @@ export class PluginController {
       const pluginId = `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Insert into database
-      const plugin = await this.db.plugin.create({
+      await this.db.plugin.create({
         data: {
           id: pluginId,
           name,
@@ -265,8 +265,8 @@ export class PluginController {
           nodes,
           edges,
           compiled,
-          created_by: req.user?.id || null
-        }
+          created_by: req.user?.id || null,
+        },
       });
 
       // Write plugin file
@@ -282,7 +282,7 @@ export class PluginController {
         options: options || extractedOptions,
         nodes,
         edges,
-        compiled
+        compiled,
       });
 
       // Add audit log
@@ -291,8 +291,8 @@ export class PluginController {
           user_id: req.user?.id || null,
           action: 'CREATE',
           resource_type: 'plugin',
-          resource_id: pluginId
-        }
+          resource_id: pluginId,
+        },
       });
 
       logger.success(`Plugin created: ${name} (${pluginId})`);
@@ -301,15 +301,15 @@ export class PluginController {
         success: true,
         data: {
           id: pluginId,
-          message: 'Plugin created successfully'
-        }
+          message: 'Plugin created successfully',
+        },
       });
     } catch (error) {
       logger.error('Failed to create plugin:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to create plugin',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -328,19 +328,19 @@ export class PluginController {
       if (!validatePluginId(id)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid plugin ID format'
+          error: 'Invalid plugin ID format',
         });
       }
 
       // Check if plugin exists
       const existing = await this.db.plugin.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!existing) {
         return res.status(404).json({
           success: false,
-          error: 'Plugin not found'
+          error: 'Plugin not found',
         });
       }
 
@@ -351,7 +351,7 @@ export class PluginController {
           return res.status(400).json({
             success: false,
             error: 'Invalid node graph',
-            details: validation.errors
+            details: validation.errors,
           });
         }
       }
@@ -381,8 +381,8 @@ export class PluginController {
           options: options !== undefined ? options : extractedOptions,
           nodes: nodes || existing.nodes,
           edges: edges || existing.edges,
-          compiled
-        }
+          compiled,
+        },
       });
 
       // Only update plugin file if the plugin structure changed (not just enabled status)
@@ -402,12 +402,12 @@ export class PluginController {
               type: updatedPlugin.trigger_type,
               command: updatedPlugin.trigger_command,
               event: updatedPlugin.trigger_event,
-              pattern: updatedPlugin.trigger_pattern
+              pattern: updatedPlugin.trigger_pattern,
             },
             options: updatedPlugin.options,
             nodes: updatedPlugin.nodes,
             edges: updatedPlugin.edges,
-            compiled: updatedPlugin.compiled
+            compiled: updatedPlugin.compiled,
           });
         } catch (fileError) {
           // Log the file write error but don't fail the entire operation
@@ -422,22 +422,22 @@ export class PluginController {
           user_id: req.user?.id || null,
           action: 'UPDATE',
           resource_type: 'plugin',
-          resource_id: id
-        }
+          resource_id: id,
+        },
       });
 
       logger.success(`Plugin updated: ${id}`);
 
       res.json({
         success: true,
-        data: updatedPlugin
+        data: updatedPlugin,
       });
     } catch (error) {
       logger.error('Failed to update plugin:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to update plugin',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -456,7 +456,7 @@ export class PluginController {
       if (!validatePluginId(id)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid plugin ID format'
+          error: 'Invalid plugin ID format',
         });
       }
 
@@ -464,26 +464,26 @@ export class PluginController {
       if (typeof enabled !== 'boolean') {
         return res.status(400).json({
           success: false,
-          error: 'Enabled status must be a boolean value'
+          error: 'Enabled status must be a boolean value',
         });
       }
 
       // Check if plugin exists
       const existing = await this.db.plugin.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!existing) {
         return res.status(404).json({
           success: false,
-          error: 'Plugin not found'
+          error: 'Plugin not found',
         });
       }
 
       // Update only the enabled status in database
       const updatedPlugin = await this.db.plugin.update({
         where: { id },
-        data: { enabled }
+        data: { enabled },
       });
 
       // Add audit log
@@ -492,8 +492,8 @@ export class PluginController {
           user_id: req.user?.id || null,
           action: enabled ? 'ENABLE' : 'DISABLE',
           resource_type: 'plugin',
-          resource_id: id
-        }
+          resource_id: id,
+        },
       });
 
       logger.success(`Plugin ${enabled ? 'enabled' : 'disabled'}: ${id}`);
@@ -504,15 +504,15 @@ export class PluginController {
           id: updatedPlugin.id,
           name: updatedPlugin.name,
           enabled: updatedPlugin.enabled,
-          message: `Plugin ${enabled ? 'enabled' : 'disabled'} successfully`
-        }
+          message: `Plugin ${enabled ? 'enabled' : 'disabled'} successfully`,
+        },
       });
     } catch (error) {
       logger.error('Failed to toggle plugin status:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to toggle plugin status',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -530,24 +530,24 @@ export class PluginController {
       if (!validatePluginId(id)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid plugin ID format'
+          error: 'Invalid plugin ID format',
         });
       }
 
       const plugin = await this.db.plugin.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!plugin) {
         return res.status(404).json({
           success: false,
-          error: 'Plugin not found'
+          error: 'Plugin not found',
         });
       }
 
       // Delete from database (plugin_state will cascade delete due to foreign key)
       await this.db.plugin.delete({
-        where: { id }
+        where: { id },
       });
 
       // Delete plugin folder from filesystem
@@ -566,8 +566,8 @@ export class PluginController {
           user_id: req.user?.id || null,
           action: 'DELETE',
           resource_type: 'plugin',
-          resource_id: id
-        }
+          resource_id: id,
+        },
       });
 
       logger.success(`Plugin deleted: ${id}`);
@@ -575,14 +575,14 @@ export class PluginController {
       res.json({
         success: true,
         data: {
-          message: 'Plugin deleted successfully'
-        }
+          message: 'Plugin deleted successfully',
+        },
       });
     } catch (error) {
       logger.error('Failed to delete plugin:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to delete plugin'
+        error: 'Failed to delete plugin',
       });
     }
   }
@@ -599,7 +599,7 @@ export class PluginController {
       if (!nodes || !edges) {
         return res.status(400).json({
           success: false,
-          error: 'Missing nodes or edges'
+          error: 'Missing nodes or edges',
         });
       }
 
@@ -609,7 +609,7 @@ export class PluginController {
         return res.status(400).json({
           success: false,
           error: 'Invalid node graph',
-          details: validation.errors
+          details: validation.errors,
         });
       }
 
@@ -620,15 +620,15 @@ export class PluginController {
         success: true,
         data: {
           compiled,
-          validation
-        }
+          validation,
+        },
       });
     } catch (error) {
       logger.error('Failed to compile plugin:', error);
       res.status(500).json({
         success: false,
         error: 'Failed to compile plugin',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -674,20 +674,20 @@ export class PluginController {
           author: true,
           type: true,
           template_category: true,
-          created_at: true
+          created_at: true,
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: 'desc' },
       });
 
       res.json({
         success: true,
-        data: templates
+        data: templates,
       });
     } catch (error) {
       logger.error('Failed to fetch template plugins:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch template plugins'
+        error: 'Failed to fetch template plugins',
       });
     }
   }
@@ -705,7 +705,7 @@ export class PluginController {
       if (!name) {
         return res.status(400).json({
           success: false,
-          error: 'Plugin name is required'
+          error: 'Plugin name is required',
         });
       }
 
@@ -713,14 +713,14 @@ export class PluginController {
       const template = await this.db.plugin.findUnique({
         where: { 
           id: templateId,
-          is_template: true
-        }
+          is_template: true,
+        },
       });
 
       if (!template) {
         return res.status(404).json({
           success: false,
-          error: 'Template plugin not found'
+          error: 'Template plugin not found',
         });
       }
 
@@ -746,12 +746,12 @@ export class PluginController {
         compiled: template.compiled,
         created_by: req.user.id,
         is_template: false,
-        template_category: null
+        template_category: null,
       };
 
       // Save to database
       const savedPlugin = await this.db.plugin.create({
-        data: newPlugin
+        data: newPlugin,
       });
 
       // Write to file system
@@ -767,9 +767,9 @@ export class PluginController {
           details: {
             template_id: templateId,
             template_name: template.name,
-            new_plugin_name: name
-          }
-        }
+            new_plugin_name: name,
+          },
+        },
       });
 
       res.json({
@@ -783,14 +783,14 @@ export class PluginController {
           author: savedPlugin.author,
           type: savedPlugin.type,
           enabled: savedPlugin.enabled,
-          created_at: savedPlugin.created_at
-        }
+          created_at: savedPlugin.created_at,
+        },
       });
     } catch (error) {
       logger.error('Failed to clone template:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to clone template'
+        error: 'Failed to clone template',
       });
     }
   }

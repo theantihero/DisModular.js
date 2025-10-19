@@ -47,8 +47,8 @@ export class DatabaseModel {
           action: entry.action,
           resourceType: entry.resourceType,
           resourceId: entry.resourceId,
-          details: entry.details || {}
-        }
+          details: entry.details || {},
+        },
       });
     } catch (error) {
       logger.error('Failed to add audit log:', error);
@@ -81,10 +81,10 @@ export class DatabaseModel {
             select: {
               id: true,
               username: true,
-              discord_id: true
-            }
-          }
-        }
+              discord_id: true,
+            },
+          },
+        },
       });
 
       return auditLogs;
@@ -109,7 +109,7 @@ export class DatabaseModel {
           avatar: userData.avatar,
           access_token: userData.access_token,
           refresh_token: userData.refresh_token,
-          last_login: new Date()
+          last_login: new Date(),
         },
         create: {
           discord_id: userData.discord_id,
@@ -119,8 +119,8 @@ export class DatabaseModel {
           access_token: userData.access_token,
           refresh_token: userData.refresh_token,
           is_admin: userData.is_admin || false,
-          admin_notes: userData.admin_notes
-        }
+          admin_notes: userData.admin_notes,
+        },
       });
     } catch (error) {
       logger.error('Failed to upsert user:', error);
@@ -136,7 +136,7 @@ export class DatabaseModel {
   async getUserByDiscordId(discordId) {
     try {
       return await this.prisma.user.findUnique({
-        where: { discord_id: discordId }
+        where: { discord_id: discordId },
       });
     } catch (error) {
       logger.error('Failed to get user by Discord ID:', error);
@@ -156,8 +156,8 @@ export class DatabaseModel {
         where: { id: userId },
         data: {
           is_admin: isAdmin,
-          admin_notes: notes
-        }
+          admin_notes: notes,
+        },
       });
     } catch (error) {
       logger.error('Failed to set user admin status:', error);
@@ -173,7 +173,7 @@ export class DatabaseModel {
   async getBotConfig(key) {
     try {
       const config = await this.prisma.botConfig.findUnique({
-        where: { key }
+        where: { key },
       });
       return config ? config.value : null;
     } catch (error) {
@@ -192,7 +192,7 @@ export class DatabaseModel {
       await this.prisma.botConfig.upsert({
         where: { key },
         update: { value },
-        create: { key, value }
+        create: { key, value },
       });
     } catch (error) {
       logger.error('Failed to set bot config:', error);

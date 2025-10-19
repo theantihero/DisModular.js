@@ -26,12 +26,12 @@ export function createAdminRoutes() {
       const { id } = req.params;
       const { is_admin, admin_notes } = req.body;
       
-      const user = await prisma.user.update({
+      await prisma.user.update({
         where: { discord_id: id },
         data: {
           is_admin: is_admin,
-          admin_notes: admin_notes || null
-        }
+          admin_notes: admin_notes || null,
+        },
       });
 
       // Log admin action
@@ -39,19 +39,19 @@ export function createAdminRoutes() {
 
       res.json({
         success: true,
-        message: `Admin privileges ${is_admin ? 'granted' : 'revoked'} successfully`
+        message: `Admin privileges ${is_admin ? 'granted' : 'revoked'} successfully`,
       });
     } catch (error) {
       if (error.code === 'P2025') {
         return res.status(404).json({
           success: false,
-          error: 'User not found'
+          error: 'User not found',
         });
       }
       console.error('Failed to toggle admin status:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to update admin status'
+        error: 'Failed to update admin status',
       });
     }
   });
@@ -67,16 +67,16 @@ export function createAdminRoutes() {
       if (!discord_id) {
         return res.status(400).json({
           success: false,
-          error: 'Discord ID is required'
+          error: 'Discord ID is required',
         });
       }
 
       // Use upsert to handle both create and update cases
-      const user = await prisma.user.upsert({
+      await prisma.user.upsert({
         where: { discord_id },
         update: {
           is_admin: true,
-          admin_notes: admin_notes || 'Admin privileges granted'
+          admin_notes: admin_notes || 'Admin privileges granted',
         },
         create: {
           discord_id,
@@ -84,21 +84,21 @@ export function createAdminRoutes() {
           discriminator: '0000',
           avatar: null,
           is_admin: true,
-          admin_notes: admin_notes || 'Admin privileges pre-granted'
-        }
+          admin_notes: admin_notes || 'Admin privileges pre-granted',
+        },
       });
 
       // Admin privileges granted
 
       res.json({
         success: true,
-        message: 'Admin privileges granted successfully'
+        message: 'Admin privileges granted successfully',
       });
     } catch (error) {
       console.error('Failed to add admin:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to add admin privileges'
+        error: 'Failed to add admin privileges',
       });
     }
   });
@@ -114,7 +114,7 @@ export function createAdminRoutes() {
         totalAdmins,
         totalPlugins,
         activePlugins,
-        recentLogins
+        recentLogins,
       ] = await Promise.all([
         prisma.user.count(),
         prisma.user.count({ where: { is_admin: true } }),
@@ -123,10 +123,10 @@ export function createAdminRoutes() {
         prisma.user.count({
           where: {
             last_login: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-            }
-          }
-        })
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+            },
+          },
+        }),
       ]);
 
       const stats = {
@@ -134,18 +134,18 @@ export function createAdminRoutes() {
         totalAdmins,
         totalPlugins,
         activePlugins,
-        recentLogins
+        recentLogins,
       };
 
       res.json({
         success: true,
-        data: stats
+        data: stats,
       });
     } catch (error) {
       console.error('Failed to fetch admin stats:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch statistics'
+        error: 'Failed to fetch statistics',
       });
     }
   });
@@ -154,62 +154,124 @@ export function createAdminRoutes() {
    * GET /api/admin/analytics
    * Get analytics data for dashboard
    */
-  router.get('/analytics', requireAdmin, (req, res) => {
+  router.get('/analytics', requireAdmin, async (req, res) => {
     try {
       // Total commands executed
-      const totalCommands = db.prepare('SELECT COUNT(*) as count FROM command_executions').get().count;
-      const commands24h = db.prepare(`SELECT COUNT(*) as count FROM command_executions WHERE created_at > datetime('now', '-1 day')`).get().count;
-      const commands7d = db.prepare(`SELECT COUNT(*) as count FROM command_executions WHERE created_at > datetime('now', '-7 days')`).get().count;
+      const totalCommands = await prisma.commandExecution.count();
+      const commands24h = await prisma.commandExecution.count({
+        where: {
+          created_at: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+      const commands7d = await prisma.commandExecution.count({
+        where: {
+          created_at: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+      });
 
       // Unique users
-      const totalUsers = db.prepare('SELECT COUNT(DISTINCT user_id) as count FROM command_executions WHERE user_id IS NOT NULL').get().count;
-      const users24h = db.prepare(`SELECT COUNT(DISTINCT user_id) as count FROM command_executions WHERE created_at > datetime('now', '-1 day') AND user_id IS NOT NULL`).get().count;
-      const users7d = db.prepare(`SELECT COUNT(DISTINCT user_id) as count FROM command_executions WHERE created_at > datetime('now', '-7 days') AND user_id IS NOT NULL`).get().count;
+      const totalUsers = await prisma.commandExecution.groupBy({
+        by: ['user_id'],
+        where: {
+          user_id: {
+            not: null,
+          },
+        },
+      }).then(result => result.length);
+      const users24h = await prisma.commandExecution.groupBy({
+        by: ['user_id'],
+        where: {
+          created_at: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+          user_id: {
+            not: null,
+          },
+        },
+      }).then(result => result.length);
+      const users7d = await prisma.commandExecution.groupBy({
+        by: ['user_id'],
+        where: {
+          created_at: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          },
+          user_id: {
+            not: null,
+          },
+        },
+      }).then(result => result.length);
 
       // Success rate
-      const successCount = db.prepare('SELECT COUNT(*) as count FROM command_executions WHERE success = 1').get().count;
+      const successCount = await prisma.commandExecution.count({
+        where: {
+          success: true,
+        },
+      });
       const successRate = totalCommands > 0 ? (successCount / totalCommands * 100).toFixed(1) : 0;
 
       // Average execution time
-      const avgTime = db.prepare('SELECT AVG(execution_time_ms) as avg FROM command_executions WHERE execution_time_ms IS NOT NULL').get().avg || 0;
+      const avgTimeResult = await prisma.commandExecution.aggregate({
+        _avg: {
+          execution_time_ms: true,
+        },
+        where: {
+          execution_time_ms: {
+            not: null,
+          },
+        },
+      });
+      const avgTime = avgTimeResult._avg.execution_time_ms || 0;
 
       // Top 5 plugins by usage
-      const topPlugins = db.prepare(`
-        SELECT p.name, COUNT(ce.id) as count
-        FROM command_executions ce
-        JOIN plugins p ON ce.plugin_id = p.id
-        GROUP BY ce.plugin_id
-        ORDER BY count DESC
-        LIMIT 5
-      `).all();
+      const topPlugins = await prisma.commandExecution.groupBy({
+        by: ['plugin_id'],
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          _count: {
+            id: 'desc',
+          },
+        },
+        take: 5,
+      });
 
       // Recent activity (last 50 executions)
-      const recentActivity = db.prepare(`
-        SELECT 
-          ce.command_name,
-          ce.success,
-          ce.execution_time_ms,
-          ce.error_message,
-          ce.created_at,
-          u.username,
-          p.name as plugin_name
-        FROM command_executions ce
-        LEFT JOIN users u ON ce.user_id = u.discord_id
-        LEFT JOIN plugins p ON ce.plugin_id = p.id
-        ORDER BY ce.created_at DESC
-        LIMIT 50
-      `).all();
+      const recentActivity = await prisma.commandExecution.findMany({
+        take: 50,
+        orderBy: {
+          created_at: 'desc',
+        },
+        include: {
+          user: {
+            select: {
+              username: true,
+            },
+          },
+          plugin: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
 
       // Hourly usage for last 24 hours
-      const hourlyUsage = db.prepare(`
-        SELECT 
-          strftime('%H', created_at) as hour,
-          COUNT(*) as count
-        FROM command_executions
-        WHERE created_at > datetime('now', '-1 day')
-        GROUP BY hour
-        ORDER BY hour
-      `).all();
+      const hourlyUsage = await prisma.commandExecution.groupBy({
+        by: ['created_at'],
+        _count: {
+          id: true,
+        },
+        where: {
+          created_at: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+      });
 
       res.json({
         success: true,
@@ -220,14 +282,14 @@ export function createAdminRoutes() {
           avgExecutionTime: Math.round(avgTime),
           topPlugins,
           recentActivity,
-          hourlyUsage
-        }
+          hourlyUsage,
+        },
       });
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch analytics data'
+        error: 'Failed to fetch analytics data',
       });
     }
   });
@@ -241,7 +303,7 @@ export function createAdminRoutes() {
       const pendingUsers = await prisma.user.findMany({
         where: {
           access_status: 'pending',
-          is_admin: false
+          is_admin: false,
         },
         select: {
           id: true,
@@ -252,22 +314,22 @@ export function createAdminRoutes() {
           access_requested_at: true,
           access_request_message: true,
           created_at: true,
-          last_login: true
+          last_login: true,
         },
         orderBy: {
-          access_requested_at: 'desc'
-        }
+          access_requested_at: 'desc',
+        },
       });
 
       res.json({
         success: true,
-        data: pendingUsers
+        data: pendingUsers,
       });
     } catch (error) {
       console.error('Failed to fetch access requests:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch access requests'
+        error: 'Failed to fetch access requests',
       });
     }
   });
@@ -281,12 +343,12 @@ export function createAdminRoutes() {
       const { userId } = req.params;
       const { message } = req.body;
 
-      const user = await prisma.user.update({
+      await prisma.user.update({
         where: { id: userId },
         data: {
           access_status: 'approved',
-          access_message: message || 'Your access has been approved. Welcome!'
-        }
+          access_message: message || 'Your access has been approved. Welcome!',
+        },
       });
 
       // Create audit log
@@ -296,19 +358,19 @@ export function createAdminRoutes() {
           action: 'APPROVE_ACCESS',
           resource_type: 'User',
           resource_id: userId,
-          details: { message }
-        }
+          details: { message },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Access request approved successfully'
+        message: 'Access request approved successfully',
       });
     } catch (error) {
       console.error('Failed to approve access request:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to approve access request'
+        error: 'Failed to approve access request',
       });
     }
   });
@@ -325,16 +387,16 @@ export function createAdminRoutes() {
       if (!message) {
         return res.status(400).json({
           success: false,
-          error: 'Denial message is required'
+          error: 'Denial message is required',
         });
       }
 
-      const user = await prisma.user.update({
+      await prisma.user.update({
         where: { id: userId },
         data: {
           access_status: 'denied',
-          access_message: message
-        }
+          access_message: message,
+        },
       });
 
       // Create audit log
@@ -344,19 +406,19 @@ export function createAdminRoutes() {
           action: 'DENY_ACCESS',
           resource_type: 'User',
           resource_id: userId,
-          details: { message }
-        }
+          details: { message },
+        },
       });
 
       res.json({
         success: true,
-        message: 'Access request denied successfully'
+        message: 'Access request denied successfully',
       });
     } catch (error) {
       console.error('Failed to deny access request:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to deny access request'
+        error: 'Failed to deny access request',
       });
     }
   });
@@ -373,26 +435,26 @@ export function createAdminRoutes() {
       if (!reason) {
         return res.status(400).json({
           success: false,
-          error: 'Revocation reason is required'
+          error: 'Revocation reason is required',
         });
       }
 
       // Check if user exists and is not an admin
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       });
 
       if (!user) {
         return res.status(404).json({
           success: false,
-          error: 'User not found'
+          error: 'User not found',
         });
       }
 
       if (user.is_admin) {
         return res.status(400).json({
           success: false,
-          error: 'Cannot revoke access from admin users'
+          error: 'Cannot revoke access from admin users',
         });
       }
 
@@ -401,18 +463,18 @@ export function createAdminRoutes() {
         where: { id: userId },
         data: {
           access_status: 'denied',
-          access_message: reason
-        }
+          access_message: reason,
+        },
       });
 
       // Revoke all guild permissions for this user (bot access denial)
       await prisma.userGuildPermission.deleteMany({
-        where: { user_id: userId }
+        where: { user_id: userId },
       });
 
       // Clear any cached Discord API data for this user
       await prisma.discordApiCache.deleteMany({
-        where: { user_id: user.discord_id }
+        where: { user_id: user.discord_id },
       });
 
       // Log the action
@@ -426,20 +488,20 @@ export function createAdminRoutes() {
             reason, 
             previous_status: user.access_status,
             revoked_guild_permissions: true,
-            cleared_discord_cache: true
-          }
-        }
+            cleared_discord_cache: true,
+          },
+        },
       });
 
       res.json({
         success: true,
-        message: 'User access and bot permissions revoked successfully'
+        message: 'User access and bot permissions revoked successfully',
       });
     } catch (error) {
       console.error('Error revoking user access:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to revoke user access'
+        error: 'Failed to revoke user access',
       });
     }
   });
@@ -455,13 +517,13 @@ export function createAdminRoutes() {
 
       // Check if user exists
       const user = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       });
 
       if (!user) {
         return res.status(404).json({
           success: false,
-          error: 'User not found'
+          error: 'User not found',
         });
       }
 
@@ -470,8 +532,8 @@ export function createAdminRoutes() {
         where: { id: userId },
         data: {
           access_status: 'approved',
-          access_message: message || 'Your access has been granted. Welcome!'
-        }
+          access_message: message || 'Your access has been granted. Welcome!',
+        },
       });
 
       // Log the action
@@ -481,19 +543,19 @@ export function createAdminRoutes() {
           action: 'GRANT_ACCESS',
           resource_type: 'User',
           resource_id: userId,
-          details: { message, previous_status: user.access_status }
-        }
+          details: { message, previous_status: user.access_status },
+        },
       });
 
       res.json({
         success: true,
-        message: 'User access granted successfully'
+        message: 'User access granted successfully',
       });
     } catch (error) {
       console.error('Error granting user access:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to grant user access'
+        error: 'Failed to grant user access',
       });
     }
   });
@@ -523,20 +585,20 @@ export function createAdminRoutes() {
             select: {
               id: true,
               name: true,
-              created_at: true
-            }
+              created_at: true,
+            },
           },
           audit_logs: {
             select: {
               id: true,
               action: true,
-              created_at: true
+              created_at: true,
             },
             orderBy: { created_at: 'desc' },
-            take: 10
-          }
+            take: 10,
+          },
         },
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: 'desc' },
       });
 
       // Enhance user data with additional information
@@ -555,10 +617,10 @@ export function createAdminRoutes() {
                   select: {
                     id: true,
                     name: true,
-                    enabled: true
-                  }
-                }
-              }
+                    enabled: true,
+                  },
+                },
+              },
             });
           } catch (error) {
             // UserGuildPermission table not found, skipping guild permissions
@@ -571,9 +633,9 @@ export function createAdminRoutes() {
               where: {
                 user_id: user.id,
                 action: {
-                  contains: 'command'
-                }
-              }
+                  contains: 'command',
+                },
+              },
             });
           } catch (error) {
             // AuditLog table not found, skipping command count
@@ -589,8 +651,8 @@ export function createAdminRoutes() {
               select: {
                 action: true,
                 created_at: true,
-                details: true
-              }
+                details: true,
+              },
             });
           } catch (error) {
             // AuditLog table not found, skipping recent activity
@@ -603,12 +665,12 @@ export function createAdminRoutes() {
               name: perm.guild?.name || 'Unknown Guild',
               is_admin: perm.is_admin,
               permissions: perm.permissions.toString(), // Convert BigInt to string
-              enabled: perm.guild?.enabled || false
+              enabled: perm.guild?.enabled || false,
             })),
             command_count: commandCount,
             recent_activity: recentActivity,
             total_plugins: user.plugins?.length || 0,
-            last_activity: recentActivity[0]?.created_at || user.last_login
+            last_activity: recentActivity[0]?.created_at || user.last_login,
           };
         } catch (error) {
           console.error(`Error enhancing user ${user.id}:`, error);
@@ -619,20 +681,20 @@ export function createAdminRoutes() {
             command_count: 0,
             recent_activity: [],
             total_plugins: user.plugins?.length || 0,
-            last_activity: user.last_login
+            last_activity: user.last_login,
           };
         }
       }));
 
       res.json({
         success: true,
-        data: enhancedUsers
+        data: enhancedUsers,
       });
     } catch (error) {
       console.error('Error fetching users:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch users'
+        error: 'Failed to fetch users',
       });
     }
   });

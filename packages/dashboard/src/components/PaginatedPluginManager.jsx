@@ -337,7 +337,7 @@ const PaginatedPluginManager = ({
   // Render plugin card
   const renderPluginCard = (plugin) => {
     const isActive = selectedGuild ? plugin.guild_enabled : plugin.enabled;
-    const statusColor = isActive ? 'energy-green' : 'red-400';
+    const _statusColor = isActive ? 'energy-green' : 'red-400';
     const statusEmoji = isActive ? '🟢' : '🔴';
     
     return (

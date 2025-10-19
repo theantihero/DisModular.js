@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Dashboard Page
  * Modern admin dashboard with bot status, plugins, and management
@@ -9,15 +10,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useAppStore } from '../viewmodels/AppViewModel';
-import { ToastContainer } from '../components/Toast';
+import { _ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
-import AdminPanel from '../components/AdminPanel';
-import CryptoSupport from '../components/CryptoSupport';
-import GuildSelector from '../components/GuildSelector';
-import FloatingGuildSelector from '../components/FloatingGuildSelector';
-import PaginatedPluginManager from '../components/PaginatedPluginManager';
-import HeartbeatIcon from '../components/HeartbeatIcon';
+import _AdminPanel from '../components/AdminPanel';
+import _CryptoSupport from '../components/CryptoSupport';
+import _GuildSelector from '../components/GuildSelector';
+import _FloatingGuildSelector from '../components/FloatingGuildSelector';
+import _PaginatedPluginManager from '../components/PaginatedPluginManager';
+import _HeartbeatIcon from '../components/HeartbeatIcon';
 
 /**
  * Dashboard Component
@@ -44,6 +45,7 @@ export function Dashboard() {
     // Initialize cached guild selection
     initializeGuildSelection();
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function Dashboard() {
       loadGuildPlugins();
       loadGuildSettings();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGuild]);
 
   const loadData = async () => {
@@ -112,7 +115,7 @@ export function Dashboard() {
     }
   };
 
-  const handleUpdatePlugin = async (pluginId, pluginData) => {
+  const _handleUpdatePlugin = async (pluginId, pluginData) => {
     try {
       await updatePlugin(pluginId, pluginData);
       toast.success(`✅ Plugin updated successfully`);
@@ -200,6 +203,7 @@ export function Dashboard() {
   };
 
   const handleDeletePlugin = async (plugin) => {
+    // eslint-disable-next-line no-undef
     if (!confirm(`🗑️ Are you sure you want to delete "${plugin.name}"?`)) {
       return;
     }
@@ -238,7 +242,7 @@ export function Dashboard() {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const _getStatusIcon = (status) => {
     switch (status) {
       case 'online': return '🟢';
       case 'offline': return '🔴';

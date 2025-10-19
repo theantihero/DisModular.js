@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Theme Context
  * Manages light/dark/space theme state with localStorage persistence
@@ -20,6 +21,7 @@ export function ThemeProvider({ children }) {
 
   // Update localStorage and document class when theme changes
   useEffect(() => {
+    // eslint-disable-next-line no-undef
     localStorage.setItem(THEME_STORAGE_KEY, 'space');
     
     // Update document class for global theme styling
@@ -32,7 +34,7 @@ export function ThemeProvider({ children }) {
     setTheme('space');
   };
 
-  const setThemeDirect = (newTheme) => {
+  const setThemeDirect = (_newTheme) => {
     // Always set to space theme regardless of input
     setTheme('space');
   };

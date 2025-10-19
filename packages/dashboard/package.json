@@ -10,7 +10,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "lint:ci": "eslint src/ tests/ --max-warnings 0"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.20.5",

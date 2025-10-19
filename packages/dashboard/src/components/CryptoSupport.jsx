@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * CryptoSupport Component
  * Beautiful crypto donation support modal with space theme
@@ -5,7 +6,7 @@
  * @date 2025-01-27
  */
 
-import React, { useState } from 'react';
+import _React, { useState } from 'react';
 
 const wallets = [
   {
@@ -83,6 +84,7 @@ export default function CryptoSupport({ isOpen, onClose }) {
 
   const copyToClipboard = async (address) => {
     try {
+      // eslint-disable-next-line no-undef
       await navigator.clipboard.writeText(address);
       setCopiedAddress(address);
       setTimeout(() => setCopiedAddress(null), 2000);

@@ -29,11 +29,14 @@
     "db:test-admin": "node scripts/test-admin-access.js",
     "kill-ports": "node scripts/kill-ports.js",
     "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "lint:ci": "npm run lint:ci --workspaces",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
+    "ci:setup": "node scripts/ci-setup.js",
     "release": "node scripts/bump-version.js",
     "release:patch": "node scripts/bump-version.js patch",
     "release:minor": "node scripts/bump-version.js minor",
@@ -42,6 +45,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^1.0.0",
     "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
     "supertest": "^6.3.3",
     "vitest": "^1.0.0"
   },

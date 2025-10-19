@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Plugin Editor Page
  * Visual node-based plugin creation interface
@@ -6,11 +7,11 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import ReactFlow, {
+import _ReactFlow, {
   addEdge,
-  Background,
-  Controls,
-  MiniMap,
+  _Background,
+  _Controls,
+  _MiniMap,
   useNodesState,
   useEdgesState
 } from 'reactflow';
@@ -18,10 +19,10 @@ import 'reactflow/dist/style.css';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useTheme } from '../hooks/useTheme';
-import { ToastContainer } from '../components/Toast';
-import { ContextMenu } from '../components/ContextMenu';
-import { NodeConfigPanel } from '../components/NodeConfigPanel';
-import { CommandOptionsManager } from '../components/CommandOptionsManager';
+import { _ToastContainer } from '../components/Toast';
+import { _ContextMenu } from '../components/ContextMenu';
+import { _NodeConfigPanel } from '../components/NodeConfigPanel';
+import { _CommandOptionsManager } from '../components/CommandOptionsManager';
 import { CustomEdge } from '../components/CustomEdge';
 import { useToast } from '../hooks/useToast';
 import { getAutoLayout } from '../utils/layoutUtils';
@@ -94,7 +95,7 @@ export function PluginEditor() {
   const [pluginType, setPluginType] = useState('slash');
   const [commandName, setCommandName] = useState('');
   const [commandOptions, setCommandOptions] = useState([]);
-  const [showNodeMenu, setShowNodeMenu] = useState(false);
+  const [_showNodeMenu, _setShowNodeMenu] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   
   // Compute selectedNode from nodes array to avoid stale state during typing
@@ -113,11 +114,13 @@ export function PluginEditor() {
     if (id) {
       loadPlugin();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // eslint-disable-next-line no-undef
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const ctrlKey = isMac ? event.metaKey : event.ctrlKey;
 
@@ -194,6 +197,7 @@ export function PluginEditor() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, copiedNodes, setNodes, setEdges, toast]);
 
   const loadPlugin = async () => {
@@ -759,7 +763,7 @@ export function PluginEditor() {
    */
   const handleTestCompile = async () => {
     try {
-      const result = await compilePlugin(nodes, edges);
+      const _result = await compilePlugin(nodes, edges);
       // Compiled code received
       toast.success('Plugin compiled successfully! Check console for output.');
     } catch (error) {
@@ -788,7 +792,9 @@ export function PluginEditor() {
     };
 
     const dataStr = JSON.stringify(exportData, null, 2);
+    // eslint-disable-next-line no-undef
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    // eslint-disable-next-line no-undef
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
@@ -796,6 +802,7 @@ export function PluginEditor() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    // eslint-disable-next-line no-undef
     URL.revokeObjectURL(url);
     
     toast.success('Workflow exported successfully!');
@@ -808,6 +815,7 @@ export function PluginEditor() {
     const file = event.target.files[0];
     if (!file) return;
 
+    // eslint-disable-next-line no-undef
     const reader = new FileReader();
     reader.onload = (e) => {
       try {

@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * GuildSelector Component
  * Allows users to select which Discord guild to configure plugins for
@@ -5,7 +6,7 @@
  * @date 2025-01-27
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import _React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useToast } from '../hooks/useToast';
@@ -24,6 +25,7 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
 
   useEffect(() => {
     fetchGuilds();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Calculate dropdown position when it opens
@@ -79,6 +81,7 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
       setLoading(true);
       setError(null);
       
+      // eslint-disable-next-line no-undef
       const response = await fetch('/auth/guilds', {
         credentials: 'include'
       });

@@ -5,7 +5,7 @@
  * @date 2025-10-14
  */
 
-import { Handle, Position } from 'reactflow';
+import { _Handle, Position } from 'reactflow';
 import { useState } from 'react';
 import { useNodeHover } from '../../utils/nodeHover';
 

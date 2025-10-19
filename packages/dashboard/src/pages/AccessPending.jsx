@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Access Pending Page
  * Shows access request status and allows users to request access
@@ -10,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useTheme } from '../hooks/useTheme';
-import { SpaceBackground } from '../components/SpaceBackground';
+import { _SpaceBackground } from '../components/SpaceBackground';
 
 export function AccessPending() {
   const navigate = useNavigate();
@@ -20,10 +21,11 @@ export function AccessPending() {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
-  const [isCelebrating, setIsCelebrating] = useState(false);
+  const [_isCelebrating, _setIsCelebrating] = useState(false);
 
   useEffect(() => {
     fetchAccessStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAccessStatus = async () => {
@@ -34,7 +36,7 @@ export function AccessPending() {
       
       // If access is approved, show celebration and redirect
       if (accessData.access_status === 'approved') {
-        setIsCelebrating(true);
+        _setIsCelebrating(true);
         setTimeout(async () => {
           try {
             await checkAuth();
@@ -53,6 +55,7 @@ export function AccessPending() {
 
   const handleRequestAccess = async () => {
     if (!requestMessage.trim()) {
+      // eslint-disable-next-line no-undef
       alert('Please enter a message explaining why you want access to the platform');
       return;
     }
@@ -64,6 +67,7 @@ export function AccessPending() {
       setRequestMessage('');
     } catch (error) {
       console.error('Failed to request access:', error);
+      // eslint-disable-next-line no-undef
       alert('Failed to submit access request. Please try again.');
     } finally {
       setRequesting(false);

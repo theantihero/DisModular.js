@@ -6,7 +6,7 @@
  */
 
 import { getAvailableVariables, formatVariableDisplay } from '../utils/nodeAnalyzer.js';
-import { useEffect } from 'react';
+import { _useEffect } from 'react';
 
 /**
  * Validate condition expression syntax

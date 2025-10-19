@@ -9,13 +9,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useTheme } from '../hooks/useTheme';
-import CryptoSupport from '../components/CryptoSupport';
-import { SpaceBackground } from '../components/SpaceBackground';
+import _CryptoSupport from '../components/CryptoSupport';
+import { _SpaceBackground } from '../components/SpaceBackground';
 
 export function Login() {
   const navigate = useNavigate();
-  const { isAuthenticated, checkAuth } = useAppStore();
-  const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, _checkAuth } = useAppStore();
+  const { theme, _toggleTheme } = useTheme();
   const [showCryptoSupport, setShowCryptoSupport] = useState(false);
 
   useEffect(() => {

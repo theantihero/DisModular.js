@@ -21,10 +21,10 @@ export class DiscordApiCacheService {
    * @param {string} userId - User ID for user-specific caches
    * @returns {Promise<Object|null>} Cached data or null if expired/not found
    */
-  static async get(cacheKey, cacheType, userId = null) {
+  static async get(cacheKey, cacheType, _userId = null) {
     try {
       const cache = await prisma.discordApiCache.findUnique({
-        where: { cache_key: cacheKey }
+        where: { cache_key: cacheKey },
       });
 
       if (!cache) {
@@ -35,7 +35,7 @@ export class DiscordApiCacheService {
       if (new Date() > cache.expires_at) {
         // Delete expired cache
         await prisma.discordApiCache.delete({
-          where: { id: cache.id }
+          where: { id: cache.id },
         });
         return null;
       }
@@ -43,7 +43,7 @@ export class DiscordApiCacheService {
       // Update access time
       await prisma.discordApiCache.update({
         where: { id: cache.id },
-        data: { updated_at: new Date() }
+        data: { updated_at: new Date() },
       });
 
       return cache.data;
@@ -72,15 +72,15 @@ export class DiscordApiCacheService {
         update: {
           data,
           expires_at: expiresAt,
-          updated_at: new Date()
+          updated_at: new Date(),
         },
         create: {
           cache_key: cacheKey,
           cache_type: cacheType,
           user_id: userId,
           data,
-          expires_at: expiresAt
-        }
+          expires_at: expiresAt,
+        },
       });
     } catch (error) {
       console.warn('Error setting Discord API cache:', error.message);
@@ -98,8 +98,8 @@ export class DiscordApiCacheService {
       await prisma.discordApiCache.deleteMany({
         where: {
           cache_type: cacheType,
-          ...(userId && { user_id: userId })
-        }
+          ...(userId && { user_id: userId }),
+        },
       });
     } catch (error) {
       console.warn('Error clearing Discord API cache:', error.message);
@@ -115,9 +115,9 @@ export class DiscordApiCacheService {
       const result = await prisma.discordApiCache.deleteMany({
         where: {
           expires_at: {
-            lt: new Date()
-          }
-        }
+            lt: new Date(),
+          },
+        },
       });
       return result.count;
     } catch (error) {
@@ -137,16 +137,16 @@ export class DiscordApiCacheService {
         prisma.discordApiCache.count({
           where: {
             expires_at: {
-              lt: new Date()
-            }
-          }
-        })
+              lt: new Date(),
+            },
+          },
+        }),
       ]);
 
       return {
         total,
         expired,
-        active: total - expired
+        active: total - expired,
       };
     } catch (error) {
       console.warn('Error getting Discord API cache stats:', error.message);
@@ -181,7 +181,7 @@ export const CACHE_TTL = {
   USER_INFO: 15,          // 15 minutes - user info changes occasionally
   GUILD_MEMBERS: 5,       // 5 minutes - member lists change frequently
   GUILD_CHANNELS: 20,     // 20 minutes - channels change occasionally
-  DEFAULT: 5              // 5 minutes default
+  DEFAULT: 5,              // 5 minutes default
 };
 
 export default DiscordApiCacheService;

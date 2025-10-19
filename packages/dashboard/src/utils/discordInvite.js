@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Discord Invite Utility
  * Generates Discord bot invite URLs with appropriate permissions
@@ -40,6 +41,7 @@ export function generateBotInviteUrl(clientId, options = {}) {
 
   // Build invite URL
   const baseUrl = 'https://discord.com/api/oauth2/authorize';
+  // eslint-disable-next-line no-undef
   const params = new URLSearchParams({
     client_id: clientId,
     permissions: permissionInteger.toString(),

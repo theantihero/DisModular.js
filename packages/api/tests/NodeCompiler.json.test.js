@@ -82,9 +82,9 @@ describe('NodeCompiler - JSON Operations', () => {
             operation: 'extract',
             path: 'data.temp',
             inputVar: 'response',
-            outputVar: 'temperature'
-          }
-        }
+            outputVar: 'temperature',
+          },
+        },
       };
 
       const codeLines = [];
@@ -92,8 +92,8 @@ describe('NodeCompiler - JSON Operations', () => {
 
       const code = codeLines.join('\n');
       assert.ok(code.includes('// JSON: extract'));
-      assert.ok(code.includes("variables['response']"));
-      assert.ok(code.includes("variables['temperature']"));
+      assert.ok(code.includes('variables[\'response\']'));
+      assert.ok(code.includes('variables[\'temperature\']'));
       assert.ok(code.includes('jsonExtractResult'));
       assert.ok(code.includes('try {'));
       assert.ok(code.includes('catch(e)'));
@@ -107,9 +107,9 @@ describe('NodeCompiler - JSON Operations', () => {
             operation: 'extract',
             path: 'a.b.c',
             inputVar: 'data',
-            outputVar: 'result'
-          }
-        }
+            outputVar: 'result',
+          },
+        },
       };
 
       const codeLines = [];
@@ -117,7 +117,7 @@ describe('NodeCompiler - JSON Operations', () => {
 
       const code = codeLines.join('\n');
       // Should have optional chaining for each level
-      assert.ok(code.includes("?.['")||code.includes('?.['));
+      assert.ok(code.includes('?.[\'')||code.includes('?.['));
     });
 
     it('should handle array index extraction', () => {
@@ -128,9 +128,9 @@ describe('NodeCompiler - JSON Operations', () => {
             operation: 'extract',
             path: 'items[0]',
             inputVar: 'data',
-            outputVar: 'firstItem'
-          }
-        }
+            outputVar: 'firstItem',
+          },
+        },
       };
 
       const codeLines = [];
@@ -149,9 +149,9 @@ describe('NodeCompiler - JSON Operations', () => {
             operation: 'extract',
             path: 'data.value',
             inputVar: 'source',
-            outputVar: 'extracted'
-          }
-        }
+            outputVar: 'extracted',
+          },
+        },
       };
 
       const codeLines = [];
@@ -171,9 +171,9 @@ describe('NodeCompiler - JSON Operations', () => {
           config: {
             operation: 'parse',
             inputVar: 'jsonString',
-            outputVar: 'parsed'
-          }
-        }
+            outputVar: 'parsed',
+          },
+        },
       };
 
       const codeLines = [];
@@ -181,8 +181,8 @@ describe('NodeCompiler - JSON Operations', () => {
 
       const code = codeLines.join('\n');
       assert.ok(code.includes('JSON.parse'));
-      assert.ok(code.includes("variables['jsonString']"));
-      assert.ok(code.includes("variables['parsed']"));
+      assert.ok(code.includes('variables[\'jsonString\']'));
+      assert.ok(code.includes('variables[\'parsed\']'));
     });
   });
 
@@ -194,9 +194,9 @@ describe('NodeCompiler - JSON Operations', () => {
           config: {
             operation: 'stringify',
             inputVar: 'object',
-            outputVar: 'jsonString'
-          }
-        }
+            outputVar: 'jsonString',
+          },
+        },
       };
 
       const codeLines = [];
@@ -204,8 +204,8 @@ describe('NodeCompiler - JSON Operations', () => {
 
       const code = codeLines.join('\n');
       assert.ok(code.includes('JSON.stringify'));
-      assert.ok(code.includes("variables['object']"));
-      assert.ok(code.includes("variables['jsonString']"));
+      assert.ok(code.includes('variables[\'object\']'));
+      assert.ok(code.includes('variables[\'jsonString\']'));
     });
   });
 
@@ -215,7 +215,7 @@ describe('NodeCompiler - JSON Operations', () => {
         {
           id: 'trigger_1',
           type: 'trigger',
-          data: { label: 'Start', config: {} }
+          data: { label: 'Start', config: {} },
         },
         {
           id: 'http_1',
@@ -225,9 +225,9 @@ describe('NodeCompiler - JSON Operations', () => {
             config: {
               url: 'https://api.example.com/data',
               method: 'GET',
-              responseVar: 'apiResponse'
-            }
-          }
+              responseVar: 'apiResponse',
+            },
+          },
         },
         {
           id: 'json_1',
@@ -238,24 +238,24 @@ describe('NodeCompiler - JSON Operations', () => {
               operation: 'extract',
               path: 'current.temperature',
               inputVar: 'apiResponse',
-              outputVar: 'temp'
-            }
-          }
+              outputVar: 'temp',
+            },
+          },
         },
         {
           id: 'response_1',
           type: 'response',
           data: {
             label: 'Send Result',
-            config: { message: 'Temperature: {temp}°C' }
-          }
-        }
+            config: { message: 'Temperature: {temp}°C' },
+          },
+        },
       ];
 
       const edges = [
         { id: 'e1', source: 'trigger_1', target: 'http_1' },
         { id: 'e2', source: 'http_1', target: 'json_1' },
-        { id: 'e3', source: 'json_1', target: 'response_1' }
+        { id: 'e3', source: 'json_1', target: 'response_1' },
       ];
 
       const compiledCode = compiler.compile(nodes, edges);

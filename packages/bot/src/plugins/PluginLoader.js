@@ -8,13 +8,14 @@
 
 import chokidar from 'chokidar';
 import { readFile, readdir } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
+// import { dirname } from 'path';
+// import { fileURLToPath } from 'url';
 import { Logger } from '@dismodular/shared';
 import NodeCompiler from '../../../api/src/services/NodeCompiler.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
 
 const logger = new Logger('PluginLoader');
 
@@ -42,13 +43,13 @@ export class PluginLoader {
     logger.info(`Watching plugins directory: ${this.pluginsDir}`);
     
     this.watcher = chokidar.watch(this.pluginsDir, {
-      ignored: /(^|[\/\\])\../,
+      ignored: /(^|[/\\])\\./,
       persistent: true,
       ignoreInitial: true, // Skip initial scan to prevent event loop blocking
       awaitWriteFinish: {
         stabilityThreshold: 500,
-        pollInterval: 100
-      }
+        pollInterval: 100,
+      },
     });
 
     this.watcher
@@ -83,13 +84,13 @@ export class PluginLoader {
       logger.debug(`Plugin file ${event}: ${path}`);
 
       switch (event) {
-        case 'add':
-        case 'change':
-          await this.loadPluginFromFile(path);
-          break;
-        case 'unlink':
-          await this.unloadPluginFromFile(path);
-          break;
+      case 'add':
+      case 'change':
+        await this.loadPluginFromFile(path);
+        break;
+      case 'unlink':
+        await this.unloadPluginFromFile(path);
+        break;
       }
     } catch (error) {
       logger.error(`Failed to handle file change for ${path}:`, error);
@@ -162,7 +163,7 @@ export class PluginLoader {
   async unloadPluginFromFile(filePath) {
     try {
       // Extract plugin ID from file path
-      const parts = filePath.split(/[\/\\]/);
+      const parts = filePath.split(/[/\\]/);
       const pluginDir = parts[parts.length - 2];
       
       // Try to find plugin by directory name

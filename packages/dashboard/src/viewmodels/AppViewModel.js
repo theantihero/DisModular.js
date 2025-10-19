@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * App ViewModel - Global State Management
  * MVVM pattern - manages authentication and global app state
@@ -43,8 +44,10 @@ export const useAppStore = create((set, get) => ({
   setSelectedGuildId: (guildId) => {
     set({ selectedGuildId: guildId });
     if (guildId) {
+      // eslint-disable-next-line no-undef
       localStorage.setItem('dismodular_selected_guild_id', guildId);
     } else {
+      // eslint-disable-next-line no-undef
       localStorage.removeItem('dismodular_selected_guild_id');
     }
   },
@@ -53,6 +56,7 @@ export const useAppStore = create((set, get) => ({
    * Get cached guild selection
    */
   getCachedGuildId: () => {
+    // eslint-disable-next-line no-undef
     const cached = localStorage.getItem('dismodular_selected_guild_id');
     return cached || null;
   },
@@ -85,9 +89,11 @@ export const useAppStore = create((set, get) => ({
       set({ refreshCooldown: 60 });
       
       // Start countdown
+      // eslint-disable-next-line no-undef
       const countdown = setInterval(() => {
         const currentCooldown = get().refreshCooldown;
         if (currentCooldown <= 1) {
+          // eslint-disable-next-line no-undef
           clearInterval(countdown);
           set({ refreshCooldown: 0 });
         } else {

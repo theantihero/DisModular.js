@@ -21,7 +21,7 @@ export function safeStringify(obj, options = {}) {
   const {
     maxDepth = 10,
     includeCircularRefs = true,
-    circularRefMarker = '[Circular Reference]'
+    circularRefMarker = '[Circular Reference]',
   } = options;
 
   const seen = new WeakSet();
@@ -41,26 +41,26 @@ export function safeStringify(obj, options = {}) {
 
       // Handle functions first (before primitive type check)
       if (typeof value === 'function') {
-        logger.warn(`Function found, replacing with null`);
+        logger.warn('Function found, replacing with null');
         return null;
       }
 
       // Handle DOM elements and other browser-specific objects
       if (typeof value === 'object' && value !== null) {
         if (value.nodeType !== undefined || value.tagName !== undefined) {
-          logger.warn(`DOM element found, replacing with null`);
+          logger.warn('DOM element found, replacing with null');
           return null;
         }
         
         // Handle Event objects
         if (value.type !== undefined && value.target !== undefined && value.preventDefault !== undefined) {
-          logger.warn(`Event object found, replacing with null`);
+          logger.warn('Event object found, replacing with null');
           return null;
         }
         
         // Handle WebSocket and other complex objects
         if (value.readyState !== undefined || value.url !== undefined) {
-          logger.warn(`WebSocket or similar object found, replacing with null`);
+          logger.warn('WebSocket or similar object found, replacing with null');
           return null;
         }
       }
@@ -78,14 +78,14 @@ export function safeStringify(obj, options = {}) {
       if (value instanceof RegExp) {
         return {
           source: value.source,
-          flags: value.flags
+          flags: value.flags,
         };
       }
 
       if (value instanceof Error) {
         return {
           message: value.message,
-          name: value.name
+          name: value.name,
         };
       }
 
@@ -98,7 +98,7 @@ export function safeStringify(obj, options = {}) {
       }
 
       if (value instanceof Promise) {
-        logger.warn(`Promise found, replacing with null`);
+        logger.warn('Promise found, replacing with null');
         return null;
       }
 
@@ -333,7 +333,7 @@ export function serializeState(state, options = {}) {
 export function validateSerialization(obj, options = {}) {
   const {
     maxDepth = 10,
-    includeCircularRefs = true
+    includeCircularRefs = true,
   } = options;
 
   const seen = new WeakSet();
@@ -346,7 +346,7 @@ export function validateSerialization(obj, options = {}) {
         issues.push({
           type: 'max_depth',
           path,
-          message: `Max depth ${maxDepth} reached`
+          message: `Max depth ${maxDepth} reached`,
         });
         return;
       }
@@ -361,7 +361,7 @@ export function validateSerialization(obj, options = {}) {
         issues.push({
           type: 'function',
           path,
-          message: 'Function found - will be replaced with null'
+          message: 'Function found - will be replaced with null',
         });
         return;
       }
@@ -371,7 +371,7 @@ export function validateSerialization(obj, options = {}) {
         issues.push({
           type: 'promise',
           path,
-          message: 'Promise found - will be replaced with null'
+          message: 'Promise found - will be replaced with null',
         });
         return;
       }
@@ -387,13 +387,13 @@ export function validateSerialization(obj, options = {}) {
           issues.push({
             type: 'circular_reference',
             path,
-            message: 'Circular reference detected - will be replaced with marker'
+            message: 'Circular reference detected - will be replaced with marker',
           });
         } else {
           issues.push({
             type: 'circular_reference',
             path,
-            message: 'Circular reference detected - will be replaced with null'
+            message: 'Circular reference detected - will be replaced with null',
           });
         }
         return;
@@ -418,7 +418,7 @@ export function validateSerialization(obj, options = {}) {
       issues.push({
         type: 'error',
         path,
-        message: `Validation error: ${error.message}`
+        message: `Validation error: ${error.message}`,
       });
     }
   }
@@ -434,8 +434,8 @@ export function validateSerialization(obj, options = {}) {
       promises: issues.filter(i => i.type === 'promise').length,
       circularReferences: issues.filter(i => i.type === 'circular_reference').length,
       errors: issues.filter(i => i.type === 'error').length,
-      maxDepth: issues.filter(i => i.type === 'max_depth').length
-    }
+      maxDepth: issues.filter(i => i.type === 'max_depth').length,
+    },
   };
 }
 
@@ -444,5 +444,5 @@ export default {
   safeParse,
   safeClone,
   serializeState,
-  validateSerialization
+  validateSerialization,
 };

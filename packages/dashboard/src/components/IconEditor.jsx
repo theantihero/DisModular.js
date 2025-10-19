@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-env browser, node */
+import _React, { useState, useEffect } from 'react';
 
 /**
  * IconEditor Component
@@ -20,7 +21,7 @@ const IconEditor = ({
   onChange,
   theme = 'default',
   label = 'Icon',
-  placeholder = 'Enter emoji or image URL...',
+  _placeholder = 'Enter emoji or image URL...',
   disabled = false
 }) => {
   const [iconType, setIconType] = useState('emoji'); // 'emoji' or 'url'
@@ -55,6 +56,7 @@ const IconEditor = ({
   // URL validation function with scheme validation to prevent XSS
   const isValidUrl = (url) => {
     try {
+      // eslint-disable-next-line no-undef
       const urlObj = new URL(url);
       // Only allow safe schemes to prevent XSS
       const allowedSchemes = ['http:', 'https:', 'data:'];

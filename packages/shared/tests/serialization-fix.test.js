@@ -14,7 +14,7 @@ describe('Serialization Fix Tests', () => {
       const mockClient = {
         constructor: { name: 'Client' },
         user: { id: '123' },
-        guilds: new Map()
+        guilds: new Map(),
       };
 
       const result = safeStringify(mockClient);
@@ -31,7 +31,7 @@ describe('Serialization Fix Tests', () => {
         constructor: { name: 'Guild' },
         id: '123',
         name: 'Test Guild',
-        members: new Map()
+        members: new Map(),
       };
 
       const result = safeStringify(mockGuild);
@@ -50,8 +50,8 @@ describe('Serialization Fix Tests', () => {
         user: {
           constructor: { name: 'User' },
           id: '456',
-          username: 'testuser'
-        }
+          username: 'testuser',
+        },
       };
 
       const result = safeStringify(mockInteraction);
@@ -79,9 +79,9 @@ describe('Serialization Fix Tests', () => {
       const obj = {
         level1: {
           level2: {
-            level3: {}
-          }
-        }
+            level3: {},
+          },
+        },
       };
       obj.level1.level2.level3.parent = obj.level1;
 
@@ -97,7 +97,7 @@ describe('Serialization Fix Tests', () => {
       const mockElement = {
         nodeType: 1,
         tagName: 'DIV',
-        innerHTML: 'test'
+        innerHTML: 'test',
       };
 
       const result = safeStringify(mockElement);
@@ -111,7 +111,7 @@ describe('Serialization Fix Tests', () => {
       const mockEvent = {
         type: 'click',
         target: {},
-        preventDefault: () => {}
+        preventDefault: () => {},
       };
 
       const result = safeStringify(mockEvent);
@@ -125,7 +125,7 @@ describe('Serialization Fix Tests', () => {
       const mockWebSocket = {
         readyState: 1,
         url: 'ws://localhost:3000',
-        send: () => {}
+        send: () => {},
       };
 
       const result = safeStringify(mockWebSocket);
@@ -144,13 +144,13 @@ describe('Serialization Fix Tests', () => {
           id: '123',
           user: {
             constructor: { name: 'User' },
-            id: '456'
-          }
+            id: '456',
+          },
         },
         client: {
           constructor: { name: 'Client' },
-          user: { id: '789' }
-        }
+          user: { id: '789' },
+        },
       };
 
       const validation = validateSerialization(mockContext);
@@ -180,24 +180,24 @@ describe('Serialization Fix Tests', () => {
           user: {
             id: '456',
             username: 'testuser',
-            tag: 'testuser#1234'
+            tag: 'testuser#1234',
           },
           guild: {
             id: '789',
-            name: 'Test Guild'
+            name: 'Test Guild',
           },
           channel: {
             id: '101112',
-            name: 'general'
-          }
+            name: 'general',
+          },
         },
         guildId: '789',
         pluginId: 'plugin-1',
         pluginName: 'Test Plugin',
         state: {
           variables: { count: 5 },
-          settings: { enabled: true }
-        }
+          settings: { enabled: true },
+        },
       };
 
       const result = safeStringify(safeContext);

@@ -18,8 +18,8 @@ export class PluginModel {
   constructor(databaseUrl = null) {
     this.prisma = new PrismaClient({
       datasources: databaseUrl ? {
-        db: { url: databaseUrl }
-      } : undefined
+        db: { url: databaseUrl },
+      } : undefined,
     });
     logger.info('PluginModel initialized with Prisma');
   }
@@ -35,7 +35,7 @@ export class PluginModel {
       
       const plugins = await this.prisma.plugin.findMany({
         where,
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: 'desc' },
       });
       
       return plugins.map(plugin => ({
@@ -48,9 +48,9 @@ export class PluginModel {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
           event: plugin.trigger_event,
-          pattern: plugin.trigger_pattern
+          pattern: plugin.trigger_pattern,
         },
-        trigger_command: plugin.trigger_command // Keep for backward compatibility
+        trigger_command: plugin.trigger_command, // Keep for backward compatibility
       }));
     } catch (error) {
       logger.error('Failed to get plugins:', error);
@@ -66,10 +66,10 @@ export class PluginModel {
   async getById(id) {
     try {
       const plugin = await this.prisma.plugin.findUnique({
-        where: { id }
+        where: { id },
       });
       
-      if (!plugin) return null;
+      if (!plugin) {return null;}
 
       return {
         ...plugin,
@@ -81,9 +81,9 @@ export class PluginModel {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
           event: plugin.trigger_event,
-          pattern: plugin.trigger_pattern
+          pattern: plugin.trigger_pattern,
         },
-        trigger_command: plugin.trigger_command // Keep for backward compatibility
+        trigger_command: plugin.trigger_command, // Keep for backward compatibility
       };
     } catch (error) {
       logger.error(`Failed to get plugin ${id}:`, error);
@@ -116,7 +116,7 @@ export class PluginModel {
           edges: pluginData.edges || [],
           compiled: pluginData.compiled || '',
           is_template: pluginData.is_template || false,
-          template_category: pluginData.template_category || null
+          template_category: pluginData.template_category || null,
         },
         create: {
           id: pluginData.id,
@@ -136,8 +136,8 @@ export class PluginModel {
           compiled: pluginData.compiled || '',
           created_by: null, // System-created plugins don't have a specific creator
           is_template: pluginData.is_template || false,
-          template_category: pluginData.template_category || null
-        }
+          template_category: pluginData.template_category || null,
+        },
       });
 
       logger.success(`Plugin ${pluginData.name} saved successfully`);
@@ -156,7 +156,7 @@ export class PluginModel {
   async delete(id) {
     try {
       await this.prisma.plugin.delete({
-        where: { id }
+        where: { id },
       });
       logger.success(`Plugin ${id} deleted successfully`);
       return true;
@@ -178,15 +178,15 @@ export class PluginModel {
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
-            key: key
-          }
+            key: key,
+          },
         },
         update: {
           value: safeStringify(value, {
             maxDepth: 10,
             includeCircularRefs: true,
-            circularRefMarker: '[Circular Reference]'
-          })
+            circularRefMarker: '[Circular Reference]',
+          }),
         },
         create: {
           plugin_id: pluginId,
@@ -194,9 +194,9 @@ export class PluginModel {
           value: safeStringify(value, {
             maxDepth: 10,
             includeCircularRefs: true,
-            circularRefMarker: '[Circular Reference]'
-          })
-        }
+            circularRefMarker: '[Circular Reference]',
+          }),
+        },
       });
       return true;
     } catch (error) {
@@ -217,9 +217,9 @@ export class PluginModel {
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
-            key: key
-          }
-        }
+            key: key,
+          },
+        },
       });
       
       return result ? JSON.parse(result.value) : null;
@@ -233,7 +233,7 @@ export class PluginModel {
    * Log command execution for analytics
    * @param {Object} execution - Execution data
    */
-  async logCommandExecution(execution) {
+  async logCommandExecution(_execution) {
     try {
       // Note: This would require adding a command_executions table to the schema
       // For now, we'll skip this functionality or implement it later
@@ -255,9 +255,9 @@ export class PluginModel {
         where: {
           guild_id_plugin_id: {
             guild_id: guildId,
-            plugin_id: pluginId
-          }
-        }
+            plugin_id: pluginId,
+          },
+        },
       });
 
       // If no guild-specific record exists, return a default enabled state
@@ -265,7 +265,7 @@ export class PluginModel {
       if (!guildPlugin) {
         const plugin = await this.prisma.plugin.findUnique({
           where: { id: pluginId },
-          select: { enabled: true }
+          select: { enabled: true },
         });
         
         return plugin ? { enabled: plugin.enabled } : { enabled: false };

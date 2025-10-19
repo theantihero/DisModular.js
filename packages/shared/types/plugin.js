@@ -61,7 +61,7 @@
 export const PluginTypes = {
   SLASH: 'slash',
   TEXT: 'text',
-  BOTH: 'both'
+  BOTH: 'both',
 };
 
 export const NodeTypes = {
@@ -70,12 +70,12 @@ export const NodeTypes = {
   CONDITION: 'condition',
   VARIABLE: 'variable',
   RESPONSE: 'response',
-  DATA: 'data'
+  DATA: 'data',
 };
 
 export const TriggerTypes = {
   COMMAND: 'command',
   EVENT: 'event',
-  MESSAGE: 'message'
+  MESSAGE: 'message',
 };
 

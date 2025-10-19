@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Access Requests Panel
  * Admin component for managing user access requests
@@ -51,6 +52,7 @@ export function AccessRequestsPanel() {
 
   const handleDeny = async (userId) => {
     if (!denyMessage.trim()) {
+      // eslint-disable-next-line no-undef
       alert('Please provide a reason for denial');
       return;
     }

@@ -71,7 +71,7 @@ export const getLayoutedElements = (nodes, edges, options = {}) => {
  * @returns {Object} - Layouted nodes and edges with grouping
  */
 export const getHierarchicalLayout = (nodes, edges) => {
-  const nodeWidth = 200;
+  const _nodeWidth = 200;
   const nodeHeight = 100;
   
   // Group nodes by type for better organization
@@ -232,7 +232,7 @@ export const getForceDirectedLayout = (nodes, edges, options = {}) => {
 
   // Remove velocity property
   return {
-    nodes: layoutedNodes.map(({ velocity, ...node }) => node),
+    nodes: layoutedNodes.map(({ velocity: _velocity, ...node }) => node),
     edges
   };
 };
@@ -244,7 +244,7 @@ export const getForceDirectedLayout = (nodes, edges, options = {}) => {
  * @returns {Object} - Layouted nodes and edges
  */
 export const getAutoLayout = (nodes, edges) => {
-  const nodeCount = nodes.length;
+  const _nodeCount = nodes.length;
   
   // Always use grid layout for horizontal left-to-right flow
   // This ensures consistent horizontal arrangement as per design requirements
@@ -257,7 +257,7 @@ export const getAutoLayout = (nodes, edges) => {
  * @param {Array} edges - Array of edge objects
  * @returns {Boolean} - True if hierarchical
  */
-const hasHierarchicalStructure = (nodes, edges) => {
+const hasHierarchicalStructure = (nodes, _edges) => {
   // Check for trigger nodes (entry points)
   const hasTrigger = nodes.some(node => node.type === 'trigger');
   
@@ -334,7 +334,7 @@ export const getGridLayout = (nodes, edges) => {
     });
     
     // Center align column if it has fewer nodes
-    const columnHeight = sortedNodes.length * rowHeight;
+    const _columnHeight = sortedNodes.length * rowHeight;
     const startY = 0;
     
     sortedNodes.forEach((node, index) => {

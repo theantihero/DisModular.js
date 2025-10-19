@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { HUDOverlay } from '../src/components/HUDOverlay';
+import { render, _screen, _waitFor } from '@testing-library/react';
+import { _HUDOverlay } from '../src/components/HUDOverlay';
 
 describe('HUDOverlay', () => {
   beforeEach(() => {
@@ -60,6 +60,7 @@ describe('HUDOverlay', () => {
 
   it('should cleanup interval on unmount', () => {
     const { unmount } = render(<HUDOverlay />);
+    // eslint-disable-next-line no-undef
     const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
     unmount();
