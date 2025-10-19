@@ -54,9 +54,6 @@
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "prisma": {
-    "schema": "prisma/schema.prisma"
-  },
   "dependencies": {
     "@aashari/nodejs-geocoding": "^2.7.2",
     "@prisma/client": "^6.17.1",

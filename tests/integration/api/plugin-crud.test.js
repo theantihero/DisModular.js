@@ -12,7 +12,9 @@ import passport from 'passport';
 import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
 
 // Set test database URL
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+const TEST_DATABASE_URL = process.env.CI 
+  ? 'file:./test.db' 
+  : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test');
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 import { createPluginRoutes } from '../../../packages/api/src/routes/plugins.js';
 import { PluginController } from '../../../packages/api/src/controllers/PluginController.js';
@@ -26,8 +28,8 @@ describe('Plugin CRUD Integration Tests', () => {
 
   beforeEach(async () => {
     testDb = new TestDatabase();
-    prisma = testDb.getClient();
     await testDb.setup();
+    prisma = testDb.getClient();
     await testDb.cleanup();
 
     // Create Express app for testing

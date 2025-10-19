@@ -14,7 +14,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Test database URL - use SQLite for testing to avoid external database dependencies
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'file:./test.db';
+const TEST_DATABASE_URL = process.env.CI 
+  ? 'file:./test.db' 
+  : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'file:./test.db');
 
 // Global test configuration
 global.testConfig = {
@@ -37,7 +39,8 @@ export class TestDatabase {
     try {
       // Always try to generate Prisma client first
       try {
-        execSync('npx prisma generate', { 
+        const schemaFile = process.env.CI ? 'prisma/schema.test.prisma' : 'prisma/schema.prisma';
+        execSync(`npx prisma generate --schema=${schemaFile}`, { 
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit' 
         });
@@ -48,7 +51,8 @@ export class TestDatabase {
 
       // Try to push database schema
       try {
-        execSync('npx prisma db push', {
+        const schemaFile = process.env.CI ? 'prisma/schema.test.prisma' : 'prisma/schema.prisma';
+        execSync(`npx prisma db push --schema=${schemaFile}`, {
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit'
         });

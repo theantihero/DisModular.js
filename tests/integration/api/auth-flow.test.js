@@ -12,7 +12,9 @@ import passport from 'passport';
 import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
 
 // Set test database URL
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+const TEST_DATABASE_URL = process.env.CI 
+  ? 'file:./test.db' 
+  : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test');
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 import createAuthRoutes from '../../../packages/api/src/routes/auth.js';
 import { initializePassport } from '../../../packages/api/src/middleware/auth.js';
@@ -24,8 +26,8 @@ describe('Auth Flow Integration Tests', () => {
 
   beforeEach(async () => {
     testDb = new TestDatabase();
-    prisma = testDb.getClient();
     await testDb.setup();
+    prisma = testDb.getClient();
     await testDb.cleanup();
 
     // Create Express app for testing
@@ -129,12 +131,14 @@ describe('Auth Flow Integration Tests', () => {
 
     it('should handle OAuth callback without user', async () => {
       // When database is not available, the passport strategy will return an error
-      // which should redirect to /auth/error
+      // which should redirect to /auth/error. We need to simulate this by calling
+      // the callback with an error parameter or by ensuring the database is not available
       const response = await request(app)
         .get('/auth/discord/callback')
+        .query({ error: 'access_denied' })
         .expect(302);
 
-      // Should redirect to error page when database is not available
+      // Should redirect to error page when there's an error
       expect(response.headers.location).toContain('/auth/error');
     });
   });

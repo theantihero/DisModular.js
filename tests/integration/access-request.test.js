@@ -17,7 +17,9 @@ import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
 
 // Setup test environment variables
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+  process.env.DATABASE_URL = process.env.CI 
+    ? 'file:./test.db' 
+    : 'postgresql://dismodular:password@localhost:5432/dismodular_test';
 }
 if (!process.env.DISCORD_CLIENT_ID) {
   process.env.DISCORD_CLIENT_ID = 'test_client_id';
@@ -47,6 +49,13 @@ function skipIfNoDatabase() {
   return false;
 }
 
+// Helper function to create authenticated request
+function createAuthenticatedRequest(app, userId = 'test-user-123') {
+  return request(app)
+    .post('/auth/request-access')
+    .set('Cookie', 'user=' + userId); // Mock session
+}
+
 // Mock passport for testing
 const mockPassport = {
   initialize: () => (req, res, next) => {
@@ -63,7 +72,7 @@ const mockPassport = {
   },
   session: () => (req, res, next) => next(),
   authenticate: (strategy) => (req, res, next) => {
-    req.user = { id: 'test-user', username: 'testuser', is_admin: false };
+    // Don't automatically set user - let tests control authentication
     next();
   }
 };
@@ -90,6 +99,15 @@ describe('Access Request Flow', () => {
     app.use(lusca.csrf());
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
+
+    // Add middleware to automatically authenticate requests for testing
+    app.use((req, res, next) => {
+      // For testing, automatically set user if not already set
+      if (!req.user) {
+        req.user = { id: testUserId, username: 'testuser', is_admin: false };
+      }
+      next();
+    });
 
     // Add routes
     app.use('/auth', createAuthRoutes());
@@ -210,6 +228,19 @@ describe('Access Request Flow', () => {
       // Mock unauthenticated request
       const appUnauth = express();
       appUnauth.use(express.json());
+      appUnauth.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          sameSite: 'lax'
+        }
+      }));
+      appUnauth.use(lusca.csrf());
+      appUnauth.use(mockPassport.initialize());
+      appUnauth.use(mockPassport.session());
       appUnauth.use('/auth', createAuthRoutes());
 
       const response = await request(appUnauth)

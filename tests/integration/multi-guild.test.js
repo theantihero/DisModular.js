@@ -18,7 +18,9 @@ import { createMockGuildRoutes } from '../mocks/MockGuildRoutes.js';
 
 // Setup test environment variables
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+  process.env.DATABASE_URL = process.env.CI 
+    ? 'file:./test.db' 
+    : 'postgresql://dismodular:password@localhost:5432/dismodular_test';
 }
 if (!process.env.DISCORD_CLIENT_ID) {
   process.env.DISCORD_CLIENT_ID = 'test_client_id';
