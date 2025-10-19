@@ -145,6 +145,24 @@ describe('Multi-Guild Plugin System', () => {
           edges: []
         }
       });
+
+      // Create user guild permissions
+      await prisma.userGuildPermission.createMany({
+        data: [
+          {
+            user_id: 'test-admin',
+            guild_id: testGuildId1,
+            is_admin: true,
+            permissions: 8n // Administrator permission
+          },
+          {
+            user_id: 'test-admin',
+            guild_id: testGuildId2,
+            is_admin: true,
+            permissions: 8n // Administrator permission
+          }
+        ]
+      });
     }
   });
 

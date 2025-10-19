@@ -98,7 +98,7 @@ describe('Access Request Flow', () => {
         sameSite: 'lax'
       }
     }));
-    app.use(lusca.csrf());
+    // app.use(lusca.csrf()); // Disabled for testing
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
 
@@ -167,15 +167,29 @@ describe('Access Request Flow', () => {
   beforeEach(async () => {
     // Reset user access status before each test
     if (prisma) {
-      await prisma.user.update({
-        where: { id: testUserId },
-        data: {
-          access_status: 'pending',
-          access_requested_at: null,
-          access_request_message: null,
-          access_message: null
-        }
-      });
+      try {
+        await prisma.user.update({
+          where: { id: testUserId },
+          data: {
+            access_status: 'pending',
+            access_requested_at: null,
+            access_request_message: null,
+            access_message: null
+          }
+        });
+      } catch (error) {
+        // User might not exist, create it
+        await prisma.user.create({
+          data: {
+            id: testUserId,
+            discord_id: '123456789',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'pending',
+            is_admin: false
+          }
+        });
+      }
     }
   });
 

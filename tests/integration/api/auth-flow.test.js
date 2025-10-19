@@ -82,7 +82,22 @@ describe('Auth Flow Integration Tests', () => {
 
   describe('GET /auth/me', () => {
     it('should return 401 when not authenticated', async () => {
-      const response = await request(app)
+      // Create a separate app without auto-authentication
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      testApp.use(passport.initialize());
+      testApp.use(passport.session());
+      
+      // Add auth routes
+      testApp.use('/auth', createAuthRoutes());
+      
+      const response = await request(testApp)
         .get('/auth/me')
         .expect(401);
 

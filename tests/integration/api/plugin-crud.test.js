@@ -151,9 +151,21 @@ describe('Plugin CRUD Integration Tests', () => {
             type: 'trigger',
             position: { x: 100, y: 100 },
             data: { label: 'Test Command' }
+          },
+          {
+            id: 'response',
+            type: 'response',
+            position: { x: 300, y: 100 },
+            data: { label: 'Send Message' }
           }
         ],
-        edges: []
+        edges: [
+          {
+            id: 'e1',
+            source: 'start',
+            target: 'response'
+          }
+        ]
       };
 
       const response = await request(app)

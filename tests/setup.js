@@ -156,9 +156,21 @@ export const testFixtures = {
           type: 'trigger',
           position: { x: 100, y: 100 },
           data: { label: 'Hello Command' }
+        },
+        {
+          id: 'response',
+          type: 'response',
+          position: { x: 300, y: 100 },
+          data: { label: 'Send Message' }
         }
       ],
-      edges: [],
+      edges: [
+        {
+          id: 'e1',
+          source: 'start',
+          target: 'response'
+        }
+      ],
       compiled: 'module.exports = { name: "Hello World Test" };'
     }
   },

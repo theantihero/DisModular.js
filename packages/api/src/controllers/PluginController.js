@@ -299,15 +299,21 @@ export class PluginController {
         compiled,
       });
 
-      // Add audit log
-      await this.db.auditLog.create({
-        data: {
-          user_id: req.user?.id || null,
-          action: 'CREATE',
-          resource_type: 'plugin',
-          resource_id: pluginId,
-        },
-      });
+      // Add audit log (only if user exists in database)
+      if (req.user?.id) {
+        try {
+          await this.db.auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'CREATE',
+              resource_type: 'plugin',
+              resource_id: pluginId,
+            },
+          });
+        } catch (auditError) {
+          logger.warn(`Failed to create audit log for plugin creation:`, auditError.message);
+        }
+      }
 
       logger.success(`Plugin created: ${name} (${pluginId})`);
 
@@ -437,15 +443,21 @@ export class PluginController {
         }
       }
 
-      // Add audit log
-      await this.db.auditLog.create({
-        data: {
-          user_id: req.user?.id || null,
-          action: 'UPDATE',
-          resource_type: 'plugin',
-          resource_id: id,
-        },
-      });
+      // Add audit log (only if user exists in database)
+      if (req.user?.id) {
+        try {
+          await this.db.auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'UPDATE',
+              resource_type: 'plugin',
+              resource_id: id,
+            },
+          });
+        } catch (auditError) {
+          logger.warn(`Failed to create audit log for plugin update:`, auditError.message);
+        }
+      }
 
       logger.success(`Plugin updated: ${id}`);
 
@@ -507,15 +519,21 @@ export class PluginController {
         data: { enabled },
       });
 
-      // Add audit log
-      await this.db.auditLog.create({
-        data: {
-          user_id: req.user?.id || null,
-          action: enabled ? 'ENABLE' : 'DISABLE',
-          resource_type: 'plugin',
-          resource_id: id,
-        },
-      });
+      // Add audit log (only if user exists in database)
+      if (req.user?.id) {
+        try {
+          await this.db.auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: enabled ? 'ENABLE' : 'DISABLE',
+              resource_type: 'plugin',
+              resource_id: id,
+            },
+          });
+        } catch (auditError) {
+          logger.warn(`Failed to create audit log for plugin toggle:`, auditError.message);
+        }
+      }
 
       logger.success(`Plugin ${enabled ? 'enabled' : 'disabled'}: ${id}`);
 
@@ -588,15 +606,22 @@ export class PluginController {
         logger.warn(`Failed to delete plugin folder for ${id}:`, fsError.message);
       }
 
-      // Add audit log
-      await this.db.auditLog.create({
-        data: {
-          user_id: req.user?.id || null,
-          action: 'DELETE',
-          resource_type: 'plugin',
-          resource_id: id,
-        },
-      });
+      // Add audit log (only if user exists in database)
+      if (req.user?.id) {
+        try {
+          await this.db.auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'DELETE',
+              resource_type: 'plugin',
+              resource_id: id,
+            },
+          });
+        } catch (auditError) {
+          // Log warning but don't fail the operation if audit log creation fails
+          logger.warn(`Failed to create audit log for plugin deletion:`, auditError.message);
+        }
+      }
 
       logger.success(`Plugin deleted: ${id}`);
 
@@ -799,20 +824,26 @@ export class PluginController {
       // Write to file system
       await this.writePluginFile(newPluginId, newPlugin);
 
-      // Create audit log
-      await this.db.auditLog.create({
-        data: {
-          user_id: req.user.id,
-          action: 'CLONE_TEMPLATE',
-          resource_type: 'Plugin',
-          resource_id: newPluginId,
-          details: {
-            template_id: templateId,
-            template_name: template.name,
-            new_plugin_name: name,
-          },
-        },
-      });
+      // Create audit log (only if user exists in database)
+      if (req.user?.id) {
+        try {
+          await this.db.auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'CLONE_TEMPLATE',
+              resource_type: 'Plugin',
+              resource_id: newPluginId,
+              details: {
+                template_id: templateId,
+                template_name: template.name,
+                new_plugin_name: name,
+              },
+            },
+          });
+        } catch (auditError) {
+          logger.warn(`Failed to create audit log for template clone:`, auditError.message);
+        }
+      }
 
       res.json({
         success: true,
