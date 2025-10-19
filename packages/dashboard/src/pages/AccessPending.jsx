@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useTheme } from '../hooks/useTheme';
-import { _SpaceBackground } from '../components/SpaceBackground';
+import SpaceBackground from '../components/SpaceBackground';
 
 export function AccessPending() {
   const navigate = useNavigate();

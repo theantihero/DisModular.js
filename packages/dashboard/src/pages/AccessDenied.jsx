@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { api } from '../services/api';
 import { useTheme } from '../hooks/useTheme';
-import { _SpaceBackground } from '../components/SpaceBackground';
+import SpaceBackground from '../components/SpaceBackground';
 
 /**
  * AccessDenied Component
