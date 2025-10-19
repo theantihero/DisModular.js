@@ -271,16 +271,27 @@ describe('Access Request Flow', () => {
       adminApp.use(mockPassport.initialize());
       adminApp.use(mockPassport.session());
       
-      // Set admin user for admin tests
+      // Set admin user for admin tests - get fresh adminUserId each time
       adminApp.use((req, res, next) => {
         req.isAuthenticated = () => true;
-        req.user = { 
-          id: adminUserId, 
-          username: 'adminuser', 
-          is_admin: true,
-          access_status: 'approved'
-        };
-        next();
+        
+        // Get the current admin user from database to ensure we have the correct ID
+        prisma.user.findUnique({
+          where: { discord_id: '222222222' }
+        }).then(adminUser => {
+          if (adminUser) {
+            req.user = { 
+              id: adminUser.id, 
+              username: 'adminuser', 
+              is_admin: true,
+              access_status: 'approved'
+            };
+          }
+          next();
+        }).catch(error => {
+          console.error('Error getting admin user:', error);
+          next();
+        });
       });
       
       // Use the real admin routes with mocked middleware
