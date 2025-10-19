@@ -122,6 +122,9 @@ export class BotClient {
       return;
     }
 
+    // Log interaction details before attempting to defer
+    logger.debug(`Processing interaction: ${interaction.id}, command: /${interaction.commandName}, guild: ${interaction.guild?.name || 'DM'}, age: ${interactionAge}ms`);
+
     // Defer reply IMMEDIATELY - no logging or processing before this
     try {
       await interaction.deferReply();
@@ -134,6 +137,8 @@ export class BotClient {
       logger.warn(`Current time: ${new Date().toISOString()}`);
       logger.warn(`Age: ${interactionAge}ms`);
       logger.warn(`Command: /${interaction.commandName}, Guild: ${interaction.guild?.name || 'DM'}`);
+      logger.warn(`Interaction ID: ${interaction.id}`);
+      logger.warn(`Bot user: ${this.client.user?.tag || 'Unknown'}`);
       
       // Try to send a follow-up message if defer failed
       try {

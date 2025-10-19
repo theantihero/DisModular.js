@@ -11,6 +11,26 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import axios from 'axios';
 import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
 
+// Import getUserGuilds from auth routes
+async function getUserGuilds(accessToken) {
+  try {
+    const response = await fetch('https://discord.com/api/users/@me/guilds', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Discord API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user guilds:', error);
+    throw error;
+  }
+}
+
 const router = Router();
 
 // Helper function to get Prisma client with error handling
@@ -473,6 +493,99 @@ router.post('/:guildId/reregister-commands', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to re-register commands',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * GET /api/guilds/:guildId/debug-plugins
+ * Debug endpoint to show plugin enabling status
+ */
+router.get('/:guildId/debug-plugins', requireAuth, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Check if user has admin permissions in this guild
+    const userGuilds = await getUserGuilds(req.user.access_token);
+    const userGuild = userGuilds.find(g => g.id === guildId);
+    
+    if (!userGuild || !(userGuild.permissions & 0x8)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions for this guild',
+      });
+    }
+
+    // Get all plugins from database
+    const allPlugins = await getPrisma().plugin.findMany({
+      select: {
+        id: true,
+        name: true,
+        enabled: true,
+        trigger_command: true,
+        type: true
+      }
+    });
+
+    // Get guild-specific plugin settings
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
+      where: { guild_id: guildId },
+      select: {
+        plugin_id: true,
+        enabled: true,
+        plugin: {
+          select: {
+            id: true,
+            name: true,
+            enabled: true,
+            trigger_command: true,
+            type: true
+          }
+        }
+      }
+    });
+
+    // Create a map of guild plugin settings
+    const guildPluginMap = new Map(guildPlugins.map(gp => [gp.plugin_id, gp.enabled]));
+
+    // Analyze each plugin
+    const pluginAnalysis = allPlugins.map(plugin => {
+      const guildEnabled = guildPluginMap.get(plugin.id);
+      const effectiveEnabled = guildEnabled !== undefined ? guildEnabled : plugin.enabled;
+      
+      return {
+        id: plugin.id,
+        name: plugin.name,
+        command: plugin.trigger_command,
+        type: plugin.type,
+        globalEnabled: plugin.enabled,
+        guildEnabled: guildEnabled,
+        effectiveEnabled: effectiveEnabled,
+        hasGuildSetting: guildPluginMap.has(plugin.id)
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        guildId: guildId,
+        guildName: userGuild.name,
+        totalPlugins: allPlugins.length,
+        guildPluginSettings: guildPlugins.length,
+        plugins: pluginAnalysis,
+        summary: {
+          globallyEnabled: allPlugins.filter(p => p.enabled).length,
+          guildEnabled: guildPlugins.filter(gp => gp.enabled).length,
+          effectivelyEnabled: pluginAnalysis.filter(p => p.effectiveEnabled).length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error debugging plugins:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to debug plugins',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

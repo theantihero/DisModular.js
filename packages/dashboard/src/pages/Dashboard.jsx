@@ -273,6 +273,41 @@ export function Dashboard() {
     }
   };
 
+  const handleDebugPlugins = async () => {
+    if (!selectedGuild) {
+      toast.error('❌ No guild selected');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/guilds/${selectedGuild.id}/debug-plugins`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to debug plugins');
+      }
+
+      const result = await response.json();
+      
+      // Show debug info in console and toast
+      console.log('🔍 Plugin Debug Info:', result.data);
+      toast.success(`🔍 Debug info logged to console for ${selectedGuild.name}`);
+      
+      // Also show a summary in the toast
+      const summary = result.data.summary;
+      toast.info(`📊 Summary: ${summary.effectivelyEnabled}/${result.data.totalPlugins} plugins effectively enabled`);
+      
+    } catch (error) {
+      console.error('Failed to debug plugins:', error);
+      toast.error(`❌ Failed to debug plugins: ${error.message}`);
+    }
+  };
+
   const getPluginIcon = (type) => {
     switch (type) {
       case 'slash': return '⚡';
@@ -601,6 +636,25 @@ export function Dashboard() {
                       ) : (
                         '🔄 Re-register Commands'
                       )}
+                    </button>
+
+                    <button
+                      onClick={handleDebugPlugins}
+                      disabled={!selectedGuild.bot_present || arePluginButtonsDisabled()}
+                      className={`macos-button px-4 py-2 transition-all duration-200 ${
+                        !selectedGuild.bot_present || arePluginButtonsDisabled()
+                          ? 'text-gray-500 cursor-not-allowed opacity-50'
+                          : 'text-yellow-300 hover:scale-105'
+                      }`}
+                      title={
+                        arePluginButtonsDisabled() 
+                          ? 'Please wait for data to load...' 
+                          : !selectedGuild.bot_present 
+                            ? 'Bot must be present in server to debug plugins' 
+                            : 'Debug plugin enabling status for this guild'
+                      }
+                    >
+                      🔍 Debug Plugins
                     </button>
                   </>
                 )}
