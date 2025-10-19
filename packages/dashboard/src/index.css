@@ -545,6 +545,10 @@ body {
     z-index: 50 !important;
   }
   
+  .z-\\[100\\] {
+    z-index: 100 !important;
+  }
+  
   /* Fix mobile login content visibility */
   .relative.z-20 {
     z-index: 20 !important;
@@ -623,6 +627,17 @@ body {
     .max-w-md > .rounded-3xl {
       display: block !important;
       visibility: visible !important;
+    }
+    
+    /* Ensure GitHub button is visible */
+    .absolute.top-4.right-4 a[href*="github"] {
+      display: flex !important;
+      visibility: visible !important;
+    }
+    
+    /* Ensure all top buttons are above login content */
+    .absolute.top-4.right-4 {
+      z-index: 100 !important;
     }
   }
 }
