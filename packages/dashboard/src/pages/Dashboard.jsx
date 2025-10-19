@@ -26,7 +26,7 @@ import _HeartbeatIcon from '../components/HeartbeatIcon';
 export function Dashboard() {
   const navigate = useNavigate();
   const { plugins, fetchPlugins, fetchGuildPlugins, deletePlugin, updatePlugin, togglePluginEnabled, toggleGuildPlugin, fetchGuildSettings, updateGuildSettings } = usePluginStore();
-  const { apiStatus, botStatus, fetchBotStatus, user, logout, selectedGuildId, setSelectedGuildId, initializeGuildSelection } = useAppStore();
+  const { apiStatus, botStatus, guildCount, fetchBotStatus, fetchGuildCount, user, logout, selectedGuildId, setSelectedGuildId, initializeGuildSelection } = useAppStore();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [loadingGuildPlugins, setLoadingGuildPlugins] = useState(false);
@@ -59,7 +59,7 @@ export function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchPlugins(), fetchBotStatus()]);
+      await Promise.all([fetchPlugins(), fetchBotStatus(), fetchGuildCount()]);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -297,11 +297,11 @@ export function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* API Status */}
+              {/* Guild Count */}
               <div className="macos-badge flex items-center space-x-2">
-                <HeartbeatIcon status={apiStatus?.api_status} size="sm" />
-                <span className={`text-sm font-medium ${getStatusColor(apiStatus?.api_status)}`}>
-                  API
+                <span className="text-sm">🏠</span>
+                <span className="text-sm font-medium text-white">
+                  {guildCount?.guild_count || 0} Guilds
                 </span>
               </div>
 
@@ -438,10 +438,10 @@ export function Dashboard() {
           <div className="macos-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-nebula-purple text-sm font-medium">API Status</p>
-                <p className="text-white text-lg font-bold capitalize">{apiStatus?.api_status || 'Unknown'}</p>
+                <p className="text-nebula-purple text-sm font-medium">Guilds</p>
+                <p className="text-white text-lg font-bold">{guildCount?.guild_count || 0}</p>
               </div>
-              <HeartbeatIcon status={apiStatus?.api_status} size="lg" />
+              <span className="text-3xl">🏠</span>
             </div>
           </div>
         </div>

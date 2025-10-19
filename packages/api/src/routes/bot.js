@@ -59,6 +59,29 @@ export function createBotRoutes(_db) {
   });
 
   /**
+   * Get guild count statistics (read-only, requires auth)
+   * @date 2025-01-27
+   */
+  router.get('/guild-count', requireAuth, async (req, res) => {
+    try {
+      const guildCount = await getPrisma().guild.count();
+
+      res.json({
+        success: true,
+        data: {
+          guild_count: guildCount,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get guild count',
+      });
+    }
+  });
+
+  /**
    * Get actual bot status from bot service (read-only, requires auth)
    */
   router.get('/bot-status', requireAuth, async (req, res) => {

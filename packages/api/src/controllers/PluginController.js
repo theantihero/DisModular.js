@@ -760,6 +760,7 @@ export class PluginController {
           author: true,
           type: true,
           template_category: true,
+          is_template: true,
           created_at: true,
         },
         orderBy: { created_at: 'desc' },
@@ -803,7 +804,7 @@ export class PluginController {
       }
 
       // Get the template plugin
-      const template = await this.db.plugin.findUnique({
+      const template = await this.db.plugin.findFirst({
         where: { 
           id: templateId,
           is_template: true,

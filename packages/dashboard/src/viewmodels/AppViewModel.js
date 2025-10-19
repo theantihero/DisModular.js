@@ -17,6 +17,7 @@ export const useAppStore = create((set, get) => ({
   user: null,
   apiStatus: null,
   botStatus: null,
+  guildCount: null,
   isAuthenticated: false,
   isAdmin: false,
   isLoading: false,
@@ -33,6 +34,7 @@ export const useAppStore = create((set, get) => ({
   
   setApiStatus: (status) => set({ apiStatus: status }),
   setBotStatus: (status) => set({ botStatus: status }),
+  setGuildCount: (count) => set({ guildCount: count }),
   
   setLoading: (isLoading) => set({ isLoading }),
   
@@ -196,6 +198,26 @@ export const useAppStore = create((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch status:', error);
       return null;
+    }
+  },
+
+  /**
+   * Fetch guild count
+   * @date 2025-01-27
+   */
+  fetchGuildCount: async () => {
+    try {
+      const response = await api.bot.getGuildCount();
+      
+      set({ 
+        guildCount: response.data
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch guild count:', error);
+      set({ error: error.message });
+      throw error;
     }
   },
 
