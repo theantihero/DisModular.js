@@ -16,8 +16,8 @@ if (existsSync(envPath)) {
   config({ path: envPath });
 }
 
-import { describe, it, before, after } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeAll, afterAll } from 'vitest';
+import { expect } from 'vitest';
 import { PluginModel } from '../packages/bot/src/models/PluginModel.js';
 import { PluginManager } from '../packages/bot/src/plugins/PluginManager.js';
 import { NodeCompiler } from '../packages/api/src/services/NodeCompiler.js';
@@ -28,7 +28,7 @@ describe('Integration Tests', () => {
   let compiler;
   const testDbPath = join(process.cwd(), 'tests', 'test.db');
 
-  before(async () => {
+  beforeAll(async () => {
     // Create test directory
     await mkdir(join(process.cwd(), 'tests'), { recursive: true });
 
@@ -38,7 +38,7 @@ describe('Integration Tests', () => {
     compiler = new NodeCompiler();
   });
 
-  after(async () => {
+  afterAll(async () => {
     // Cleanup
     pluginModel.close();
     try {
@@ -76,11 +76,11 @@ describe('Integration Tests', () => {
 
       // 2. Validate node graph
       const validation = compiler.validate(nodes, edges);
-      assert.strictEqual(validation.valid, true, 'Node graph should be valid');
+      expect(validation.valid).toBe(true);
 
       // 3. Compile to JavaScript
       const compiled = compiler.compile(nodes, edges);
-      assert.ok(compiled.includes('__resolve'), 'Compiled code should include resolve');
+      expect(compiled).toContain('__resolve');
 
       // 4. Create plugin data
       const pluginData = {
@@ -97,16 +97,16 @@ describe('Integration Tests', () => {
 
       // 5. Save to database
       const saved = pluginModel.upsert(pluginData);
-      assert.strictEqual(saved, true, 'Plugin should be saved');
+      expect(saved).toBe(true);
 
       // 6. Register with plugin manager
       const registered = pluginManager.register(pluginData);
-      assert.strictEqual(registered, true, 'Plugin should be registered');
+      expect(registered).toBe(true);
 
       // 7. Verify plugin is accessible
       const plugin = pluginManager.getPluginByCommand('hello', 'slash');
-      assert.notStrictEqual(plugin, null, 'Plugin should be found');
-      assert.strictEqual(plugin.name, 'Test Hello');
+      expect(plugin).not.toBeNull();
+      expect(plugin.name).toBe('Test Hello');
     });
 
     it('should handle complex plugin with variables and conditions', () => {
@@ -158,12 +158,12 @@ describe('Integration Tests', () => {
       ];
 
       const validation = compiler.validate(nodes, edges);
-      assert.strictEqual(validation.valid, true);
+      expect(validation.valid).toBe(true);
 
       const compiled = compiler.compile(nodes, edges);
-      assert.ok(compiled.includes('if ('));
-      assert.ok(compiled.includes('} else {'));
-      assert.ok(compiled.includes('variables["username"]'));
+      expect(compiled).toContain('if (');
+      expect(compiled).toContain('} else {');
+      expect(compiled).toContain('variables["username"]');
 
       const pluginData = {
         id: 'test-greet',
@@ -179,7 +179,7 @@ describe('Integration Tests', () => {
 
       pluginModel.upsert(pluginData);
       const registered = pluginManager.register(pluginData);
-      assert.strictEqual(registered, true);
+      expect(registered).toBe(true);
     });
   });
 
@@ -209,8 +209,8 @@ describe('Integration Tests', () => {
       const counter = pluginModel.getState(pluginId, 'counter');
       const name = pluginModel.getState(pluginId, 'name');
 
-      assert.strictEqual(counter, 42);
-      assert.strictEqual(name, 'TestPlugin');
+      expect(counter).toBe(42);
+      expect(name).toBe('TestPlugin');
     });
 
     it('should update existing state', () => {
@@ -230,15 +230,15 @@ describe('Integration Tests', () => {
       pluginModel.upsert(pluginData);
 
       pluginModel.setState(pluginId, 'value', 10);
-      assert.strictEqual(pluginModel.getState(pluginId, 'value'), 10);
+      expect(pluginModel.getState(pluginId, 'value')).toBe(10);
 
       pluginModel.setState(pluginId, 'value', 20);
-      assert.strictEqual(pluginModel.getState(pluginId, 'value'), 20);
+      expect(pluginModel.getState(pluginId, 'value')).toBe(20);
     });
 
     it('should return null for non-existent state', () => {
       const result = pluginModel.getState('non-existent', 'key');
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
   });
 
@@ -266,17 +266,17 @@ describe('Integration Tests', () => {
 
       // Plugin starts enabled
       let plugin = pluginManager.plugins.get('test-lifecycle');
-      assert.strictEqual(plugin.enabled, true);
+      expect(plugin.enabled).toBe(true);
 
       // Disable plugin
       pluginManager.disablePlugin('test-lifecycle');
       plugin = pluginManager.plugins.get('test-lifecycle');
-      assert.strictEqual(plugin.enabled, false);
+      expect(plugin.enabled).toBe(false);
 
       // Enable plugin
       pluginManager.enablePlugin('test-lifecycle');
       plugin = pluginManager.plugins.get('test-lifecycle');
-      assert.strictEqual(plugin.enabled, true);
+      expect(plugin.enabled).toBe(true);
     });
 
     it('should unregister and re-register plugins', () => {
@@ -300,13 +300,13 @@ describe('Integration Tests', () => {
       pluginModel.upsert(pluginData);
       pluginManager.register(pluginData);
 
-      assert.ok(pluginManager.plugins.has('test-reload'));
+      expect(pluginManager.plugins.has('test-reload')).toBe(true);
 
       pluginManager.unregister('test-reload');
-      assert.ok(!pluginManager.plugins.has('test-reload'));
+      expect(pluginManager.plugins.has('test-reload')).toBe(false);
 
       pluginManager.register(pluginData);
-      assert.ok(pluginManager.plugins.has('test-reload'));
+      expect(pluginManager.plugins.has('test-reload')).toBe(true);
     });
   });
 
@@ -335,7 +335,7 @@ describe('Integration Tests', () => {
         };
 
         const result = pluginManager.register(pluginData);
-        assert.strictEqual(result, false, `Should reject code: ${code}`);
+        expect(result).toBe(false);
       }
     });
 
@@ -360,7 +360,7 @@ describe('Integration Tests', () => {
         };
 
         const result = pluginManager.register(pluginData);
-        assert.strictEqual(result, true, `Should accept code: ${code}`);
+        expect(result).toBe(true);
       }
     });
   });
@@ -368,16 +368,16 @@ describe('Integration Tests', () => {
   describe('Database Operations', () => {
     it('should retrieve all plugins from database', () => {
       const plugins = pluginModel.getAll();
-      assert.ok(Array.isArray(plugins));
-      assert.ok(plugins.length > 0);
+      expect(Array.isArray(plugins)).toBe(true);
+      expect(plugins.length).toBeGreaterThan(0);
     });
 
     it('should retrieve only enabled plugins', () => {
       const allPlugins = pluginModel.getAll(false);
       const enabledPlugins = pluginModel.getAll(true);
 
-      assert.ok(enabledPlugins.length <= allPlugins.length);
-      assert.ok(enabledPlugins.every(p => p.enabled === true));
+      expect(enabledPlugins.length).toBeLessThanOrEqual(allPlugins.length);
+      expect(enabledPlugins.every(p => p.enabled === true)).toBe(true);
     });
 
     it('should retrieve plugin by ID', () => {
@@ -386,15 +386,15 @@ describe('Integration Tests', () => {
         const firstPlugin = plugins[0];
         const retrieved = pluginModel.getById(firstPlugin.id);
         
-        assert.notStrictEqual(retrieved, null);
-        assert.strictEqual(retrieved.id, firstPlugin.id);
-        assert.strictEqual(retrieved.name, firstPlugin.name);
+        expect(retrieved).not.toBeNull();
+        expect(retrieved.id).toBe(firstPlugin.id);
+        expect(retrieved.name).toBe(firstPlugin.name);
       }
     });
 
     it('should return null for non-existent plugin', () => {
       const plugin = pluginModel.getById('non-existent-id');
-      assert.strictEqual(plugin, null);
+      expect(plugin).toBeNull();
     });
 
     it('should delete plugin from database', () => {
@@ -411,10 +411,10 @@ describe('Integration Tests', () => {
       };
 
       pluginModel.upsert(pluginData);
-      assert.notStrictEqual(pluginModel.getById('test-delete'), null);
+      expect(pluginModel.getById('test-delete')).not.toBeNull();
 
       pluginModel.delete('test-delete');
-      assert.strictEqual(pluginModel.getById('test-delete'), null);
+      expect(pluginModel.getById('test-delete')).toBeNull();
     });
   });
 
@@ -422,14 +422,14 @@ describe('Integration Tests', () => {
     it('should calculate correct statistics', () => {
       const stats = pluginManager.getStatistics();
 
-      assert.ok(typeof stats.total === 'number');
-      assert.ok(typeof stats.enabled === 'number');
-      assert.ok(typeof stats.disabled === 'number');
-      assert.ok(typeof stats.byType === 'object');
-      assert.ok(typeof stats.byType.slash === 'number');
-      assert.ok(typeof stats.byType.text === 'number');
+      expect(typeof stats.total).toBe('number');
+      expect(typeof stats.enabled).toBe('number');
+      expect(typeof stats.disabled).toBe('number');
+      expect(typeof stats.byType).toBe('object');
+      expect(typeof stats.byType.slash).toBe('number');
+      expect(typeof stats.byType.text).toBe('number');
 
-      assert.strictEqual(stats.total, stats.enabled + stats.disabled);
+      expect(stats.total).toBe(stats.enabled + stats.disabled);
     });
   });
 });

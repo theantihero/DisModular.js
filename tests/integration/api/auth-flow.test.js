@@ -10,7 +10,7 @@ import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
-import { createAuthRoutes } from '../../packages/api/src/routes/auth.js';
+import createAuthRoutes from '../../packages/api/src/routes/auth.js';
 import { initializePassport } from '../../packages/api/src/middleware/auth.js';
 
 describe('Auth Flow Integration Tests', () => {
