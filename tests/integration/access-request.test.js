@@ -223,7 +223,24 @@ describe('Access Request Flow', () => {
         // Use admin user for admin routes, regular user for other routes
         const isAdminRoute = req.path.startsWith('/admin');
         
-        // Get the current user IDs (they get updated in beforeEach)
+        // Get user ID from database dynamically
+        const getUserFromDatabase = async () => {
+          if (prisma) {
+            try {
+              const user = await prisma.user.findUnique({
+                where: { discord_id: isAdminRoute ? '222222222' : '111111111' }
+              });
+              return user?.id;
+            } catch (error) {
+              console.warn('Error getting user ID from database:', error.message);
+              return null;
+            }
+          }
+          return null;
+        };
+        
+        // For synchronous middleware, we need to use the current variables
+        // but we'll update them in beforeEach to ensure they're correct
         const currentUserId = isAdminRoute ? adminUserId : testUserId;
         
         req.user = { 
@@ -379,9 +396,46 @@ describe('Access Request Flow', () => {
     it('should allow user to request access with message', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Get the actual user from database to ensure we have the correct ID
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!user) {
+        throw new Error('Test user not found in database');
+      }
+      
       const requestMessage = 'I want to use this platform for my community server';
 
-      const response = await request(app)
+      // Create a custom app for this test with the correct user ID
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set up authentication for this specific test with correct user ID
+      testApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id, // Use the actual database ID
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
+        next();
+      });
+      
+      // Ensure PrismaService uses test database
+      process.env.NODE_ENV = 'test';
+      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+      
+      testApp.use('/auth', createAuthRoutes());
+
+      const response = await request(testApp)
         .post('/auth/request-access')
         .send({ message: requestMessage })
         .expect(200);
@@ -390,13 +444,13 @@ describe('Access Request Flow', () => {
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id }
       });
 
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBe(requestMessage);
-      expect(user.access_status).toBe('pending');
+      expect(updatedUser.access_requested_at).toBeTruthy();
+      expect(updatedUser.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
