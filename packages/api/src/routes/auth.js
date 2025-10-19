@@ -44,6 +44,9 @@ async function getBotGuildIds() {
       return guildSet;
     }
 
+    console.log('Fetching bot guilds from Discord API...');
+
+    // Use the correct Discord API endpoint for bot guilds
     const response = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
         'Authorization': `Bot ${botToken}`,
@@ -64,11 +67,14 @@ async function getBotGuildIds() {
     }
 
     const botGuilds = await response.json();
+    console.log(`Discord API returned ${botGuilds.length} guilds:`, botGuilds.map(g => ({ id: g.id, name: g.name })));
+    
     const guildSet = new Set(botGuilds.map(guild => guild.id));
     
     // Cache the successful response
     await DiscordApiCacheService.set(cacheKey, 'bot_guilds', { guildIds: Array.from(guildSet) }, CACHE_TTL.BOT_GUILDS);
     
+    console.log(`Bot guild IDs set:`, Array.from(guildSet));
     return guildSet;
   } catch (error) {
     console.warn('Error fetching bot guilds:', error.message, 'falling back to database check');
@@ -410,6 +416,7 @@ export function createAuthRoutes() {
       // Check if user already has a pending request
       const prisma = getPrismaClient();
       if (!prisma) {
+        console.error('Prisma client not available for access request');
         return res.status(500).json({
           success: false,
           error: 'Database not available',
@@ -428,13 +435,20 @@ export function createAuthRoutes() {
       }
 
       // Update user's access_requested_at timestamp, message, and status
-      await prisma.user.update({
+      const updatedUser = await prisma.user.update({
         where: { id: req.user.id },
         data: {
           access_requested_at: new Date(),
           access_request_message: message || null,
           access_status: 'pending',
         },
+      });
+
+      console.log(`Access request submitted for user ${req.user.id}:`, {
+        userId: req.user.id,
+        username: req.user.username,
+        message: message || 'No message provided',
+        timestamp: updatedUser.access_requested_at
       });
 
       res.json({
