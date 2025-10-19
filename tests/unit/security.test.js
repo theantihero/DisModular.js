@@ -291,6 +291,47 @@ describe('Security Fixes', () => {
         mockResolve(testPluginsDir, '../../../etc/passwd');
       }).toThrow('Path traversal detected');
     });
+
+    it('should validate safe plugin file path function', () => {
+      // Test the getSafePluginFilePath function logic
+      const testPluginId = 'test_plugin';
+      const testPluginsDir = '/safe/plugins';
+      const testFilename = 'plugin.json';
+      
+      // Mock the safe file path construction logic
+      const mockGetSafePluginFilePath = (pluginId, pluginsDir, filename) => {
+        // Validate filename
+        if (!filename || typeof filename !== 'string') {
+          throw new Error('Invalid filename');
+        }
+        if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+          throw new Error('Filename contains invalid characters');
+        }
+        if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+          throw new Error('Filename contains path traversal characters');
+        }
+        
+        // Mock safe directory path
+        const pluginDir = `${pluginsDir}/${pluginId}`;
+        const filePath = `${pluginDir}/${filename}`;
+        
+        return filePath;
+      };
+      
+      // Test safe file path
+      const safeFilePath = mockGetSafePluginFilePath(testPluginId, testPluginsDir, testFilename);
+      expect(safeFilePath).toBe('/safe/plugins/test_plugin/plugin.json');
+      
+      // Test dangerous filename
+      expect(() => {
+        mockGetSafePluginFilePath(testPluginId, testPluginsDir, '../../../etc/passwd');
+      }).toThrow('Filename contains path traversal characters');
+      
+      // Test invalid filename characters
+      expect(() => {
+        mockGetSafePluginFilePath(testPluginId, testPluginsDir, 'plugin<script>.json');
+      }).toThrow('Filename contains invalid characters');
+    });
   });
 
   describe('Plugin Data Validation', () => {

@@ -51,33 +51,41 @@ function validatePluginPath(pluginId, pluginsDir) {
 }
 
 /**
- * Get safe plugin directory path with explicit validation
+ * Get safe plugin file path with explicit validation
  * @param {string} pluginId - Plugin ID
  * @param {string} pluginsDir - Base plugins directory
- * @returns {string} Safe plugin directory path
+ * @param {string} filename - Filename (must be safe)
+ * @returns {string} Safe plugin file path
  * @throws {Error} If path is unsafe
  */
-function getSafePluginPath(pluginId, pluginsDir) {
-  // Explicit validation before any path operations
-  if (!validatePluginPath(pluginId, pluginsDir)) {
-    throw new Error('Invalid plugin ID format or path traversal detected');
+function getSafePluginFilePath(pluginId, pluginsDir, filename = 'plugin.json') {
+  // Validate filename to prevent path traversal
+  if (!filename || typeof filename !== 'string') {
+    throw new Error('Invalid filename');
   }
   
-  // Additional explicit checks
-  if (pluginId.includes('..') || pluginId.includes('\\') || pluginId.includes('/')) {
-    throw new Error('Path traversal characters detected');
+  // Only allow safe filename characters
+  if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+    throw new Error('Filename contains invalid characters');
   }
   
-  // Use resolve for canonical path
-  const safePath = resolve(pluginsDir, pluginId);
-  
-  // Double-check the resolved path is still within the base directory
-  const baseDir = resolve(pluginsDir);
-  if (!safePath.startsWith(baseDir + '/') && safePath !== baseDir) {
-    throw new Error('Resolved path outside base directory');
+  // Prevent directory traversal in filename
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    throw new Error('Filename contains path traversal characters');
   }
   
-  return safePath;
+  // Get safe plugin directory path
+  const pluginDir = getSafePluginPath(pluginId, pluginsDir);
+  
+  // Construct file path using join for safety
+  const filePath = join(pluginDir, filename);
+  
+  // Double-check the final path is still within the plugin directory
+  if (!filePath.startsWith(pluginDir + '/') && filePath !== pluginDir) {
+    throw new Error('Final file path outside plugin directory');
+  }
+  
+  return filePath;
 }
 
 /**
@@ -1118,7 +1126,7 @@ export class PluginController {
    */
   async writePluginFile(pluginId, pluginData) {
     try {
-      // Get safe plugin path with explicit validation
+      // Get safe plugin directory path with explicit validation
       const pluginDir = getSafePluginPath(pluginId, this.pluginsDir);
 
       // Validate plugin data structure
@@ -1136,12 +1144,12 @@ export class PluginController {
         throw new Error(`Plugin file too large (max ${MAX_FILE_SIZE} bytes)`);
       }
 
-      // Use safe path for file operations
-      const pluginFile = join(pluginDir, 'plugin.json');
-
       // Create directory if it doesn't exist
       const { mkdir } = await import('fs/promises');
       await mkdir(pluginDir, { recursive: true });
+
+      // Get safe plugin file path with explicit validation
+      const pluginFile = getSafePluginFilePath(pluginId, this.pluginsDir, 'plugin.json');
 
       // Write plugin file with restricted permissions
       await writeFile(pluginFile, jsonString, { mode: 0o644 });
