@@ -379,42 +379,9 @@ describe('Access Request Flow', () => {
     it('should allow user to request access with message', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Ensure we have the correct user ID for this test
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
-      });
-      
-      if (!user) {
-        throw new Error('Test user not found in database');
-      }
-      
       const requestMessage = 'I want to use this platform for my community server';
 
-      // Create a custom app for this test with correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
-      
-      // Set up authentication for this specific test
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, 
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
-        next();
-      });
-      
-      testApp.use('/auth', createAuthRoutes());
-
-      const response = await request(testApp)
+      const response = await request(app)
         .post('/auth/request-access')
         .send({ message: requestMessage })
         .expect(200);
@@ -423,13 +390,13 @@ describe('Access Request Flow', () => {
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const updatedUser = await prisma.user.findUnique({
-        where: { id: user.id }
+      const user = await prisma.user.findUnique({
+        where: { id: testUserId }
       });
 
-      expect(updatedUser.access_requested_at).toBeTruthy();
-      expect(updatedUser.access_request_message).toBe(requestMessage);
-      expect(updatedUser.access_status).toBe('pending');
+      expect(user.access_requested_at).toBeTruthy();
+      expect(user.access_request_message).toBe(requestMessage);
+      expect(user.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
