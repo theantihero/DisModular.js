@@ -9,7 +9,7 @@ import { Logger } from '@dismodular/shared';
 import NodeCompiler from '../services/NodeCompiler.js';
 import { getPrismaClient } from '../services/PrismaService.js';
 import { writeFile, rm } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 const logger = new Logger('PluginController');
 
@@ -25,6 +25,399 @@ function validatePluginId(id) {
   // Only allow alphanumeric characters, underscores, and hyphens
   // Must start with a letter or underscore
   return /^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(id) && id.length <= 100;
+}
+
+/**
+ * Validate plugin ID with path canonicalization to prevent path traversal
+ * @param {string} pluginId - Plugin ID to validate
+ * @param {string} pluginsDir - Base plugins directory
+ * @returns {boolean} Whether the path is safe
+ */
+function validatePluginPath(pluginId, pluginsDir) {
+  if (!validatePluginId(pluginId)) {
+    return false;
+  }
+  
+  try {
+    // Resolve the full path
+    const resolvedPath = resolve(pluginsDir, pluginId);
+    const baseDir = resolve(pluginsDir);
+    
+    // Ensure the resolved path is within the plugins directory
+    return resolvedPath.startsWith(baseDir + '/') || resolvedPath === baseDir;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Get safe plugin file path with explicit validation
+ * @param {string} pluginId - Plugin ID
+ * @param {string} pluginsDir - Base plugins directory
+ * @param {string} filename - Filename (must be safe)
+ * @returns {string} Safe plugin file path
+ * @throws {Error} If path is unsafe
+ */
+function getSafePluginFilePath(pluginId, pluginsDir, filename = 'plugin.json') {
+  // Validate filename to prevent path traversal
+  if (!filename || typeof filename !== 'string') {
+    throw new Error('Invalid filename');
+  }
+  
+  // Only allow safe filename characters
+  if (!/^[a-zA-Z0-9_.-]+$/.test(filename)) {
+    throw new Error('Filename contains invalid characters');
+  }
+  
+  // Prevent directory traversal in filename
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    throw new Error('Filename contains path traversal characters');
+  }
+  
+  // Get safe plugin directory path
+  const pluginDir = getSafePluginPath(pluginId, pluginsDir);
+  
+  // Construct file path using join for safety
+  const filePath = join(pluginDir, filename);
+  
+  // Double-check the final path is still within the plugin directory
+  if (!filePath.startsWith(pluginDir + '/') && filePath !== pluginDir) {
+    throw new Error('Final file path outside plugin directory');
+  }
+  
+  return filePath;
+}
+
+/**
+ * Sanitize string input to prevent injection attacks
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string
+ */
+function sanitizeString(str) {
+  if (typeof str !== 'string') {
+    return String(str);
+  }
+  
+  return str
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+    .replace(/[<>]/g, '') // Remove potential HTML/XML tags
+    .trim()
+    .substring(0, 1000); // Limit length
+}
+
+/**
+ * Validate plugin data structure to prevent malicious content
+ * @param {Object} pluginData - Plugin data to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validatePluginData(pluginData) {
+  if (!pluginData || typeof pluginData !== 'object') {
+    return { valid: false, error: 'Invalid plugin data structure' };
+  }
+  
+  // Check for required fields
+  const requiredFields = ['name', 'type', 'trigger', 'nodes', 'edges'];
+  for (const field of requiredFields) {
+    if (!pluginData[field]) {
+      return { valid: false, error: `Missing required field: ${field}` };
+    }
+  }
+  
+  // Validate string fields
+  const stringFields = ['name', 'description', 'author'];
+  for (const field of stringFields) {
+    if (pluginData[field] && typeof pluginData[field] !== 'string') {
+      return { valid: false, error: `Field ${field} must be a string` };
+    }
+    if (pluginData[field] && pluginData[field].length > 1000) {
+      return { valid: false, error: `Field ${field} too long (max 1000 characters)` };
+    }
+  }
+  
+  // Validate arrays
+  if (!Array.isArray(pluginData.nodes)) {
+    return { valid: false, error: 'Nodes must be an array' };
+  }
+  if (!Array.isArray(pluginData.edges)) {
+    return { valid: false, error: 'Edges must be an array' };
+  }
+  
+  // Check array sizes
+  if (pluginData.nodes.length > 100) {
+    return { valid: false, error: 'Too many nodes (max 100)' };
+  }
+  if (pluginData.edges.length > 200) {
+    return { valid: false, error: 'Too many edges (max 200)' };
+  }
+  
+  // Validate nodes structure
+  for (const node of pluginData.nodes) {
+    if (!node || typeof node !== 'object') {
+      return { valid: false, error: 'Invalid node structure' };
+    }
+    if (!node.id || typeof node.id !== 'string') {
+      return { valid: false, error: 'Node must have valid ID' };
+    }
+    if (!validatePluginId(node.id)) {
+      return { valid: false, error: `Invalid node ID: ${node.id}` };
+    }
+  }
+  
+  // Validate edges structure
+  for (const edge of pluginData.edges) {
+    if (!edge || typeof edge !== 'object') {
+      return { valid: false, error: 'Invalid edge structure' };
+    }
+    if (!edge.source || !edge.target) {
+      return { valid: false, error: 'Edge must have source and target' };
+    }
+    if (!validatePluginId(edge.source) || !validatePluginId(edge.target)) {
+      return { valid: false, error: 'Edge has invalid node references' };
+    }
+  }
+  
+  // Validate node configurations for URLs and emojis
+  for (const node of pluginData.nodes) {
+    if (node.data && node.data.config) {
+      const config = node.data.config;
+      
+      // Validate image URLs in embed builder nodes
+      if (node.type === 'embed_builder') {
+        if (config.image) {
+          const imageValidation = validateUrl(config.image);
+          if (!imageValidation.valid) {
+            return { valid: false, error: `Invalid image URL in node ${node.id}: ${imageValidation.error}` };
+          }
+        }
+        if (config.thumbnail) {
+          const thumbnailValidation = validateUrl(config.thumbnail);
+          if (!thumbnailValidation.valid) {
+            return { valid: false, error: `Invalid thumbnail URL in node ${node.id}: ${thumbnailValidation.error}` };
+          }
+        }
+      }
+      
+      // Validate emoji in reaction nodes
+      if (node.type === 'reaction' || config.action === 'add_reaction') {
+        if (config.emoji) {
+          const emojiValidation = validateEmoji(config.emoji);
+          if (!emojiValidation.valid) {
+            return { valid: false, error: `Invalid emoji in node ${node.id}: ${emojiValidation.error}` };
+          }
+        }
+      }
+      
+      // Validate emojis array in multiple reactions
+      if (config.action === 'add_multiple_reactions' && config.emojis) {
+        if (typeof config.emojis === 'string') {
+          // If it's a variable reference, validate the variable name
+          if (!config.emojis.startsWith('{') || !config.emojis.endsWith('}')) {
+            return { valid: false, error: `Invalid emojis variable format in node ${node.id}` };
+          }
+        }
+      }
+      
+      // Validate HTTP request URLs
+      if (node.type === 'http_request' && config.url) {
+        const urlValidation = validateUrl(config.url);
+        if (!urlValidation.valid) {
+          return { valid: false, error: `Invalid HTTP URL in node ${node.id}: ${urlValidation.error}` };
+        }
+      }
+    }
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Sanitize plugin data before writing to file
+ * @param {Object} pluginData - Plugin data to sanitize
+ * @returns {Object} Sanitized plugin data
+ */
+function sanitizePluginData(pluginData) {
+  const sanitized = { ...pluginData };
+  
+  // Sanitize string fields
+  const stringFields = ['name', 'description', 'author'];
+  for (const field of stringFields) {
+    if (sanitized[field]) {
+      sanitized[field] = sanitizeString(sanitized[field]);
+    }
+  }
+  
+  // Sanitize trigger object
+  if (sanitized.trigger && typeof sanitized.trigger === 'object') {
+    const triggerFields = ['command', 'event', 'pattern'];
+    for (const field of triggerFields) {
+      if (sanitized.trigger[field]) {
+        sanitized.trigger[field] = sanitizeString(sanitized.trigger[field]);
+      }
+    }
+  }
+  
+  // Sanitize node configurations
+  if (sanitized.nodes && Array.isArray(sanitized.nodes)) {
+    sanitized.nodes = sanitized.nodes.map(node => {
+      if (node.data && node.data.config) {
+        const config = { ...node.data.config };
+        
+        // Sanitize URLs
+        if (config.image) {
+          config.image = sanitizeString(config.image);
+        }
+        if (config.thumbnail) {
+          config.thumbnail = sanitizeString(config.thumbnail);
+        }
+        if (config.url) {
+          config.url = sanitizeString(config.url);
+        }
+        
+        // Sanitize emoji
+        if (config.emoji) {
+          config.emoji = sanitizeString(config.emoji);
+        }
+        if (config.emojis) {
+          config.emojis = sanitizeString(config.emojis);
+        }
+        
+        // Sanitize other string fields in config
+        const configStringFields = ['title', 'description', 'content', 'method', 'body'];
+        for (const field of configStringFields) {
+          if (config[field]) {
+            config[field] = sanitizeString(config[field]);
+          }
+        }
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            config
+          }
+        };
+      }
+      return node;
+    });
+  }
+  
+  return sanitized;
+}
+
+/**
+ * Validate property name to prevent prototype pollution
+ * @param {string} propName - Property name to validate
+ * @returns {boolean} Whether the property name is safe
+ */
+function isValidPropertyName(propName) {
+  if (typeof propName !== 'string') {
+    return false;
+  }
+  
+  // Block dangerous property names that could lead to prototype pollution
+  const dangerousProps = ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'];
+  if (dangerousProps.includes(propName)) {
+    return false;
+  }
+  
+  // Block property names that start with dangerous prefixes
+  if (propName.startsWith('__') || propName.startsWith('constructor.') || propName.startsWith('prototype.')) {
+    return false;
+  }
+  
+  // Only allow alphanumeric characters, underscores, and hyphens
+  return /^[a-zA-Z0-9_-]+$/.test(propName) && propName.length <= 100;
+}
+
+/**
+ * Safe property setter that prevents prototype pollution
+ * @param {Object} obj - Object to set property on
+ * @param {string} propName - Property name
+ * @param {*} value - Value to set
+ * @returns {boolean} Whether the property was set successfully
+ */
+function safeSetProperty(obj, propName, value) {
+  if (!isValidPropertyName(propName)) {
+    return false;
+  }
+  
+  try {
+    obj[propName] = value;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Validate URL to prevent XSS attacks
+ * @param {string} url - URL to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validateUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return { valid: false, error: 'URL must be a non-empty string' };
+  }
+  
+  try {
+    const urlObj = new URL(url);
+    
+    // Only allow safe schemes
+    const allowedSchemes = ['http:', 'https:', 'data:'];
+    if (!allowedSchemes.includes(urlObj.protocol)) {
+      return { valid: false, error: 'Only HTTP, HTTPS, and data URLs are allowed' };
+    }
+    
+    // For data URLs, only allow image MIME types
+    if (urlObj.protocol === 'data:') {
+      const isValidImageMime = /^data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,/i.test(url);
+      if (!isValidImageMime) {
+        return { valid: false, error: 'Data URLs must be valid base64-encoded images' };
+      }
+    }
+    
+    // Limit URL length
+    if (url.length > 2000) {
+      return { valid: false, error: 'URL too long (max 2000 characters)' };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
+/**
+ * Validate emoji input to prevent XSS attacks
+ * @param {string} emoji - Emoji to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validateEmoji(emoji) {
+  if (!emoji || typeof emoji !== 'string') {
+    return { valid: false, error: 'Emoji must be a non-empty string' };
+  }
+  
+  // Limit emoji length
+  if (emoji.length > 10) {
+    return { valid: false, error: 'Emoji too long (max 10 characters)' };
+  }
+  
+  // Check for dangerous characters that could be used for XSS
+  const dangerousChars = ['<', '>', 'javascript:', 'vbscript:', 'data:', 'onload', 'onerror'];
+  for (const char of dangerousChars) {
+    if (emoji.toLowerCase().includes(char)) {
+      return { valid: false, error: 'Emoji contains potentially dangerous content' };
+    }
+  }
+  
+  // Allow basic characters, Discord emoji format (:emoji:), and common emoji ranges
+  // Using a simple regex that's compatible across all environments
+  const isValidEmoji = /^[a-zA-Z0-9_:-\s\u2600-\u26FF\u2700-\u27BF\uD83C-\uDBFF\uDC00-\uDFFF]+$/.test(emoji);
+  if (!isValidEmoji) {
+    return { valid: false, error: 'Invalid emoji format' };
+  }
+  
+  return { valid: true };
 }
 
 /**
@@ -51,11 +444,18 @@ function validateNodeGraphComplexity(nodes, edges) {
   // Compute node graph depth by BFS from triggers
   // Find trigger nodes as entry points
   const nodeById = Object.create(null);
-  nodes.forEach(n => { if (n && n.id) {nodeById[n.id] = n;} });
+  nodes.forEach(n => { 
+    if (n && n.id && isValidPropertyName(n.id)) {
+      safeSetProperty(nodeById, n.id, n);
+    }
+  });
+  
   const outgoing = Object.create(null);
   edges.forEach(e => {
-    if (e && e.source && e.target) {
-      if (!outgoing[e.source]) {outgoing[e.source] = [];}
+    if (e && e.source && e.target && isValidPropertyName(e.source) && isValidPropertyName(e.target)) {
+      if (!outgoing[e.source]) {
+        safeSetProperty(outgoing, e.source, []);
+      }
       outgoing[e.source].push(e.target);
     }
   });
@@ -233,26 +633,32 @@ export class PluginController {
 
       const { name, description, type, trigger, nodes, edges, options } = req.body;
 
-      // Validate required fields
-      if (!name || !type || !trigger || !nodes || !edges) {
-        return res.status(400).json({
-          success: false,
-          error: 'Missing required fields',
-        });
-      }
-
-      // Validate node graph structure
-      const validation = this.compiler.validate(nodes, edges);
+      // Validate and sanitize plugin data
+      const pluginData = { name, description, type, trigger, nodes, edges, options };
+      const validation = validatePluginData(pluginData);
       if (!validation.valid) {
         return res.status(400).json({
           success: false,
+          error: 'Invalid plugin data',
+          details: validation.error,
+        });
+      }
+
+      // Sanitize the plugin data
+      const sanitizedData = sanitizePluginData(pluginData);
+
+      // Validate node graph structure
+      const graphValidation = this.compiler.validate(sanitizedData.nodes, sanitizedData.edges);
+      if (!graphValidation.valid) {
+        return res.status(400).json({
+          success: false,
           error: 'Invalid node graph',
-          details: validation.errors,
+          details: graphValidation.errors,
         });
       }
 
       // Prevent resource exhaustion by limiting graph complexity
-      const graphComplexity = validateNodeGraphComplexity(nodes, edges);
+      const graphComplexity = validateNodeGraphComplexity(sanitizedData.nodes, sanitizedData.edges);
       if (!graphComplexity.valid) {
         return res.status(400).json({
           success: false,
@@ -261,10 +667,10 @@ export class PluginController {
       }
 
       // Use provided compiled code or compile fresh (always compile for safety)
-      const compiled = this.compiler.compile(nodes, edges);
+      const compiled = this.compiler.compile(sanitizedData.nodes, sanitizedData.edges);
 
       // Extract options from nodes
-      const extractedOptions = this.compiler.extractOptions(nodes);
+      const extractedOptions = this.compiler.extractOptions(sanitizedData.nodes);
 
       // Generate plugin ID
       const pluginId = `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -288,19 +694,19 @@ export class PluginController {
       await this.db.plugin.create({
         data: {
           id: pluginId,
-          name,
+          name: sanitizedData.name,
           version: '1.0.0',
-          description: description || '',
+          description: sanitizedData.description || '',
           author: req.user?.username || 'Unknown',
-          type,
+          type: sanitizedData.type,
           enabled: true,
-          trigger_type: trigger.type,
-          trigger_command: trigger.command,
-          trigger_event: trigger.event || null,
-          trigger_pattern: trigger.pattern || null,
-          options: options || extractedOptions,
-          nodes,
-          edges,
+          trigger_type: sanitizedData.trigger.type,
+          trigger_command: sanitizedData.trigger.command,
+          trigger_event: sanitizedData.trigger.event || null,
+          trigger_pattern: sanitizedData.trigger.pattern || null,
+          options: sanitizedData.options || extractedOptions,
+          nodes: sanitizedData.nodes,
+          edges: sanitizedData.edges,
           compiled,
           created_by: createdBy,
         },
@@ -310,16 +716,16 @@ export class PluginController {
       try {
         await this.writePluginFile(pluginId, {
           id: pluginId,
-          name,
+          name: sanitizedData.name,
           version: '1.0.0',
-          description,
+          description: sanitizedData.description,
           author: req.user?.username || 'Unknown',
-          type,
+          type: sanitizedData.type,
           enabled: true,
-          trigger,
-          options: options || extractedOptions,
-          nodes,
-          edges,
+          trigger: sanitizedData.trigger,
+          options: sanitizedData.options || extractedOptions,
+          nodes: sanitizedData.nodes,
+          edges: sanitizedData.edges,
           compiled,
         });
       } catch (fileError) {
@@ -627,7 +1033,7 @@ export class PluginController {
 
       // Delete plugin folder from filesystem
       try {
-        const pluginDir = join(this.pluginsDir, id);
+        const pluginDir = getSafePluginPath(id, this.pluginsDir);
         await rm(pluginDir, { recursive: true, force: true });
         logger.debug(`Plugin folder deleted: ${pluginDir}`);
       } catch (fsError) {
@@ -714,21 +1120,39 @@ export class PluginController {
   }
 
   /**
-   * Write plugin to file system
+   * Write plugin to file system with enhanced security
    * @param {string} pluginId - Plugin ID
    * @param {Object} pluginData - Plugin data
    */
   async writePluginFile(pluginId, pluginData) {
     try {
-      const pluginDir = join(this.pluginsDir, pluginId);
-      const pluginFile = join(pluginDir, 'plugin.json');
+      // Get safe plugin directory path with explicit validation
+      const pluginDir = getSafePluginPath(pluginId, this.pluginsDir);
+
+      // Validate plugin data structure
+      if (!pluginData || typeof pluginData !== 'object') {
+        throw new Error('Invalid plugin data structure');
+      }
+
+      // Sanitize plugin data before writing
+      const sanitizedData = sanitizePluginData(pluginData);
+
+      // Check file size limit (10MB max)
+      const jsonString = JSON.stringify(sanitizedData, null, 2);
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (jsonString.length > MAX_FILE_SIZE) {
+        throw new Error(`Plugin file too large (max ${MAX_FILE_SIZE} bytes)`);
+      }
 
       // Create directory if it doesn't exist
       const { mkdir } = await import('fs/promises');
       await mkdir(pluginDir, { recursive: true });
 
-      // Write plugin file
-      await writeFile(pluginFile, JSON.stringify(pluginData, null, 2));
+      // Get safe plugin file path with explicit validation
+      const pluginFile = getSafePluginFilePath(pluginId, this.pluginsDir, 'plugin.json');
+
+      // Write plugin file with restricted permissions
+      await writeFile(pluginFile, jsonString, { mode: 0o644 });
 
       logger.debug(`Plugin file written: ${pluginFile}`);
     } catch (error) {

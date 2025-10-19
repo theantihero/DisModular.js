@@ -314,5 +314,105 @@ describe('NodeCompiler', () => {
       assert.strictEqual(node4.previous.length, 2);
     });
   });
+
+  describe('security - resource exhaustion prevention', () => {
+    it('should handle deep nesting without resource exhaustion', () => {
+      // Test getSafeIndent method with extreme values
+      const testIndents = [-1, 0, 1, 25, 50, 100, 1000, Number.MAX_SAFE_INTEGER];
+      
+      for (const indent of testIndents) {
+        const result = compiler.getSafeIndent(indent);
+        
+        // Should always return a string
+        assert.strictEqual(typeof result, 'string');
+        
+        // Should never exceed 100 characters (50 * 2 spaces)
+        assert.ok(result.length <= 100, `Indent ${indent} produced string of length ${result.length}`);
+        
+        // Should be multiples of 2 (since each level is 2 spaces)
+        assert.strictEqual(result.length % 2, 0);
+      }
+    });
+
+    it('should cap indentation at 50 levels', () => {
+      const result50 = compiler.getSafeIndent(50);
+      const result100 = compiler.getSafeIndent(100);
+      const resultMax = compiler.getSafeIndent(Number.MAX_SAFE_INTEGER);
+      
+      // All should produce the same result (50 levels = 100 characters)
+      assert.strictEqual(result50.length, 100);
+      assert.strictEqual(result100.length, 100);
+      assert.strictEqual(resultMax.length, 100);
+      assert.strictEqual(result50, result100);
+      assert.strictEqual(result100, resultMax);
+    });
+
+    it('should handle negative indentation gracefully', () => {
+      const result = compiler.getSafeIndent(-100);
+      assert.strictEqual(result, ''); // Should be empty string (0 levels)
+    });
+
+    it('should compile code with deep nesting safely', () => {
+      // Create a deeply nested condition structure
+      const nodes = [];
+      const edges = [];
+      
+      // Start with trigger
+      nodes.push({ id: 'trigger', type: 'trigger', data: { label: 'Start' } });
+      
+      // Create 55 levels of nested conditions (more than the 50 limit)
+      for (let i = 0; i < 55; i++) {
+        const nodeId = `condition_${i}`;
+        
+        nodes.push({
+          id: nodeId,
+          type: 'condition',
+          data: { label: `Condition ${i}`, config: { condition: 'true' } },
+        });
+        
+        if (i === 0) {
+          edges.push({ id: `e_${i}`, source: 'trigger', target: nodeId });
+        } else {
+          edges.push({ 
+            id: `e_${i}`, 
+            source: `condition_${i - 1}`, 
+            target: nodeId, 
+            sourceHandle: 'true',
+          });
+        }
+        
+        if (i === 54) {
+          // Add response at the end
+          nodes.push({ 
+            id: 'response', 
+            type: 'response', 
+            data: { label: 'Final Response', config: { message: 'Deep nesting complete!' } },
+          });
+          edges.push({ 
+            id: 'e_final', 
+            source: nodeId, 
+            target: 'response', 
+            sourceHandle: 'true',
+          });
+        }
+      }
+      
+      // This should compile without throwing or causing resource exhaustion
+      const code = compiler.compile(nodes, edges);
+      
+      assert.ok(code.includes('async function execute'));
+      assert.ok(code.includes('Deep nesting complete!'));
+      
+      // Verify the code doesn't have excessive indentation (should cap at 50 levels)
+      const lines = code.split('\n');
+      const maxIndentLength = Math.max(...lines.map(line => {
+        const match = line.match(/^(\s*)/);
+        return match ? match[1].length : 0;
+      }));
+      
+      // Should not exceed 100 characters of indentation (50 levels * 2 spaces)
+      assert.ok(maxIndentLength <= 100, `Maximum indentation was ${maxIndentLength} characters`);
+    });
+  });
 });
 

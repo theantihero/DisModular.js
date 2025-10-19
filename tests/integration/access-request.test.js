@@ -123,6 +123,8 @@ describe('Access Request Flow', () => {
         httpOnly: true,
         sameSite: 'lax'
       }
+      // SECURITY NOTE: secure: false is acceptable for testing only
+      // In production, cookies must use secure: true for HTTPS
     }));
     // app.use(lusca.csrf()); // Disabled for testing
     app.use(mockPassport.initialize());
@@ -220,8 +222,12 @@ describe('Access Request Flow', () => {
       if (!req.user) {
         // Use admin user for admin routes, regular user for other routes
         const isAdminRoute = req.path.startsWith('/admin');
+        
+        // Get the current user IDs (they get updated in beforeEach)
+        const currentUserId = isAdminRoute ? adminUserId : testUserId;
+        
         req.user = { 
-          id: isAdminRoute ? adminUserId : testUserId, 
+          id: currentUserId, 
           username: isAdminRoute ? 'adminuser' : 'testuser', 
           is_admin: isAdminRoute,
           access_status: isAdminRoute ? 'approved' : 'denied'
@@ -242,7 +248,8 @@ describe('Access Request Flow', () => {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false }
+        cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                  // In production, cookies must use secure: true for HTTPS
       }));
       adminApp.use(mockPassport.initialize());
       adminApp.use(mockPassport.session());
@@ -298,6 +305,28 @@ describe('Access Request Flow', () => {
     // Reset user access status before each test
     if (prisma) {
       try {
+        // First, ensure the test user exists
+        let user = await prisma.user.findUnique({
+          where: { discord_id: '111111111' }
+        });
+        
+        if (!user) {
+          // Create the test user if it doesn't exist
+          user = await prisma.user.create({
+            data: {
+              discord_id: '111111111',
+              username: 'testuser',
+              discriminator: '1234',
+              access_status: 'denied',
+              is_admin: false
+            }
+          });
+        }
+        
+        // Update testUserId to use the actual database ID
+        testUserId = user.id;
+        
+        // Reset user access status
         await prisma.user.update({
           where: { id: testUserId },
           data: {
@@ -308,18 +337,29 @@ describe('Access Request Flow', () => {
           }
         });
       } catch (error) {
-        // User might not exist, create it
-        await prisma.user.create({
+        console.error('Error in beforeEach:', error);
+        throw error;
+      }
+      
+      // Ensure admin user exists
+      let adminUser = await prisma.user.findUnique({
+        where: { discord_id: '222222222' }
+      });
+      
+      if (!adminUser) {
+        adminUser = await prisma.user.create({
           data: {
-            id: testUserId,
-            discord_id: '111111111',
-            username: 'testuser',
-            discriminator: '1234',
-            access_status: 'denied', // Start with denied status
-            is_admin: false
+            discord_id: '222222222',
+            username: 'adminuser',
+            discriminator: '5678',
+            access_status: 'approved',
+            is_admin: true
           }
         });
       }
+      
+      // Update adminUserId to use the actual database ID
+      adminUserId = adminUser.id;
       
       // Clean up any existing access requests to prevent test conflicts
       await prisma.user.updateMany({
@@ -339,9 +379,42 @@ describe('Access Request Flow', () => {
     it('should allow user to request access with message', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Ensure we have the correct user ID for this test
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!user) {
+        throw new Error('Test user not found in database');
+      }
+      
       const requestMessage = 'I want to use this platform for my community server';
 
-      const response = await request(app)
+      // Create a custom app for this test with correct user ID
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set up authentication for this specific test
+      testApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id, 
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
+        next();
+      });
+      
+      testApp.use('/auth', createAuthRoutes());
+
+      const response = await request(testApp)
         .post('/auth/request-access')
         .send({ message: requestMessage })
         .expect(200);
@@ -350,12 +423,13 @@ describe('Access Request Flow', () => {
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id }
       });
 
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_requested_at).toBeTruthy();
+      expect(updatedUser.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
@@ -469,7 +543,8 @@ describe('Access Request Flow', () => {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false }
+        cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                  // In production, cookies must use secure: true for HTTPS
       }));
       statusApp.use(mockPassport.initialize());
       statusApp.use(mockPassport.session());

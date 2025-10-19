@@ -6,6 +6,13 @@ import _React, { useState, useEffect } from 'react';
  * 
  * Allows users to set custom icons for plugins/commands via URL or emoji
  * 
+ * SECURITY NOTES:
+ * - All user inputs are automatically escaped by React's JSX rendering
+ * - URL validation prevents javascript: and other dangerous schemes
+ * - Emoji input is limited to 10 characters and uses controlled input
+ * - No dangerouslySetInnerHTML is used anywhere in this component
+ * - Image src attribute uses validated URLs only
+ * 
  * @param {Object} props - Component props
  * @param {string} props.value - Current icon value (URL or emoji)
  * @param {Function} props.onChange - Function called when icon changes
@@ -54,6 +61,8 @@ const IconEditor = ({
   }, [value]);
   
   // URL validation function with scheme validation to prevent XSS
+  // This function prevents javascript:, vbscript:, and other dangerous schemes
+  // It also restricts data: URLs to safe image MIME types only
   const isValidUrl = (url) => {
     try {
       // eslint-disable-next-line no-undef
@@ -126,9 +135,16 @@ const IconEditor = ({
     setPreviewError(false);
   };
   
-  // Get current display value
+  // Get current display value with strict validation
   const getCurrentValue = () => {
-    return iconType === 'emoji' ? emojiValue : urlValue;
+    const value = iconType === 'emoji' ? emojiValue : urlValue;
+    
+    // For URL type, ensure it's validated before returning
+    if (iconType === 'url' && value && !isValidUrl(value)) {
+      return ''; // Return empty string if URL is invalid
+    }
+    
+    return value;
   };
   
   // Check if current value is valid
@@ -279,23 +295,23 @@ const IconEditor = ({
           {getCurrentValue() ? (
             iconType === 'emoji' ? (
               <span className="text-3xl">{getCurrentValue()}</span>
-            ) : (
-              <div className="relative w-full h-full">
-                {previewError ? (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <span className="text-red-400 text-xs">Error loading image</span>
-                  </div>
                 ) : (
-                  <img
-                    src={getCurrentValue()}
-                    alt="Icon preview"
-                    className="w-full h-full object-cover rounded-lg"
-                    onError={handleImageError}
-                    onLoad={handleImageLoad}
-                  />
-                )}
-              </div>
-            )
+                  <div className="relative w-full h-full">
+                    {previewError ? (
+                      <div className="flex items-center justify-center w-full h-full">
+                        <span className="text-red-400 text-xs">Error loading image</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={isValidUrl(getCurrentValue()) ? getCurrentValue() : ''}
+                        alt="Icon preview"
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={handleImageError}
+                        onLoad={handleImageLoad}
+                      />
+                    )}
+                  </div>
+                )
           ) : (
             <span className={`text-2xl ${
               theme === 'space' ? 'text-hologram-500/50' : 'text-gray-500'

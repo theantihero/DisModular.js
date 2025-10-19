@@ -43,7 +43,8 @@ describe('Auth Flow Integration Tests', () => {
       secret: 'test-secret',
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false } // Set to false for testing
+      cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                // In production, cookies must use secure: true for HTTPS
     }));
     app.use(passport.initialize());
     app.use(passport.session());
@@ -98,7 +99,8 @@ describe('Auth Flow Integration Tests', () => {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false }
+        cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                  // In production, cookies must use secure: true for HTTPS
       }));
       testApp.use(passport.initialize());
       testApp.use(passport.session());

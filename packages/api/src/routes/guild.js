@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { getPrismaClient } from '../services/PrismaService.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
 import axios from 'axios';
 
 const router = Router();
@@ -228,7 +229,7 @@ router.get('/:guildId/plugins', requireAdmin, async (req, res) => {
  * GET /guilds/:guildId/plugins/all
  * Get all plugins with guild-specific enabled status
  */
-router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
+router.get('/:guildId/plugins/all', requireAuth, expensiveOperationLimiter, async (req, res) => {
   try {
     const { guildId } = req.params;
     const userId = req.user.id;
@@ -314,7 +315,7 @@ router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
  * PUT /guilds/:guildId/plugins/:pluginId
  * Enable/disable a plugin for a specific guild
  */
-router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
+router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter, async (req, res) => {
   try {
     const { guildId, pluginId } = req.params;
     const { enabled, settings } = req.body;
@@ -426,7 +427,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
  * POST /guilds/:guildId/sync
  * Sync guild commands (re-register slash commands)
  */
-router.post('/:guildId/sync', requireAdmin, async (req, res) => {
+router.post('/:guildId/sync', requireAdmin, expensiveOperationLimiter, async (req, res) => {
   try {
     const { guildId } = req.params;
 
@@ -562,7 +563,7 @@ router.get('/:guildId', requireAdmin, async (req, res) => {
  * PUT /guilds/:guildId/settings
  * Update guild-specific bot settings
  */
-router.put('/:guildId/settings', requireAuth, async (req, res) => {
+router.put('/:guildId/settings', requireAuth, expensiveOperationLimiter, async (req, res) => {
   try {
     const { guildId } = req.params;
     const { settings } = req.body;
@@ -662,7 +663,7 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
  * GET /guilds/:guildId/settings
  * Get guild-specific bot settings
  */
-router.get('/:guildId/settings', requireAuth, async (req, res) => {
+router.get('/:guildId/settings', requireAuth, expensiveOperationLimiter, async (req, res) => {
   try {
     const { guildId } = req.params;
     const userId = req.user.id;
