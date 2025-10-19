@@ -398,36 +398,59 @@ describe('Access Request Flow', () => {
       
       const requestMessage = 'I want to use this platform for my community server';
       
-      // Debug: Check if user exists before making request
-      const userBefore = await prisma.user.findUnique({
+      // Get the actual user from database to ensure we have the correct ID
+      const user = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
-      console.log('User before request:', userBefore);
       
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({ message: requestMessage });
-
-      console.log('Response status:', response.status);
-      console.log('Response body:', response.body);
-      
-      if (response.status !== 200) {
-        console.error('Request failed with status:', response.status);
-        console.error('Response body:', response.body);
+      if (!user) {
+        throw new Error('Test user not found in database');
       }
       
-      expect(response.status).toBe(200);
+      // Create a custom app for this test with the correct user ID
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set up authentication for this specific test with correct user ID
+      testApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id, // Use the actual database ID
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
+        next();
+      });
+      
+      // Ensure PrismaService uses test database
+      process.env.NODE_ENV = 'test';
+      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+      
+      testApp.use('/auth', createAuthRoutes());
+
+      const response = await request(testApp)
+        .post('/auth/request-access')
+        .send({ message: requestMessage })
+        .expect(200);
+
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id }
       });
 
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBe(requestMessage);
-      expect(user.access_status).toBe('pending');
+      expect(updatedUser.access_requested_at).toBeTruthy();
+      expect(updatedUser.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
