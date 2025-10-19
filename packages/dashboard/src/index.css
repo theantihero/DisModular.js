@@ -427,6 +427,134 @@ body {
   .absolute.top-4.right-4 {
     max-width: calc(100vw - 2rem);
   }
+  
+  /* Fix mobile grid layout */
+  .grid-cols-1 {
+    gap: 1rem;
+  }
+  
+  /* Better mobile card sizing */
+  .macos-card {
+    margin-bottom: 1rem;
+  }
+  
+  /* Ensure mobile content is visible */
+  .max-w-7xl {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Fix mobile plugin cards */
+  .rounded-xl {
+    margin-bottom: 1rem;
+  }
+  
+  /* Better mobile spacing for plugin management */
+  .p-6 {
+    padding: 1rem !important;
+  }
+  
+  /* Fix mobile button text visibility */
+  .text-xs {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+  }
+  
+  /* Ensure mobile elements are not cut off */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Better mobile navigation visibility */
+  .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Show more elements on mobile */
+  .hidden.sm\\:inline {
+    display: inline !important;
+  }
+  
+  /* Better mobile header layout */
+  .space-x-2 {
+    gap: 0.25rem;
+  }
+  
+  /* Ensure mobile badges are visible */
+  .macos-badge {
+    min-width: auto;
+    padding: 0.5rem;
+  }
+  
+  /* Better mobile button sizing */
+  .macos-button {
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+  }
+  
+  /* Fix mobile text overflow */
+  .text-white {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+  }
+  
+  /* Better mobile grid for stats */
+  .grid.grid-cols-1 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Ensure mobile plugin cards are properly sized */
+  .shadow-xl {
+    margin-bottom: 1rem;
+  }
+  
+  /* Fix mobile header overflow */
+  header .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  
+  /* Better mobile spacing for header elements */
+  .space-x-2 > * + * {
+    margin-left: 0.25rem;
+  }
+  
+  /* Ensure mobile elements are not hidden */
+  .space-x-2.md\\:space-x-3 {
+    gap: 0.5rem;
+  }
+  
+  /* Better mobile plugin management section */
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  /* Fix mobile button groups */
+  .flex.items-center.space-x-2 {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  /* Ensure mobile text is readable */
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  /* Better mobile card content */
+  .macos-card .flex.items-center.justify-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  /* Fix mobile plugin grid */
+  .grid.grid-cols-1.gap-3 {
+    gap: 1rem;
+  }
 }
 
 /* Reduced Motion Support */

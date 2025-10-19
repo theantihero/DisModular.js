@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, _screen, _waitFor } from '@testing-library/react';
-import { _SpaceBackground } from '../src/components/SpaceBackground';
+import SpaceBackground from '../src/components/SpaceBackground';
 
 // Mock canvas context
 const mockContext = {

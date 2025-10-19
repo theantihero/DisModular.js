@@ -9,8 +9,10 @@ import { useAppStore } from '../src/viewmodels/AppViewModel';
 
 // Mock the API service
 vi.mock('../src/services/api', () => ({
-  auth: {
-    refreshGuilds: vi.fn()
+  default: {
+    auth: {
+      refreshGuilds: vi.fn()
+    }
   }
 }));
 
@@ -30,14 +32,14 @@ describe('Refresh Guilds Functionality', () => {
       { id: '2', name: 'Test Guild 2', bot_present: false }
     ];
 
-    const { auth } = await import('../src/services/api');
-    auth.refreshGuilds.mockResolvedValue({ data: mockGuilds });
+    const api = await import('../src/services/api');
+    api.default.auth.refreshGuilds.mockResolvedValue({ data: mockGuilds });
 
     const { refreshGuilds } = useAppStore.getState();
     
     const result = await refreshGuilds();
     
-    expect(result).toEqual(mockGuilds);
+    expect(result).toEqual({ data: mockGuilds });
     expect(useAppStore.getState().refreshCooldown).toBe(60);
   });
 
@@ -63,8 +65,8 @@ describe('Refresh Guilds Functionality', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    const { auth } = await import('../src/services/api');
-    auth.refreshGuilds.mockRejectedValue(new Error('API Error'));
+    const api = await import('../src/services/api');
+    api.default.auth.refreshGuilds.mockRejectedValue(new Error('API Error'));
 
     const { refreshGuilds } = useAppStore.getState();
     
