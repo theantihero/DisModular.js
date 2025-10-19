@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Space Background Component
  * Animated canvas-based space environment with stars, nebulas, galaxies, and planets
@@ -63,6 +64,7 @@ export function SpaceBackground() {
     const animate = () => {
       drawSpace(ctx, canvas.width, canvas.height, prefersReducedMotion);
       if (!prefersReducedMotion) {
+        // eslint-disable-next-line no-undef
         animationRef.current = requestAnimationFrame(animate);
       }
     };
@@ -71,9 +73,11 @@ export function SpaceBackground() {
 
     return () => {
       if (animationRef.current) {
+        // eslint-disable-next-line no-undef
         cancelAnimationFrame(animationRef.current);
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dimensions]);
 
   const initializeSpaceObjects = () => {
@@ -192,7 +196,7 @@ export function SpaceBackground() {
     shootingStarsRef.current = [];
   };
 
-  const drawSpace = (ctx, width, height, reducedMotion = false) => {
+  const drawSpace = (ctx, width, height, _reducedMotion = false) => {
     // Clear canvas with extended area to prevent glow cutoff
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(-width * 0.5, -height * 0.5, width * 2, height * 2);

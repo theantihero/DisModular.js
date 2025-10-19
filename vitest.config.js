@@ -28,6 +28,19 @@ export default defineConfig({
       json: './test-results.json'
     },
     logLevel: 'info',
+    env: {
+      DATABASE_URL: process.env.CI 
+        ? 'postgresql://dismodular:password@localhost:5432/dismodular_test'
+        : 'postgresql://test:test@localhost:5432/test_db',
+      TEST_DATABASE_URL: process.env.CI 
+        ? 'postgresql://dismodular:password@localhost:5432/dismodular_test'
+        : 'postgresql://test:test@localhost:5432/test_db',
+      DISCORD_CLIENT_ID: 'test_client_id',
+      DISCORD_CLIENT_SECRET: 'test_client_secret',
+      DISCORD_CALLBACK_URL: 'http://localhost:3002/auth/discord/callback',
+      SESSION_SECRET: 'test_session_secret',
+      NODE_ENV: 'test'
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

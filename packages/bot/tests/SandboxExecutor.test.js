@@ -20,7 +20,7 @@ import { SandboxExecutor } from '../src/sandbox/SandboxExecutor.js';
 describe('SandboxExecutor', () => {
   const sandbox = new SandboxExecutor({
     memoryLimit: 64,
-    timeout: 3000
+    timeout: 3000,
   });
 
   describe('validateCode', () => {
@@ -102,8 +102,8 @@ describe('SandboxExecutor', () => {
       const code = '__resolve(interaction.user.username);';
       const context = {
         interaction: {
-          user: { username: 'TestUser' }
-        }
+          user: { username: 'TestUser' },
+        },
       };
 
       const result = await sandbox.execute(code, context);
@@ -116,7 +116,7 @@ describe('SandboxExecutor', () => {
 
       await assert.rejects(
         async () => await sandbox.execute(code, context),
-        /timeout|timed out/i
+        /timeout|timed out/i,
       );
     });
 
@@ -143,7 +143,7 @@ describe('SandboxExecutor', () => {
     });
 
     it('should interpolate multiple variables', () => {
-      const sandbox = new SandboxExecutor();
+      // const sandbox = new SandboxExecutor();
       const str = 'Hello {name}, you have {count} messages';
       const result = str.replace(/\{(\w+)\}/g, '${variables[\'$1\']}');
       

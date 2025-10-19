@@ -5,5 +5,10 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "lint:ci": "eslint . --ext .js --max-warnings 0"
   }
 }

@@ -6,23 +6,31 @@
  */
 
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import axios from 'axios';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+// Helper function to get Prisma client with error handling
+function getPrisma() {
+  const prisma = getPrismaClient();
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  return prisma;
+}
 
 /**
  * Helper function to verify guild admin permissions with caching
  */
 async function verifyGuildAdminPermission(userId, guildId, accessToken) {
   // Check cached guild permissions first
-  const cachedPermission = await prisma.userGuildPermission.findFirst({
+  const cachedPermission = await getPrisma().userGuildPermission.findFirst({
     where: {
       user_id: userId,
-      guild_id: guildId
-    }
+      guild_id: guildId,
+    },
   });
 
   let hasAdminPermission = false;
@@ -39,9 +47,9 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
       try {
         const discordResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${accessToken}`,
           },
-          timeout: 5000
+          timeout: 5000,
         });
 
         const userGuilds = discordResponse.data;
@@ -51,31 +59,32 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
           hasAdminPermission = (targetGuild.permissions & 0x8) === 0x8;
           
           // Update cache
-          await prisma.userGuildPermission.upsert({
+          await getPrisma().userGuildPermission.upsert({
             where: {
               user_id_guild_id: {
                 user_id: userId,
-                guild_id: guildId
-              }
+                guild_id: guildId,
+              },
             },
             update: {
               is_admin: hasAdminPermission,
               permissions: targetGuild.permissions,
-              updated_at: new Date()
+              updated_at: new Date(),
             },
             create: {
               user_id: userId,
               guild_id: guildId,
               is_admin: hasAdminPermission,
-              permissions: targetGuild.permissions
-            }
+              permissions: targetGuild.permissions,
+            },
           });
         }
       } catch (discordError) {
         // If Discord API fails, use cached permission as fallback
         if (cachedPermission) {
           hasAdminPermission = cachedPermission.is_admin;
-          console.warn('Discord API failed for guild %s, using cached permission:', guildId, discordError.message);
+          const safeGuildId = String(guildId).replace(/[\r\n]/g, '');
+          console.warn('Discord API failed for guild %s, using cached permission:', safeGuildId, discordError.message);
         } else {
           throw new Error('Unable to verify guild permissions. Please try again later.');
         }
@@ -86,9 +95,9 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
     try {
       const discordResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
         },
-        timeout: 5000
+        timeout: 5000,
       });
 
       const userGuilds = discordResponse.data;
@@ -101,13 +110,13 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
       hasAdminPermission = (targetGuild.permissions & 0x8) === 0x8;
       
       // Cache the result
-      await prisma.userGuildPermission.create({
+      await getPrisma().userGuildPermission.create({
         data: {
           user_id: userId,
           guild_id: guildId,
           is_admin: hasAdminPermission,
-          permissions: targetGuild.permissions
-        }
+          permissions: targetGuild.permissions,
+        },
       });
     } catch (discordError) {
       if (discordError.response?.status === 429) {
@@ -130,7 +139,7 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
  */
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const guilds = await prisma.guild.findMany({
+    const guilds = await getPrisma().guild.findMany({
       orderBy: { created_at: 'desc' },
       include: {
         guild_plugins: {
@@ -140,12 +149,12 @@ router.get('/', requireAdmin, async (req, res) => {
                 id: true,
                 name: true,
                 type: true,
-                enabled: true
-              }
-            }
-          }
-        }
-      }
+                enabled: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     res.json({
@@ -158,14 +167,14 @@ router.get('/', requireAdmin, async (req, res) => {
         created_at: guild.created_at,
         updated_at: guild.updated_at,
         plugin_count: guild.guild_plugins.length,
-        enabled_plugins: guild.guild_plugins.filter(gp => gp.enabled).length
-      }))
+        enabled_plugins: guild.guild_plugins.filter(gp => gp.enabled).length,
+      })),
     });
   } catch (error) {
     console.error('Error fetching guilds:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch guilds'
+      error: 'Failed to fetch guilds',
     });
   }
 });
@@ -178,12 +187,12 @@ router.get('/:guildId/plugins', requireAdmin, async (req, res) => {
   try {
     const { guildId } = req.params;
 
-    const guildPlugins = await prisma.guildPlugin.findMany({
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
       where: { guild_id: guildId },
       include: {
-        plugin: true
+        plugin: true,
       },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
     });
 
     res.json({
@@ -202,15 +211,15 @@ router.get('/:guildId/plugins', requireAdmin, async (req, res) => {
           author: gp.plugin.author,
           type: gp.plugin.type,
           is_template: gp.plugin.is_template,
-          template_category: gp.plugin.template_category
-        }
-      }))
+          template_category: gp.plugin.template_category,
+        },
+      })),
     });
   } catch (error) {
     console.error('Error fetching guild plugins:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch guild plugins'
+      error: 'Failed to fetch guild plugins',
     });
   }
 });
@@ -233,7 +242,7 @@ router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
         if (!hasAdminPermission) {
           return res.status(403).json({
             success: false,
-            error: 'Admin privileges required for this guild'
+            error: 'Admin privileges required for this guild',
           });
         }
       } catch (error) {
@@ -241,25 +250,25 @@ router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
           return res.status(429).json({
             success: false,
             error: error.message,
-            retry_after: error.retryAfter
+            retry_after: error.retryAfter,
           });
         }
       
-      return res.status(503).json({
-        success: false,
-        error: error.message
-      });
-    }
+        return res.status(503).json({
+          success: false,
+          error: error.message,
+        });
+      }
     }
 
     // Get all plugins
-    const allPlugins = await prisma.plugin.findMany({
-      orderBy: { created_at: 'desc' }
+    const allPlugins = await getPrisma().plugin.findMany({
+      orderBy: { created_at: 'desc' },
     });
 
     // Get guild-specific plugin settings
-    const guildPlugins = await prisma.guildPlugin.findMany({
-      where: { guild_id: guildId }
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
+      where: { guild_id: guildId },
     });
 
     // Create a map for quick lookup
@@ -284,19 +293,19 @@ router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
         is_template: plugin.is_template,
         template_category: plugin.template_category,
         created_at: plugin.created_at,
-        updated_at: plugin.updated_at
+        updated_at: plugin.updated_at,
       };
     });
 
     res.json({
       success: true,
-      data: pluginsWithGuildStatus
+      data: pluginsWithGuildStatus,
     });
   } catch (error) {
     console.error('Error fetching all plugins with guild status:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch plugins with guild status'
+      error: 'Failed to fetch plugins with guild status',
     });
   }
 });
@@ -320,7 +329,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
         if (!hasAdminPermission) {
           return res.status(403).json({
             success: false,
-            error: 'Admin privileges required for this guild'
+            error: 'Admin privileges required for this guild',
           });
         }
       } catch (error) {
@@ -328,63 +337,63 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
           return res.status(429).json({
             success: false,
             error: error.message,
-            retry_after: error.retryAfter
+            retry_after: error.retryAfter,
           });
         }
       
-      return res.status(503).json({
-        success: false,
-        error: error.message
-      });
-    }
+        return res.status(503).json({
+          success: false,
+          error: error.message,
+        });
+      }
     }
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
-      where: { id: guildId }
+    const guild = await getPrisma().guild.findUnique({
+      where: { id: guildId },
     });
 
     if (!guild) {
       return res.status(404).json({
         success: false,
-        error: 'Guild not found'
+        error: 'Guild not found',
       });
     }
 
     // Ensure plugin exists
-    const plugin = await prisma.plugin.findUnique({
-      where: { id: pluginId }
+    const plugin = await getPrisma().plugin.findUnique({
+      where: { id: pluginId },
     });
 
     if (!plugin) {
       return res.status(404).json({
         success: false,
-        error: 'Plugin not found'
+        error: 'Plugin not found',
       });
     }
 
     // Upsert guild plugin relationship
-    const guildPlugin = await prisma.guildPlugin.upsert({
+    const guildPlugin = await getPrisma().guildPlugin.upsert({
       where: {
         guild_id_plugin_id: {
           guild_id: guildId,
-          plugin_id: pluginId
-        }
+          plugin_id: pluginId,
+        },
       },
       update: {
         enabled: enabled !== undefined ? enabled : true,
-        settings: settings || {}
+        settings: settings || {},
       },
       create: {
         guild_id: guildId,
         plugin_id: pluginId,
         enabled: enabled !== undefined ? enabled : true,
-        settings: settings || {}
-      }
+        settings: settings || {},
+      },
     });
 
     // Create audit log
-    await prisma.auditLog.create({
+    await getPrisma().auditLog.create({
       data: {
         user_id: req.user.id,
         action: enabled ? 'ENABLE_GUILD_PLUGIN' : 'DISABLE_GUILD_PLUGIN',
@@ -394,21 +403,21 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
           guild_id: guildId,
           plugin_id: pluginId,
           plugin_name: plugin.name,
-          enabled: guildPlugin.enabled
-        }
-      }
+          enabled: guildPlugin.enabled,
+        },
+      },
     });
 
     res.json({
       success: true,
       message: `Plugin ${enabled ? 'enabled' : 'disabled'} for guild`,
-      data: guildPlugin
+      data: guildPlugin,
     });
   } catch (error) {
     console.error('Error updating guild plugin:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update guild plugin'
+      error: 'Failed to update guild plugin',
     });
   }
 });
@@ -422,14 +431,14 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
     const { guildId } = req.params;
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
-      where: { id: guildId }
+    const guild = await getPrisma().guild.findUnique({
+      where: { id: guildId },
     });
 
     if (!guild) {
       return res.status(404).json({
         success: false,
-        error: 'Guild not found'
+        error: 'Guild not found',
       });
     }
 
@@ -438,14 +447,14 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
     
     try {
       const response = await axios.post(`${botApiUrl}/api/bot/sync-guild-commands`, {
-        guildId: guildId
+        guildId: guildId,
       }, {
-        timeout: 10000
+        timeout: 10000,
       });
 
       if (response.data.success) {
         // Create audit log
-        await prisma.auditLog.create({
+        await getPrisma().auditLog.create({
           data: {
             user_id: req.user.id,
             action: 'SYNC_GUILD_COMMANDS',
@@ -454,9 +463,9 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
             details: {
               guild_id: guildId,
               guild_name: guild.name,
-              commands_registered: response.data.commands_registered || 0
-            }
-          }
+              commands_registered: response.data.commands_registered || 0,
+            },
+          },
         });
 
         res.json({
@@ -464,8 +473,8 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
           message: 'Guild commands synced successfully',
           data: {
             guild_id: guildId,
-            commands_registered: response.data.commands_registered || 0
-          }
+            commands_registered: response.data.commands_registered || 0,
+          },
         });
       } else {
         throw new Error(response.data.error || 'Failed to sync commands');
@@ -474,14 +483,14 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
       console.error('Bot API error:', botError.message);
       res.status(500).json({
         success: false,
-        error: 'Failed to sync guild commands - bot service unavailable'
+        error: 'Failed to sync guild commands - bot service unavailable',
       });
     }
   } catch (error) {
     console.error('Error syncing guild commands:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to sync guild commands'
+      error: 'Failed to sync guild commands',
     });
   }
 });
@@ -494,7 +503,7 @@ router.get('/:guildId', requireAdmin, async (req, res) => {
   try {
     const { guildId } = req.params;
 
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
       include: {
         guild_plugins: {
@@ -506,18 +515,18 @@ router.get('/:guildId', requireAdmin, async (req, res) => {
                 type: true,
                 description: true,
                 is_template: true,
-                template_category: true
-              }
-            }
-          }
-        }
-      }
+                template_category: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!guild) {
       return res.status(404).json({
         success: false,
-        error: 'Guild not found'
+        error: 'Guild not found',
       });
     }
 
@@ -536,15 +545,15 @@ router.get('/:guildId', requireAdmin, async (req, res) => {
           enabled: gp.enabled,
           settings: gp.settings,
           created_at: gp.created_at,
-          plugin: gp.plugin
-        }))
-      }
+          plugin: gp.plugin,
+        })),
+      },
     });
   } catch (error) {
     console.error('Error fetching guild:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch guild'
+      error: 'Failed to fetch guild',
     });
   }
 });
@@ -568,7 +577,7 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
         if (!hasAdminPermission) {
           return res.status(403).json({
             success: false,
-            error: 'Admin privileges required for this guild'
+            error: 'Admin privileges required for this guild',
           });
         }
       } catch (error) {
@@ -576,47 +585,47 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
           return res.status(429).json({
             success: false,
             error: error.message,
-            retry_after: error.retryAfter
+            retry_after: error.retryAfter,
           });
         }
       
-      return res.status(503).json({
-        success: false,
-        error: error.message
-      });
-    }
+        return res.status(503).json({
+          success: false,
+          error: error.message,
+        });
+      }
     }
 
     if (!settings || typeof settings !== 'object') {
       return res.status(400).json({
         success: false,
-        error: 'Settings must be a valid object'
+        error: 'Settings must be a valid object',
       });
     }
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
-      where: { id: guildId }
+    const guild = await getPrisma().guild.findUnique({
+      where: { id: guildId },
     });
 
     if (!guild) {
       return res.status(404).json({
         success: false,
-        error: 'Guild not found'
+        error: 'Guild not found',
       });
     }
 
     // Update guild settings
-    const updatedGuild = await prisma.guild.update({
+    const updatedGuild = await getPrisma().guild.update({
       where: { id: guildId },
       data: {
         settings: settings,
-        updated_at: new Date()
-      }
+        updated_at: new Date(),
+      },
     });
 
     // Create audit log
-    await prisma.auditLog.create({
+    await getPrisma().auditLog.create({
       data: {
         user_id: req.user.id,
         action: 'UPDATE_GUILD_SETTINGS',
@@ -625,9 +634,9 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
         details: {
           guild_id: guildId,
           guild_name: guild.name,
-          settings_updated: Object.keys(settings)
-        }
-      }
+          settings_updated: Object.keys(settings),
+        },
+      },
     });
 
     res.json({
@@ -637,14 +646,14 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
         id: updatedGuild.id,
         name: updatedGuild.name,
         settings: updatedGuild.settings,
-        updated_at: updatedGuild.updated_at
-      }
+        updated_at: updatedGuild.updated_at,
+      },
     });
   } catch (error) {
     console.error('Error updating guild settings:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update guild settings'
+      error: 'Failed to update guild settings',
     });
   }
 });
@@ -667,7 +676,7 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
         if (!hasAdminPermission) {
           return res.status(403).json({
             success: false,
-            error: 'Admin privileges required for this guild'
+            error: 'Admin privileges required for this guild',
           });
         }
       } catch (error) {
@@ -675,25 +684,25 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
           return res.status(429).json({
             success: false,
             error: error.message,
-            retry_after: error.retryAfter
+            retry_after: error.retryAfter,
           });
         }
       
-      return res.status(503).json({
-        success: false,
-        error: error.message
-      });
-    }
+        return res.status(503).json({
+          success: false,
+          error: error.message,
+        });
+      }
     }
 
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
       select: {
         id: true,
         name: true,
         settings: true,
-        updated_at: true
-      }
+        updated_at: true,
+      },
     });
 
     if (!guild) {
@@ -702,9 +711,9 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
       try {
         const discordResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
           headers: {
-            'Authorization': `Bearer ${req.user.access_token}`
+            'Authorization': `Bearer ${req.user.access_token}`,
           },
-          timeout: 3000
+          timeout: 3000,
         });
         
         const discordGuild = discordResponse.data.find(g => g.id === guildId);
@@ -716,20 +725,20 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
       }
 
       // Create the guild with default settings
-      const newGuild = await prisma.guild.create({
+      const newGuild = await getPrisma().guild.create({
         data: {
           id: guildId,
           name: guildName,
           settings: {
-            botPrefix: '!'
-          }
+            botPrefix: '!',
+          },
         },
         select: {
           id: true,
           name: true,
           settings: true,
-          updated_at: true
-        }
+          updated_at: true,
+        },
       });
 
       return res.json({
@@ -738,8 +747,8 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
           id: newGuild.id,
           name: newGuild.name,
           settings: newGuild.settings || {},
-          updated_at: newGuild.updated_at
-        }
+          updated_at: newGuild.updated_at,
+        },
       });
     }
 
@@ -749,14 +758,14 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
         id: guild.id,
         name: guild.name,
         settings: guild.settings || {},
-        updated_at: guild.updated_at
-      }
+        updated_at: guild.updated_at,
+      },
     });
   } catch (error) {
     console.error('Error fetching guild settings:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch guild settings'
+      error: 'Failed to fetch guild settings',
     });
   }
 });

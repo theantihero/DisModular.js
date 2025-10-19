@@ -10,15 +10,18 @@
     "dev": "node --env-file=../../.env --watch src/index.js",
     "start": "node src/index.js",
     "test": "node --test tests/",
-    "test:watch": "node --test --watch tests/"
+    "test:watch": "node --test --watch tests/",
+    "lint": "eslint src/ tests/ --ext .js",
+    "lint:fix": "eslint src/ tests/ --ext .js --fix",
+    "lint:ci": "eslint src/ tests/ --ext .js --max-warnings 0"
   },
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.1",
     "isolated-vm": "^4.7.2",
     "chokidar": "^3.5.3",
-    "prisma": "^5.7.1",
-    "@prisma/client": "^5.7.1",
+    "prisma": "^6.17.1",
+    "@prisma/client": "^6.17.1",
     "axios": "^1.6.7"
   }
 }

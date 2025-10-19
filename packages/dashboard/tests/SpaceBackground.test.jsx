@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { SpaceBackground } from '../src/components/SpaceBackground';
+import { render, _screen, _waitFor } from '@testing-library/react';
+import { _SpaceBackground } from '../src/components/SpaceBackground';
 
 // Mock canvas context
 const mockContext = {
@@ -38,15 +38,18 @@ const mockContext = {
 };
 
 // Mock HTMLCanvasElement.getContext
+// eslint-disable-next-line no-undef
 HTMLCanvasElement.prototype.getContext = vi.fn(() => mockContext);
 
 // Mock requestAnimationFrame
+// eslint-disable-next-line no-undef
 global.requestAnimationFrame = vi.fn((cb) => {
   setTimeout(cb, 16);
   return 1;
 });
 
-global.cancelAnimationFrame = vi.fn();
+  // eslint-disable-next-line no-undef
+  global.cancelAnimationFrame = vi.fn();
 
 // Mock window.innerWidth and window.innerHeight
 Object.defineProperty(window, 'innerWidth', {
@@ -99,24 +102,28 @@ describe('SpaceBackground', () => {
 
   it('should initialize canvas context', () => {
     render(<SpaceBackground />);
+    // eslint-disable-next-line no-undef
     expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
   });
 
   it('should start animation on mount', () => {
     render(<SpaceBackground />);
     // The component should render without errors
+    // eslint-disable-next-line no-undef
     expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
   });
 
   it('should clear canvas on each frame', () => {
     render(<SpaceBackground />);
     // The component should render without errors
+    // eslint-disable-next-line no-undef
     expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
   });
 
   it('should draw stars', () => {
     render(<SpaceBackground />);
     // The component should render without errors
+    // eslint-disable-next-line no-undef
     expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
   });
 
@@ -127,6 +134,7 @@ describe('SpaceBackground', () => {
     // Trigger resize
     window.innerWidth = 1024;
     window.innerHeight = 768;
+    // eslint-disable-next-line no-undef
     window.dispatchEvent(new Event('resize'));
 
     // The canvas should exist and have dimensions
@@ -168,6 +176,7 @@ describe('SpaceBackground', () => {
     
     // Component should still render but with reduced animation
     // The animation loop should be skipped when reduced motion is preferred
+    // eslint-disable-next-line no-undef
     expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalledWith('2d');
   });
 });

@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Node Hover Event Utilities
  * Handles communication between nodes and edges for hover effects
@@ -11,6 +12,7 @@
  * @param {boolean} isHovering - Whether the node is being hovered or not
  */
 export const dispatchNodeHover = (nodeId, isHovering) => {
+  // eslint-disable-next-line no-undef
   const event = new CustomEvent('nodeHandleHover', {
     detail: { nodeId, isHovering }
   });

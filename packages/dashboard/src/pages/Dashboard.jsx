@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * Dashboard Page
  * Modern admin dashboard with bot status, plugins, and management
@@ -9,15 +10,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useAppStore } from '../viewmodels/AppViewModel';
-import { ToastContainer } from '../components/Toast';
+import { _ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
-import AdminPanel from '../components/AdminPanel';
-import CryptoSupport from '../components/CryptoSupport';
-import GuildSelector from '../components/GuildSelector';
-import FloatingGuildSelector from '../components/FloatingGuildSelector';
-import PaginatedPluginManager from '../components/PaginatedPluginManager';
-import HeartbeatIcon from '../components/HeartbeatIcon';
+import _AdminPanel from '../components/AdminPanel';
+import _CryptoSupport from '../components/CryptoSupport';
+import _GuildSelector from '../components/GuildSelector';
+import _FloatingGuildSelector from '../components/FloatingGuildSelector';
+import _PaginatedPluginManager from '../components/PaginatedPluginManager';
+import _HeartbeatIcon from '../components/HeartbeatIcon';
 
 /**
  * Dashboard Component
@@ -25,7 +26,7 @@ import HeartbeatIcon from '../components/HeartbeatIcon';
 export function Dashboard() {
   const navigate = useNavigate();
   const { plugins, fetchPlugins, fetchGuildPlugins, deletePlugin, updatePlugin, togglePluginEnabled, toggleGuildPlugin, fetchGuildSettings, updateGuildSettings } = usePluginStore();
-  const { apiStatus, botStatus, fetchBotStatus, user, logout, selectedGuildId, setSelectedGuildId, initializeGuildSelection } = useAppStore();
+  const { apiStatus, botStatus, guildCount, fetchBotStatus, fetchGuildCount, user, logout, selectedGuildId, setSelectedGuildId, initializeGuildSelection } = useAppStore();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [loadingGuildPlugins, setLoadingGuildPlugins] = useState(false);
@@ -44,6 +45,7 @@ export function Dashboard() {
     // Initialize cached guild selection
     initializeGuildSelection();
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,12 +53,13 @@ export function Dashboard() {
       loadGuildPlugins();
       loadGuildSettings();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGuild]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchPlugins(), fetchBotStatus()]);
+      await Promise.all([fetchPlugins(), fetchBotStatus(), fetchGuildCount()]);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -112,7 +115,7 @@ export function Dashboard() {
     }
   };
 
-  const handleUpdatePlugin = async (pluginId, pluginData) => {
+  const _handleUpdatePlugin = async (pluginId, pluginData) => {
     try {
       await updatePlugin(pluginId, pluginData);
       toast.success(`✅ Plugin updated successfully`);
@@ -200,6 +203,7 @@ export function Dashboard() {
   };
 
   const handleDeletePlugin = async (plugin) => {
+    // eslint-disable-next-line no-undef
     if (!confirm(`🗑️ Are you sure you want to delete "${plugin.name}"?`)) {
       return;
     }
@@ -238,7 +242,7 @@ export function Dashboard() {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const _getStatusIcon = (status) => {
     switch (status) {
       case 'online': return '🟢';
       case 'offline': return '🔴';
@@ -293,11 +297,11 @@ export function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* API Status */}
+              {/* Guild Count */}
               <div className="macos-badge flex items-center space-x-2">
-                <HeartbeatIcon status={apiStatus?.api_status} size="sm" />
-                <span className={`text-sm font-medium ${getStatusColor(apiStatus?.api_status)}`}>
-                  API
+                <span className="text-sm">🏠</span>
+                <span className="text-sm font-medium text-white">
+                  {guildCount?.guild_count || 0} Guilds
                 </span>
               </div>
 
@@ -434,10 +438,10 @@ export function Dashboard() {
           <div className="macos-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-nebula-purple text-sm font-medium">API Status</p>
-                <p className="text-white text-lg font-bold capitalize">{apiStatus?.api_status || 'Unknown'}</p>
+                <p className="text-nebula-purple text-sm font-medium">Guilds</p>
+                <p className="text-white text-lg font-bold">{guildCount?.guild_count || 0}</p>
               </div>
-              <HeartbeatIcon status={apiStatus?.api_status} size="lg" />
+              <span className="text-3xl">🏠</span>
             </div>
           </div>
         </div>

@@ -21,35 +21,45 @@ import { expect } from 'vitest';
 import { PluginModel } from '../packages/bot/src/models/PluginModel.js';
 import { PluginManager } from '../packages/bot/src/plugins/PluginManager.js';
 import { NodeCompiler } from '../packages/api/src/services/NodeCompiler.js';
+import { TestDatabase } from './setup.js';
+import { MockPluginModel } from './mocks/MockPluginModel.js';
+
+// Set test database URL
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 
 describe('Integration Tests', () => {
   let pluginModel;
   let pluginManager;
   let compiler;
-  const testDbPath = join(process.cwd(), 'tests', 'test.db');
+  let testDb;
 
   beforeAll(async () => {
-    // Create test directory
-    await mkdir(join(process.cwd(), 'tests'), { recursive: true });
-
-    // Initialize components
-    pluginModel = new PluginModel(testDbPath);
+    // Initialize components - use mock in CI mode
+    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+      pluginModel = new MockPluginModel();
+      testDb = null; // No database needed in CI mode
+    } else {
+      // Setup test database
+      testDb = new TestDatabase();
+      await testDb.setup();
+      await testDb.cleanup();
+      pluginModel = new PluginModel(TEST_DATABASE_URL);
+    }
     pluginManager = new PluginManager({ user: { tag: 'TestBot#0000' } }, pluginModel);
     compiler = new NodeCompiler();
   });
 
   afterAll(async () => {
     // Cleanup
-    pluginModel.close();
-    try {
-      await rm(testDbPath);
-    } catch (e) {
-      // Ignore cleanup errors
+    await pluginModel.close();
+    if (testDb) {
+      await testDb.close();
     }
   });
 
   describe('Plugin Creation Flow', () => {
-    it('should create, compile, and register a simple plugin', () => {
+    it('should create, compile, and register a simple plugin', async () => {
       // 1. Define plugin nodes (as created in dashboard)
       const nodes = [
         {
@@ -96,7 +106,7 @@ describe('Integration Tests', () => {
       };
 
       // 5. Save to database
-      const saved = pluginModel.upsert(pluginData);
+      const saved = await pluginModel.upsert(pluginData);
       expect(saved).toBe(true);
 
       // 6. Register with plugin manager
@@ -109,7 +119,7 @@ describe('Integration Tests', () => {
       expect(plugin.name).toBe('Test Hello');
     });
 
-    it('should handle complex plugin with variables and conditions', () => {
+    it('should handle complex plugin with variables and conditions', async () => {
       const nodes = [
         {
           id: 'trigger_1',
@@ -177,14 +187,14 @@ describe('Integration Tests', () => {
         compiled
       };
 
-      pluginModel.upsert(pluginData);
+      await pluginModel.upsert(pluginData);
       const registered = pluginManager.register(pluginData);
       expect(registered).toBe(true);
     });
   });
 
   describe('Plugin State Management', () => {
-    it('should save and retrieve plugin state', () => {
+    it('should save and retrieve plugin state', async () => {
       const pluginId = 'test-state-plugin';
       
       // First create the plugin in the database
@@ -199,21 +209,21 @@ describe('Integration Tests', () => {
         edges: [],
         compiled: '// Test plugin'
       };
-      pluginModel.upsert(pluginData);
+      await pluginModel.upsert(pluginData);
 
       // Save state
-      pluginModel.setState(pluginId, 'counter', 42);
-      pluginModel.setState(pluginId, 'name', 'TestPlugin');
+      await pluginModel.setState(pluginId, 'counter', 42);
+      await pluginModel.setState(pluginId, 'name', 'TestPlugin');
 
       // Retrieve state
-      const counter = pluginModel.getState(pluginId, 'counter');
-      const name = pluginModel.getState(pluginId, 'name');
+      const counter = await pluginModel.getState(pluginId, 'counter');
+      const name = await pluginModel.getState(pluginId, 'name');
 
       expect(counter).toBe(42);
       expect(name).toBe('TestPlugin');
     });
 
-    it('should update existing state', () => {
+    it('should update existing state', async () => {
       const pluginId = 'test-update-state';
       
       // First create the plugin in the database
@@ -227,23 +237,23 @@ describe('Integration Tests', () => {
         edges: [],
         compiled: '// Test plugin'
       };
-      pluginModel.upsert(pluginData);
+      await pluginModel.upsert(pluginData);
 
-      pluginModel.setState(pluginId, 'value', 10);
-      expect(pluginModel.getState(pluginId, 'value')).toBe(10);
+      await pluginModel.setState(pluginId, 'value', 10);
+      expect(await pluginModel.getState(pluginId, 'value')).toBe(10);
 
-      pluginModel.setState(pluginId, 'value', 20);
-      expect(pluginModel.getState(pluginId, 'value')).toBe(20);
+      await pluginModel.setState(pluginId, 'value', 20);
+      expect(await pluginModel.getState(pluginId, 'value')).toBe(20);
     });
 
-    it('should return null for non-existent state', () => {
-      const result = pluginModel.getState('non-existent', 'key');
+    it('should return null for non-existent state', async () => {
+      const result = await pluginModel.getState('non-existent', 'key');
       expect(result).toBeNull();
     });
   });
 
   describe('Plugin Lifecycle', () => {
-    it('should enable and disable plugins', () => {
+    it('should enable and disable plugins', async () => {
       const pluginData = {
         id: 'test-lifecycle',
         name: 'Lifecycle Test',
@@ -261,7 +271,7 @@ describe('Integration Tests', () => {
         compiled: '__resolve("test");'
       };
 
-      pluginModel.upsert(pluginData);
+      await pluginModel.upsert(pluginData);
       pluginManager.register(pluginData);
 
       // Plugin starts enabled
@@ -279,7 +289,7 @@ describe('Integration Tests', () => {
       expect(plugin.enabled).toBe(true);
     });
 
-    it('should unregister and re-register plugins', () => {
+    it('should unregister and re-register plugins', async () => {
       const pluginData = {
         id: 'test-reload',
         name: 'Reload Test',
@@ -297,7 +307,7 @@ describe('Integration Tests', () => {
         compiled: '__resolve("test");'
       };
 
-      pluginModel.upsert(pluginData);
+      await pluginModel.upsert(pluginData);
       pluginManager.register(pluginData);
 
       expect(pluginManager.plugins.has('test-reload')).toBe(true);
@@ -366,25 +376,25 @@ describe('Integration Tests', () => {
   });
 
   describe('Database Operations', () => {
-    it('should retrieve all plugins from database', () => {
-      const plugins = pluginModel.getAll();
+    it('should retrieve all plugins from database', async () => {
+      const plugins = await pluginModel.getAll();
       expect(Array.isArray(plugins)).toBe(true);
       expect(plugins.length).toBeGreaterThan(0);
     });
 
-    it('should retrieve only enabled plugins', () => {
-      const allPlugins = pluginModel.getAll(false);
-      const enabledPlugins = pluginModel.getAll(true);
+    it('should retrieve only enabled plugins', async () => {
+      const allPlugins = await pluginModel.getAll(false);
+      const enabledPlugins = await pluginModel.getAll(true);
 
       expect(enabledPlugins.length).toBeLessThanOrEqual(allPlugins.length);
       expect(enabledPlugins.every(p => p.enabled === true)).toBe(true);
     });
 
-    it('should retrieve plugin by ID', () => {
-      const plugins = pluginModel.getAll();
+    it('should retrieve plugin by ID', async () => {
+      const plugins = await pluginModel.getAll();
       if (plugins.length > 0) {
         const firstPlugin = plugins[0];
-        const retrieved = pluginModel.getById(firstPlugin.id);
+        const retrieved = await pluginModel.getById(firstPlugin.id);
         
         expect(retrieved).not.toBeNull();
         expect(retrieved.id).toBe(firstPlugin.id);
@@ -392,12 +402,12 @@ describe('Integration Tests', () => {
       }
     });
 
-    it('should return null for non-existent plugin', () => {
-      const plugin = pluginModel.getById('non-existent-id');
+    it('should return null for non-existent plugin', async () => {
+      const plugin = await pluginModel.getById('non-existent-id');
       expect(plugin).toBeNull();
     });
 
-    it('should delete plugin from database', () => {
+    it('should delete plugin from database', async () => {
       const pluginData = {
         id: 'test-delete',
         name: 'Delete Test',
@@ -410,11 +420,11 @@ describe('Integration Tests', () => {
         compiled: ''
       };
 
-      pluginModel.upsert(pluginData);
-      expect(pluginModel.getById('test-delete')).not.toBeNull();
+      await pluginModel.upsert(pluginData);
+      expect(await pluginModel.getById('test-delete')).not.toBeNull();
 
-      pluginModel.delete('test-delete');
-      expect(pluginModel.getById('test-delete')).toBeNull();
+      await pluginModel.delete('test-delete');
+      expect(await pluginModel.getById('test-delete')).toBeNull();
     });
   });
 

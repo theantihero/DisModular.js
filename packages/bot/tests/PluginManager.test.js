@@ -17,7 +17,7 @@ import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import { PluginManager } from '../src/plugins/PluginManager.js';
 import { PluginModel } from '../src/models/PluginModel.js';
-import { Client } from 'discord.js';
+// import { Client } from 'discord.js';
 
 describe('PluginManager', () => {
   let pluginManager;
@@ -27,7 +27,7 @@ describe('PluginManager', () => {
   before(() => {
     // Create mock client
     mockClient = {
-      user: { tag: 'TestBot#0000' }
+      user: { tag: 'TestBot#0000' },
     };
 
     // Create test database in memory
@@ -53,7 +53,7 @@ describe('PluginManager', () => {
         type: 'slash',
         enabled: true,
         trigger_command: 'test',
-        compiled: 'console.log("test");'
+        compiled: 'console.log("test");',
       };
 
       const result = pluginManager.register(plugin);
@@ -64,7 +64,7 @@ describe('PluginManager', () => {
     it('should reject plugin without id', () => {
       const plugin = {
         name: 'Test Plugin',
-        compiled: 'console.log("test");'
+        compiled: 'console.log("test");',
       };
 
       const result = pluginManager.register(plugin);
@@ -75,7 +75,7 @@ describe('PluginManager', () => {
     it('should reject plugin without name', () => {
       const plugin = {
         id: 'test-plugin',
-        compiled: 'console.log("test");'
+        compiled: 'console.log("test");',
       };
 
       const result = pluginManager.register(plugin);
@@ -91,7 +91,7 @@ describe('PluginManager', () => {
         type: 'slash',
         enabled: true,
         trigger_command: 'hack',
-        compiled: 'require("fs").readFileSync("/etc/passwd");'
+        compiled: 'require("fs").readFileSync("/etc/passwd");',
       };
 
       const result = pluginManager.register(plugin);
@@ -109,7 +109,7 @@ describe('PluginManager', () => {
         type: 'slash',
         enabled: true,
         trigger_command: 'test',
-        compiled: 'console.log("test");'
+        compiled: 'console.log("test");',
       };
 
       pluginManager.register(plugin);
@@ -136,7 +136,7 @@ describe('PluginManager', () => {
           type: 'slash',
           enabled: true,
           trigger_command: 'slashcmd',
-          compiled: 'console.log("slash");'
+          compiled: 'console.log("slash");',
         },
         {
           id: 'text-plugin',
@@ -145,7 +145,7 @@ describe('PluginManager', () => {
           type: 'text',
           enabled: true,
           trigger_command: 'textcmd',
-          compiled: 'console.log("text");'
+          compiled: 'console.log("text");',
         },
         {
           id: 'both-plugin',
@@ -154,8 +154,8 @@ describe('PluginManager', () => {
           type: 'both',
           enabled: true,
           trigger_command: 'bothcmd',
-          compiled: 'console.log("both");'
-        }
+          compiled: 'console.log("both");',
+        },
       ];
 
       plugins.forEach(p => pluginManager.register(p));
@@ -206,7 +206,7 @@ describe('PluginManager', () => {
         type: 'slash',
         enabled: true,
         trigger_command: 'toggle',
-        compiled: 'console.log("toggle");'
+        compiled: 'console.log("toggle");',
       };
       pluginManager.register(plugin);
     });
@@ -244,7 +244,7 @@ describe('PluginManager', () => {
           type: 'slash',
           enabled: true,
           trigger_command: 'cmd1',
-          compiled: 'console.log("1");'
+          compiled: 'console.log("1");',
         },
         {
           id: 'plugin2',
@@ -253,7 +253,7 @@ describe('PluginManager', () => {
           type: 'text',
           enabled: false,
           trigger_command: 'cmd2',
-          compiled: 'console.log("2");'
+          compiled: 'console.log("2");',
         },
         {
           id: 'plugin3',
@@ -262,8 +262,8 @@ describe('PluginManager', () => {
           type: 'both',
           enabled: true,
           trigger_command: 'cmd3',
-          compiled: 'console.log("3");'
-        }
+          compiled: 'console.log("3");',
+        },
       ];
 
       plugins.forEach(p => pluginManager.register(p));

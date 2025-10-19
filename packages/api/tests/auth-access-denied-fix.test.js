@@ -29,7 +29,7 @@ describe('Access Denied Page Fix', () => {
       username: 'testuser',
       discriminator: '1234',
       access_status: 'denied',
-      access_message: 'Access denied due to insufficient requirements'
+      access_message: 'Access denied due to insufficient requirements',
     };
 
     // Test the logic that would be in the AccessDenied component
@@ -39,7 +39,7 @@ describe('Access Denied Page Fix', () => {
           title: 'Access Request Denied',
           subtitle: 'Your access request has been denied',
           message: user.access_message || 'Your access request has been denied by an administrator.',
-          showReason: true
+          showReason: true,
         };
       }
       
@@ -47,7 +47,7 @@ describe('Access Denied Page Fix', () => {
         title: 'Access Denied',
         subtitle: 'Admin Privileges Required',
         message: 'You don\'t have permission to access the dashboard. This area is restricted to administrators only.',
-        showReason: false
+        showReason: false,
       };
     };
 
@@ -67,20 +67,20 @@ describe('Access Denied Page Fix', () => {
         user: { access_status: 'pending', access_message: null },
         expectedTitle: 'Access Denied',
         expectedSubtitle: 'Admin Privileges Required',
-        expectedShowReason: false
+        expectedShowReason: false,
       },
       {
         user: { access_status: 'denied', access_message: 'Access denied due to insufficient requirements' },
         expectedTitle: 'Access Request Denied',
         expectedSubtitle: 'Your access request has been denied',
-        expectedShowReason: true
+        expectedShowReason: true,
       },
       {
         user: { access_status: 'approved', access_message: null },
         expectedTitle: 'Access Denied',
         expectedSubtitle: 'Admin Privileges Required',
-        expectedShowReason: false
-      }
+        expectedShowReason: false,
+      },
     ];
 
     const getAccessMessage = (user) => {
@@ -89,7 +89,7 @@ describe('Access Denied Page Fix', () => {
           title: 'Access Request Denied',
           subtitle: 'Your access request has been denied',
           message: user.access_message || 'Your access request has been denied by an administrator.',
-          showReason: true
+          showReason: true,
         };
       }
       
@@ -97,7 +97,7 @@ describe('Access Denied Page Fix', () => {
         title: 'Access Denied',
         subtitle: 'Admin Privileges Required',
         message: 'You don\'t have permission to access the dashboard. This area is restricted to administrators only.',
-        showReason: false
+        showReason: false,
       };
     };
 

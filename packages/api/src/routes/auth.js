@@ -6,16 +6,14 @@
 
 import { Router } from 'express';
 import passport from 'passport';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import DiscordApiCacheService, { generateCacheKey, CACHE_TTL } from '../services/DiscordApiCacheService.js';
 
-const prisma = new PrismaClient();
-
 // Cache for bot guild IDs (5 minute TTL)
-let botGuildCache = {
+const botGuildCache = {
   data: null,
   timestamp: 0,
-  ttl: 5 * 60 * 1000 // 5 minutes
+  ttl: 5 * 60 * 1000, // 5 minutes
 };
 
 /**
@@ -35,6 +33,8 @@ async function getBotGuildIds() {
     const botToken = process.env.DISCORD_BOT_TOKEN;
     if (!botToken) {
       console.warn('DISCORD_BOT_TOKEN not found, falling back to database check');
+      const prisma = getPrismaClient();
+      if (!prisma) return new Set(); // Skip if Prisma not available
       const botGuilds = await prisma.guild.findMany({ select: { id: true } });
       const guildSet = new Set(botGuilds.map(g => g.id));
       
@@ -46,12 +46,14 @@ async function getBotGuildIds() {
 
     const response = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
-        'Authorization': `Bot ${botToken}`
-      }
+        'Authorization': `Bot ${botToken}`,
+      },
     });
 
     if (!response.ok) {
       console.warn(`Discord API error for bot guilds: ${response.status}, falling back to database check`);
+      const prisma = getPrismaClient();
+      if (!prisma) return new Set(); // Skip if Prisma not available
       const botGuilds = await prisma.guild.findMany({ select: { id: true } });
       const guildSet = new Set(botGuilds.map(g => g.id));
       
@@ -70,6 +72,8 @@ async function getBotGuildIds() {
     return guildSet;
   } catch (error) {
     console.warn('Error fetching bot guilds:', error.message, 'falling back to database check');
+    const prisma = getPrismaClient();
+    if (!prisma) return new Set(); // Skip if Prisma not available
     const botGuilds = await prisma.guild.findMany({ select: { id: true } });
     const guildSet = new Set(botGuilds.map(g => g.id));
     
@@ -106,7 +110,7 @@ export function createAuthRoutes() {
   router.get(
     '/discord/callback',
     (req, res, next) => {
-      passport.authenticate('discord', (err, user, info) => {
+      passport.authenticate('discord', (err, user, _info) => {
         // Handle rate limiting errors
         if (err && err.oauthError && err.oauthError.statusCode === 429) {
           return res.redirect('/auth/error?reason=rate_limit');
@@ -129,7 +133,7 @@ export function createAuthRoutes() {
           res.redirect('/auth/callback');
         });
       })(req, res, next);
-    }
+    },
   );
 
   /**
@@ -139,20 +143,27 @@ export function createAuthRoutes() {
     if (!req.isAuthenticated()) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
     try {
       // Get user's access token
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
       const user = await prisma.user.findUnique({
-        where: { id: req.user.id }
+        where: { id: req.user.id },
       });
 
       if (!user || !user.access_token) {
         return res.status(400).json({
           success: false,
-          error: 'No Discord access token available'
+          error: 'No Discord access token available',
         });
       }
 
@@ -167,8 +178,8 @@ export function createAuthRoutes() {
         // Fetch user's guilds from Discord API
         const discordResponse = await fetch('https://discord.com/api/users/@me/guilds', {
           headers: {
-            'Authorization': `Bearer ${user.access_token}`
-          }
+            'Authorization': `Bearer ${user.access_token}`,
+          },
         });
 
         if (!discordResponse.ok) {
@@ -183,7 +194,7 @@ export function createAuthRoutes() {
 
       // Filter guilds where user has admin permissions
       const adminGuilds = guilds.filter(guild => 
-        (guild.permissions & 0x8) === 0x8 // Administrator permission
+        (guild.permissions & 0x8) === 0x8, // Administrator permission
       );
 
       // Get actual bot guilds from Discord API
@@ -205,14 +216,14 @@ export function createAuthRoutes() {
           permissions: guild.permissions,
           permissions_new: guild.permissions_new,
           bot_present: botGuildIds.has(guild.id),
-          bot_invite_url: botInviteUrl
-        }))
+          bot_invite_url: botInviteUrl,
+        })),
       });
     } catch (error) {
       console.error('Error fetching user guilds:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch Discord guilds'
+        error: 'Failed to fetch Discord guilds',
       });
     }
   });
@@ -225,7 +236,7 @@ export function createAuthRoutes() {
       if (!req.isAuthenticated()) {
         return res.status(401).json({
           success: false,
-          error: 'Authentication required'
+          error: 'Authentication required',
         });
       }
 
@@ -233,7 +244,7 @@ export function createAuthRoutes() {
       if (!user || !user.access_token) {
         return res.status(400).json({
           success: false,
-          error: 'No Discord access token available'
+          error: 'No Discord access token available',
         });
       }
 
@@ -244,8 +255,8 @@ export function createAuthRoutes() {
       // Fetch fresh guild data from Discord API
       const discordResponse = await fetch('https://discord.com/api/users/@me/guilds', {
         headers: {
-          'Authorization': `Bearer ${user.access_token}`
-        }
+          'Authorization': `Bearer ${user.access_token}`,
+        },
       });
 
       if (!discordResponse.ok) {
@@ -256,7 +267,7 @@ export function createAuthRoutes() {
 
       // Filter guilds where user has admin permissions
       const adminGuilds = guilds.filter(guild => 
-        (guild.permissions & 0x8) === 0x8 // Administrator permission
+        (guild.permissions & 0x8) === 0x8, // Administrator permission
       );
 
       // Get actual bot guilds from Discord API
@@ -281,14 +292,14 @@ export function createAuthRoutes() {
           permissions: guild.permissions,
           permissions_new: guild.permissions_new,
           bot_present: botGuildIds.has(guild.id),
-          bot_invite_url: botInviteUrl
-        }))
+          bot_invite_url: botInviteUrl,
+        })),
       });
     } catch (error) {
       console.error('Error refreshing user guilds:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to refresh Discord guilds'
+        error: 'Failed to refresh Discord guilds',
       });
     }
   });
@@ -300,14 +311,21 @@ export function createAuthRoutes() {
     if (req.isAuthenticated()) {
       try {
         // Refresh user data from database to ensure we have the latest info
+        const prisma = getPrismaClient();
+        if (!prisma) {
+          return res.json({
+            success: true,
+            user: req.user,
+          });
+        }
         const freshUser = await prisma.user.findUnique({
-          where: { id: req.user.id }
+          where: { id: req.user.id },
         });
 
         if (!freshUser) {
           return res.status(401).json({
             success: false,
-            error: 'User not found'
+            error: 'User not found',
           });
         }
 
@@ -328,20 +346,20 @@ export function createAuthRoutes() {
             access_request_message: freshUser.access_request_message,
             admin_notes: freshUser.admin_notes,
             created_at: freshUser.created_at,
-            last_login: freshUser.last_login
-          }
+            last_login: freshUser.last_login,
+          },
         });
       } catch (error) {
         console.error('Error fetching user data:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to fetch user data'
+          error: 'Failed to fetch user data',
         });
       }
     } else {
       res.status(401).json({
         success: false,
-        error: 'Not authenticated'
+        error: 'Not authenticated',
       });
     }
   });
@@ -354,15 +372,15 @@ export function createAuthRoutes() {
       if (err) {
         return res.status(500).json({
           success: false,
-          error: 'Failed to logout'
+          error: 'Failed to logout',
         });
       }
       
       res.json({
         success: true,
         data: {
-          message: 'Logged out successfully'
-        }
+          message: 'Logged out successfully',
+        },
       });
     });
   });
@@ -374,7 +392,7 @@ export function createAuthRoutes() {
     if (!req.isAuthenticated()) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -385,20 +403,27 @@ export function createAuthRoutes() {
       if (message && message.length > 500) {
         return res.status(400).json({
           success: false,
-          error: 'Message must be 500 characters or less'
+          error: 'Message must be 500 characters or less',
         });
       }
 
       // Check if user already has a pending request
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
       const existingUser = await prisma.user.findUnique({
         where: { id: req.user.id },
-        select: { access_status: true, access_requested_at: true }
+        select: { access_status: true, access_requested_at: true },
       });
 
       if (existingUser?.access_status === 'pending') {
         return res.status(400).json({
           success: false,
-          error: 'You already have a pending access request. Please wait for an administrator to review it.'
+          error: 'You already have a pending access request. Please wait for an administrator to review it.',
         });
       }
 
@@ -408,19 +433,19 @@ export function createAuthRoutes() {
         data: {
           access_requested_at: new Date(),
           access_request_message: message || null,
-          access_status: 'pending'
-        }
+          access_status: 'pending',
+        },
       });
 
       res.json({
         success: true,
-        message: 'Access request submitted successfully'
+        message: 'Access request submitted successfully',
       });
     } catch (error) {
       console.error('Error submitting access request:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to submit access request'
+        error: 'Failed to submit access request',
       });
     }
   });
@@ -428,23 +453,57 @@ export function createAuthRoutes() {
   /**
    * Get user access status
    */
-  router.get('/access-status', (req, res) => {
+  router.get('/access-status', async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
-    res.json({
-      success: true,
-      data: {
-        access_status: req.user.data?.access_status || req.user.access_status,
-        access_message: req.user.data?.access_message || req.user.access_message,
-        access_requested_at: req.user.data?.access_requested_at || req.user.access_requested_at,
-        access_request_message: req.user.data?.access_request_message || req.user.access_request_message
+    try {
+      // Fetch fresh user data from database to ensure we have the latest info
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
       }
-    });
+
+      const freshUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          access_status: true,
+          access_message: true,
+          access_requested_at: true,
+          access_request_message: true,
+        },
+      });
+
+      if (!freshUser) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          access_status: freshUser.access_status,
+          access_message: freshUser.access_message,
+          access_requested_at: freshUser.access_requested_at,
+          access_request_message: freshUser.access_request_message,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching user access status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch access status',
+      });
+    }
   });
 
   /**
@@ -457,28 +516,28 @@ export function createAuthRoutes() {
       rate_limit: {
         title: 'Discord Rate Limit',
         message: 'Discord is temporarily rate limiting OAuth requests. Please wait 1-2 minutes and try again.',
-        code: 429
+        code: 429,
       },
       oauth_failed: {
         title: 'OAuth Failed',
         message: 'Failed to authenticate with Discord. Please check your Discord app credentials.',
-        code: 401
+        code: 401,
       },
       no_user: {
         title: 'User Not Found',
         message: 'Could not retrieve user information from Discord.',
-        code: 401
+        code: 401,
       },
       login_failed: {
         title: 'Login Failed',
         message: 'Failed to create session. Please try again.',
-        code: 500
+        code: 500,
       },
       unknown: {
         title: 'Authentication Failed',
         message: 'An unknown error occurred during authentication.',
-        code: 401
-      }
+        code: 401,
+      },
     };
     
     const error = errorMessages[reason] || errorMessages.unknown;
@@ -487,7 +546,7 @@ export function createAuthRoutes() {
       success: false,
       error: error.title,
       message: error.message,
-      reason: reason
+      reason: reason,
     });
   });
 

@@ -24,10 +24,10 @@ describe('NodeCompiler', () => {
     it('should accept valid node graph', () => {
       const nodes = [
         { id: '1', type: 'trigger', data: { label: 'Trigger' } },
-        { id: '2', type: 'response', data: { label: 'Response' } }
+        { id: '2', type: 'response', data: { label: 'Response' } },
       ];
       const edges = [
-        { id: 'e1', source: '1', target: '2' }
+        { id: 'e1', source: '1', target: '2' },
       ];
 
       const result = compiler.validate(nodes, edges);
@@ -37,7 +37,7 @@ describe('NodeCompiler', () => {
 
     it('should reject graph without trigger node', () => {
       const nodes = [
-        { id: '1', type: 'response', data: { label: 'Response' } }
+        { id: '1', type: 'response', data: { label: 'Response' } },
       ];
       const edges = [];
 
@@ -50,7 +50,7 @@ describe('NodeCompiler', () => {
       const nodes = [
         { id: '1', type: 'trigger', data: { label: 'Trigger 1' } },
         { id: '2', type: 'trigger', data: { label: 'Trigger 2' } },
-        { id: '3', type: 'response', data: { label: 'Response' } }
+        { id: '3', type: 'response', data: { label: 'Response' } },
       ];
       const edges = [];
 
@@ -61,7 +61,7 @@ describe('NodeCompiler', () => {
 
     it('should reject graph without response node', () => {
       const nodes = [
-        { id: '1', type: 'trigger', data: { label: 'Trigger' } }
+        { id: '1', type: 'trigger', data: { label: 'Trigger' } },
       ];
       const edges = [];
 
@@ -74,10 +74,10 @@ describe('NodeCompiler', () => {
       const nodes = [
         { id: '1', type: 'trigger', data: { label: 'Trigger' } },
         { id: '2', type: 'response', data: { label: 'Response' } },
-        { id: '3', type: 'variable', data: { label: 'Orphan' } }
+        { id: '3', type: 'variable', data: { label: 'Orphan' } },
       ];
       const edges = [
-        { id: 'e1', source: '1', target: '2' }
+        { id: 'e1', source: '1', target: '2' },
       ];
 
       const result = compiler.validate(nodes, edges);
@@ -92,16 +92,16 @@ describe('NodeCompiler', () => {
         {
           id: '1',
           type: 'trigger',
-          data: { label: 'Command', config: { command: 'test' } }
+          data: { label: 'Command', config: { command: 'test' } },
         },
         {
           id: '2',
           type: 'response',
-          data: { label: 'Reply', config: { message: 'Hello!' } }
-        }
+          data: { label: 'Reply', config: { message: 'Hello!' } },
+        },
       ];
       const edges = [
-        { id: 'e1', source: '1', target: '2' }
+        { id: 'e1', source: '1', target: '2' },
       ];
 
       const code = compiler.compile(nodes, edges);
@@ -116,30 +116,30 @@ describe('NodeCompiler', () => {
         {
           id: '1',
           type: 'trigger',
-          data: { label: 'Command' }
+          data: { label: 'Command' },
         },
         {
           id: '2',
           type: 'variable',
           data: {
             label: 'Get User',
-            config: { name: 'username', type: 'user_name' }
-          }
+            config: { name: 'username', type: 'user_name' },
+          },
         },
         {
           id: '3',
           type: 'response',
-          data: { label: 'Reply', config: { message: 'Hi {username}!' } }
-        }
+          data: { label: 'Reply', config: { message: 'Hi {username}!' } },
+        },
       ];
       const edges = [
         { id: 'e1', source: '1', target: '2' },
-        { id: 'e2', source: '2', target: '3' }
+        { id: 'e2', source: '2', target: '3' },
       ];
 
       const code = compiler.compile(nodes, edges);
 
-      assert.ok(code.includes("variables['username']"));
+      assert.ok(code.includes('variables[\'username\']'));
       assert.ok(code.includes('user?.username'));
     });
 
@@ -148,31 +148,31 @@ describe('NodeCompiler', () => {
         {
           id: '1',
           type: 'trigger',
-          data: { label: 'Command' }
+          data: { label: 'Command' },
         },
         {
           id: '2',
           type: 'condition',
           data: {
             label: 'Check',
-            config: { condition: 'true' }
-          }
+            config: { condition: 'true' },
+          },
         },
         {
           id: '3',
           type: 'response',
-          data: { label: 'True Response', config: { message: 'True!' } }
+          data: { label: 'True Response', config: { message: 'True!' } },
         },
         {
           id: '4',
           type: 'response',
-          data: { label: 'False Response', config: { message: 'False!' } }
-        }
+          data: { label: 'False Response', config: { message: 'False!' } },
+        },
       ];
       const edges = [
         { id: 'e1', source: '1', target: '2' },
         { id: 'e2', source: '2', target: '3', sourceHandle: 'true' },
-        { id: 'e3', source: '2', target: '4', sourceHandle: 'false' }
+        { id: 'e3', source: '2', target: '4', sourceHandle: 'false' },
       ];
 
       const code = compiler.compile(nodes, edges);
@@ -188,25 +188,25 @@ describe('NodeCompiler', () => {
         {
           id: '1',
           type: 'trigger',
-          data: { label: 'Command' }
+          data: { label: 'Command' },
         },
         {
           id: '2',
           type: 'action',
           data: {
             label: 'Wait',
-            config: { actionType: 'wait', duration: 1000 }
-          }
+            config: { actionType: 'wait', duration: 1000 },
+          },
         },
         {
           id: '3',
           type: 'response',
-          data: { label: 'Reply', config: { message: 'Done!' } }
-        }
+          data: { label: 'Reply', config: { message: 'Done!' } },
+        },
       ];
       const edges = [
         { id: 'e1', source: '1', target: '2' },
-        { id: 'e2', source: '2', target: '3' }
+        { id: 'e2', source: '2', target: '3' },
       ];
 
       const code = compiler.compile(nodes, edges);
@@ -220,30 +220,30 @@ describe('NodeCompiler', () => {
         {
           id: '1',
           type: 'trigger',
-          data: { label: 'Command' }
+          data: { label: 'Command' },
         },
         {
           id: '2',
           type: 'data',
           data: {
             label: 'Get Server',
-            config: { dataType: 'server_name', name: 'server' }
-          }
+            config: { dataType: 'server_name', name: 'server' },
+          },
         },
         {
           id: '3',
           type: 'response',
-          data: { label: 'Reply', config: { message: 'Server: {server}' } }
-        }
+          data: { label: 'Reply', config: { message: 'Server: {server}' } },
+        },
       ];
       const edges = [
         { id: 'e1', source: '1', target: '2' },
-        { id: 'e2', source: '2', target: '3' }
+        { id: 'e2', source: '2', target: '3' },
       ];
 
       const code = compiler.compile(nodes, edges);
 
-      assert.ok(code.includes("variables['server']"));
+      assert.ok(code.includes('variables[\'server\']'));
       assert.ok(code.includes('guild?.name'));
     });
   });
@@ -251,13 +251,13 @@ describe('NodeCompiler', () => {
   describe('interpolateVariables', () => {
     it('should interpolate single variable', () => {
       const result = compiler.interpolateVariables('Hello {name}!');
-      assert.ok(result.includes("variables['name']"));
+      assert.ok(result.includes('variables[\'name\']'));
     });
 
     it('should interpolate multiple variables', () => {
       const result = compiler.interpolateVariables('Hello {first} {last}!');
-      assert.ok(result.includes("variables['first']"));
-      assert.ok(result.includes("variables['last']"));
+      assert.ok(result.includes('variables[\'first\']'));
+      assert.ok(result.includes('variables[\'last\']'));
     });
 
     it('should not modify text without variables', () => {
@@ -270,10 +270,10 @@ describe('NodeCompiler', () => {
     it('should build graph from nodes and edges', () => {
       const nodes = [
         { id: '1', type: 'trigger', data: {} },
-        { id: '2', type: 'response', data: {} }
+        { id: '2', type: 'response', data: {} },
       ];
       const edges = [
-        { id: 'e1', source: '1', target: '2' }
+        { id: 'e1', source: '1', target: '2' },
       ];
 
       const graph = compiler.buildExecutionGraph(nodes, edges);
@@ -296,13 +296,13 @@ describe('NodeCompiler', () => {
         { id: '1', type: 'trigger', data: {} },
         { id: '2', type: 'variable', data: {} },
         { id: '3', type: 'variable', data: {} },
-        { id: '4', type: 'response', data: {} }
+        { id: '4', type: 'response', data: {} },
       ];
       const edges = [
         { id: 'e1', source: '1', target: '2' },
         { id: 'e2', source: '1', target: '3' },
         { id: 'e3', source: '2', target: '4' },
-        { id: 'e4', source: '3', target: '4' }
+        { id: 'e4', source: '3', target: '4' },
       ];
 
       const graph = compiler.buildExecutionGraph(nodes, edges);

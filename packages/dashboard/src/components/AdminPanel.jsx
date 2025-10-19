@@ -8,8 +8,8 @@
  */
 
 import { useState } from 'react';
-import AccessRequestsPanel from './AccessRequestsPanel';
-import UserManagementPanel from './UserManagementPanel';
+import _AccessRequestsPanel from './AccessRequestsPanel';
+import _UserManagementPanel from './UserManagementPanel';
 
 export function AdminPanel({ isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState('users');

@@ -6,17 +6,24 @@
 
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import axios from 'axios';
 
-const prisma = new PrismaClient();
+// Helper function to get Prisma client with error handling
+function getPrisma() {
+  const prisma = getPrismaClient();
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  return prisma;
+}
 
 /**
  * Create bot routes
  * @param {Object} db - Database instance
  * @returns {Router} Express router
  */
-export function createBotRoutes(db) {
+export function createBotRoutes(_db) {
   const router = Router();
 
   /**
@@ -26,8 +33,8 @@ export function createBotRoutes(db) {
     try {
       // Get plugin statistics from database
       const [totalPlugins, enabledPlugins] = await Promise.all([
-        prisma.plugin.count(),
-        prisma.plugin.count({ where: { enabled: true } })
+        getPrisma().plugin.count(),
+        getPrisma().plugin.count({ where: { enabled: true } }),
       ]);
 
       res.json({
@@ -38,15 +45,38 @@ export function createBotRoutes(db) {
           plugins: {
             total: totalPlugins,
             enabled: enabledPlugins,
-            disabled: totalPlugins - enabledPlugins
+            disabled: totalPlugins - enabledPlugins,
           },
-          version: '0.0.1'
-        }
+          version: '0.0.1',
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to get API status'
+        error: 'Failed to get API status',
+      });
+    }
+  });
+
+  /**
+   * Get guild count statistics (read-only, requires auth)
+   * @date 2025-01-27
+   */
+  router.get('/guild-count', requireAuth, async (req, res) => {
+    try {
+      const guildCount = await getPrisma().guild.count();
+
+      res.json({
+        success: true,
+        data: {
+          guild_count: guildCount,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get guild count',
       });
     }
   });
@@ -60,7 +90,7 @@ export function createBotRoutes(db) {
       
       try {
         const response = await axios.get(`${botApiUrl}/api/bot/status`, {
-          timeout: 3000
+          timeout: 3000,
         });
 
         res.json({
@@ -70,12 +100,12 @@ export function createBotRoutes(db) {
             bot_uptime: response.data.uptime || 0,
             bot_guilds: response.data.guilds || 0,
             bot_users: response.data.users || 0,
-            last_heartbeat: response.data.last_heartbeat || null
-          }
+            last_heartbeat: response.data.last_heartbeat || null,
+          },
         });
       } catch (botError) {
         // Check if bot is actually running by checking guild count in database
-        const guildCount = await prisma.guild.count();
+        const guildCount = await getPrisma().guild.count();
         
         if (guildCount > 0) {
           // Bot is likely online if there are guilds in the database
@@ -87,8 +117,8 @@ export function createBotRoutes(db) {
               bot_guilds: guildCount,
               bot_users: 0,
               last_heartbeat: null,
-              note: 'Status inferred from database'
-            }
+              note: 'Status inferred from database',
+            },
           });
         } else {
           // Bot service is not available and no guilds found
@@ -100,15 +130,15 @@ export function createBotRoutes(db) {
               bot_guilds: 0,
               bot_users: 0,
               last_heartbeat: null,
-              error: 'Bot service unavailable'
-            }
+              error: 'Bot service unavailable',
+            },
           });
         }
       }
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to get bot status'
+        error: 'Failed to get bot status',
       });
     }
   });
@@ -118,7 +148,7 @@ export function createBotRoutes(db) {
    */
   router.get('/config', requireAuth, async (req, res) => {
     try {
-      const configs = await prisma.botConfig.findMany();
+      const configs = await getPrisma().botConfig.findMany();
       
       const configObj = {};
       for (const config of configs) {
@@ -127,12 +157,12 @@ export function createBotRoutes(db) {
 
       res.json({
         success: true,
-        data: configObj
+        data: configObj,
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to get bot configuration'
+        error: 'Failed to get bot configuration',
       });
     }
   });
@@ -147,26 +177,26 @@ export function createBotRoutes(db) {
       if (!key) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required field: key'
+          error: 'Missing required field: key',
         });
       }
 
-      await prisma.botConfig.upsert({
+      await getPrisma().botConfig.upsert({
         where: { key },
         update: { value },
-        create: { key, value }
+        create: { key, value },
       });
 
       res.json({
         success: true,
         data: {
-          message: 'Configuration updated'
-        }
+          message: 'Configuration updated',
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to update configuration'
+        error: 'Failed to update configuration',
       });
     }
   });
@@ -177,29 +207,29 @@ export function createBotRoutes(db) {
   router.get('/audit', requireAdmin, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 50;
-      const logs = await prisma.auditLog.findMany({
+      const logs = await getPrisma().auditLog.findMany({
         take: limit,
         orderBy: {
-          created_at: 'desc'
+          created_at: 'desc',
         },
         include: {
           user: {
             select: {
               username: true,
-              discord_id: true
-            }
-          }
-        }
+              discord_id: true,
+            },
+          },
+        },
       });
 
       res.json({
         success: true,
-        data: logs
+        data: logs,
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        error: 'Failed to get audit logs'
+        error: 'Failed to get audit logs',
       });
     }
   });
@@ -214,7 +244,7 @@ export function createBotRoutes(db) {
       if (!address) {
         return res.status(400).json({
           success: false,
-          error: 'Address is required'
+          error: 'Address is required',
         });
       }
 
@@ -226,13 +256,13 @@ export function createBotRoutes(db) {
       
       res.json({
         success: true,
-        data: { locations }
+        data: { locations },
       });
     } catch (error) {
       console.error('Geocoding error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to geocode address'
+        error: 'Failed to geocode address',
       });
     }
   });

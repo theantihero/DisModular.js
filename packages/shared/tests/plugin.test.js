@@ -9,7 +9,7 @@ import assert from 'node:assert';
 import { 
   PluginTypes, 
   NodeTypes, 
-  TriggerTypes 
+  TriggerTypes, 
 } from '../types/plugin.js';
 
 describe('Plugin Types', () => {
@@ -64,7 +64,7 @@ describe('Plugin Types', () => {
     it('should have all expected node types', () => {
       const expectedTypes = [
         'trigger', 'action', 'condition', 
-        'variable', 'response', 'data'
+        'variable', 'response', 'data',
       ];
       const actualTypes = Object.values(NodeTypes);
       
@@ -150,7 +150,7 @@ describe('Plugin Types', () => {
         type: PluginTypes.SLASH,
         enabled: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       assert.strictEqual(typeof pluginMetadata.id, 'string');
@@ -167,7 +167,7 @@ describe('Plugin Types', () => {
     it('should have valid plugin trigger structure', () => {
       const pluginTrigger = {
         type: TriggerTypes.COMMAND,
-        command: 'test-command'
+        command: 'test-command',
       };
 
       assert.ok(Object.values(TriggerTypes).includes(pluginTrigger.type));
@@ -182,8 +182,8 @@ describe('Plugin Types', () => {
         data: {
           type: NodeTypes.TRIGGER,
           label: 'Test Node',
-          config: { command: 'test' }
-        }
+          config: { command: 'test' },
+        },
       };
 
       assert.strictEqual(typeof flowNode.id, 'string');
@@ -200,7 +200,7 @@ describe('Plugin Types', () => {
         source: 'node-1',
         target: 'node-2',
         sourceHandle: 'output',
-        targetHandle: 'input'
+        targetHandle: 'input',
       };
 
       assert.strictEqual(typeof flowEdge.id, 'string');

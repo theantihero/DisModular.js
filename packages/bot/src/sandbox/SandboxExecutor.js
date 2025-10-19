@@ -115,8 +115,8 @@ export class SandboxExecutor {
       const result = await Promise.race([
         responsePromise,
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Execution timeout')), this.timeout)
-        )
+          setTimeout(() => reject(new Error('Execution timeout')), this.timeout),
+        ),
       ]);
 
       // Send reply to Discord if available
@@ -132,7 +132,7 @@ export class SandboxExecutor {
       
       // Log error unless it's a timeout during testing (expected behavior)
       if (!isTestRun || !isTimeout) {
-      logger.error('Sandbox execution failed:', error);
+        logger.error('Sandbox execution failed:', error);
       }
       throw new Error(`Plugin execution failed: ${error.message}`);
     } finally {
@@ -237,7 +237,7 @@ export class SandboxExecutor {
               id: result.id,
               channelId: result.channelId,
               channel: result.channel ? { id: result.channel.id } : null,
-              content: result.content
+              content: result.content,
             });
             try {
               editReplyResults.set(id, JSON.stringify({
@@ -246,8 +246,8 @@ export class SandboxExecutor {
                 channelId: result.channelId || result.channel?.id,
                 content: result.content,
                 channel: result.channel ? {
-                  id: result.channel.id
-                } : null
+                  id: result.channel.id,
+                } : null,
               }));
             } catch (e) {
               logger.error(`[EditReply ${id}] Failed to serialize result:`, e.message);
@@ -255,7 +255,7 @@ export class SandboxExecutor {
                 ok: true,
                 id: result.id || 'unknown',
                 channelId: 'unknown',
-                content: '[Serialization Error]'
+                content: '[Serialization Error]',
               }));
             }
           } catch (error) {
@@ -263,12 +263,12 @@ export class SandboxExecutor {
             try {
               editReplyResults.set(id, JSON.stringify({
                 ok: false,
-                error: error.message
+                error: error.message,
               }));
             } catch (e) {
               editReplyResults.set(id, JSON.stringify({
                 ok: false,
-                error: 'Serialization error'
+                error: 'Serialization error',
               }));
             }
           }
@@ -358,7 +358,7 @@ export class SandboxExecutor {
           messageId = JSON.parse(messageIdJson);
           pollEmojis = JSON.parse(emojisJson);
         } catch (e) {
-          logger.error(`[ReactionCollector] Failed to parse parameters:`, e.message);
+          logger.error('[ReactionCollector] Failed to parse parameters:', e.message);
           return;
         }
         const duration = durationMs;
@@ -380,13 +380,13 @@ export class SandboxExecutor {
             // Create a direct reaction listener
             const reactionHandler = async (reaction, user) => {
               // Check if this is for our message and our emojis
-              if (reaction.message.id !== messageId) return;
+              if (reaction.message.id !== messageId) {return;}
               
               const emojiString = reaction.emoji.id ? reaction.emoji.name : reaction.emoji.toString();
               logger.info(`[ReactionCollector] Direct listener: user=${user.tag}, emoji=${emojiString}, isBot=${user.bot}`);
               
               // Skip bots and non-poll emojis
-              if (user.bot || !pollEmojis.includes(emojiString)) return;
+              if (user.bot || !pollEmojis.includes(emojiString)) {return;}
               
               logger.info(`[ReactionCollector] Processing reaction from ${user.tag} for ${emojiString}`);
               
@@ -414,13 +414,13 @@ export class SandboxExecutor {
                         await otherReaction.users.remove(user.id);
                         logger.info(`[ReactionCollector] Removed ${emoji} from ${user.tag}`);
                       } catch (err) {
-                        logger.error(`[ReactionCollector] Failed to remove reaction:`, err.message);
+                        logger.error('[ReactionCollector] Failed to remove reaction:', err.message);
                       }
                     }
                   }
                 }
               } catch (err) {
-                logger.error(`[ReactionCollector] Failed to fetch message:`, err.message);
+                logger.error('[ReactionCollector] Failed to fetch message:', err.message);
               } finally {
                 votingUsers.delete(user.id);
               }
@@ -489,37 +489,37 @@ export class SandboxExecutor {
                   embeds: [{
                     ...message.embeds[0],
                     footer: {
-                      text: `⏰ Poll ended • ${totalVotes} total vote${totalVotes !== 1 ? 's' : ''}`
+                      text: `⏰ Poll ended • ${totalVotes} total vote${totalVotes !== 1 ? 's' : ''}`,
                     },
                     fields: [
                       ...message.embeds[0].fields.slice(0, 1), // Keep original options field
                       {
                         name: '📊 Results',
                         value: resultsText,
-                        inline: false
-                      }
-                    ]
-                  }]
+                        inline: false,
+                      },
+                    ],
+                  }],
                 });
                 
-                logger.info(`[ReactionCollector] Updated poll message with results`);
+                logger.info('[ReactionCollector] Updated poll message with results');
               } catch (err) {
-                logger.error(`[ReactionCollector] Failed to update poll message:`, err.message);
+                logger.error('[ReactionCollector] Failed to update poll message:', err.message);
                 
                 // Fallback: send a simple end message
                 try {
                   await context.interaction.followUp({
                     content: '⏰ Poll has ended! Check the reactions above for results.',
-                    ephemeral: false
+                    ephemeral: false,
                   });
                 } catch (fallbackErr) {
-                  logger.error(`[ReactionCollector] Failed to send fallback message:`, fallbackErr.message);
+                  logger.error('[ReactionCollector] Failed to send fallback message:', fallbackErr.message);
                 }
               }
             }, duration);
 
           } catch (error) {
-            logger.error(`[ReactionCollector] Error:`, error.message);
+            logger.error('[ReactionCollector] Error:', error.message);
           }
         })();
       });
@@ -640,16 +640,16 @@ export class SandboxExecutor {
         author: {
           id: context.message.author?.id || null,
           username: context.message.author?.username || null,
-          tag: context.message.author?.tag || null
+          tag: context.message.author?.tag || null,
         },
         guild: {
           id: context.message.guild?.id || null,
-          name: context.message.guild?.name || null
+          name: context.message.guild?.name || null,
         },
         channel: {
           id: context.message.channel?.id || null,
-          name: context.message.channel?.name || null
-        }
+          name: context.message.channel?.name || null,
+        },
       };
       await jail.set('message', new ivm.ExternalCopy(safeMessage).copyInto());
     } else {
@@ -675,43 +675,43 @@ export class SandboxExecutor {
       
       logger.info(`[Fetch ${id}] Calling: ${url}`);
       
-          // Start the fetch and store the result when done
-          (async () => {
-            try {
-              const response = await nodeFetch(url, options);
-              logger.info(`[Fetch ${id}] Response status: ${response.status}`);
-              const data = await response.json();
-              logger.info(`[Fetch ${id}] Data received:`, Object.keys(data));
+      // Start the fetch and store the result when done
+      (async () => {
+        try {
+          const response = await nodeFetch(url, options);
+          logger.info(`[Fetch ${id}] Response status: ${response.status}`);
+          const data = await response.json();
+          logger.info(`[Fetch ${id}] Data received:`, Object.keys(data));
               
-              try {
-                fetchResults.set(id, JSON.stringify({
-                  ok: response.ok,
-                  status: response.status,
-                  data: data
-                }));
-              } catch (serializeError) {
-                logger.error(`[Fetch ${id}] Failed to serialize response data:`, serializeError.message);
-                fetchResults.set(id, JSON.stringify({
-                  ok: response.ok,
-                  status: response.status,
-                  data: '[Serialization Error]'
-                }));
-              }
-            } catch (error) {
-              logger.error(`[Fetch ${id}] Error:`, error.message);
-              try {
-                fetchResults.set(id, JSON.stringify({
-                  ok: false,
-                  error: error.message
-                }));
-              } catch (serializeError) {
-                fetchResults.set(id, JSON.stringify({
-                  ok: false,
-                  error: 'Serialization error'
-                }));
-              }
-            }
-          })();
+          try {
+            fetchResults.set(id, JSON.stringify({
+              ok: response.ok,
+              status: response.status,
+              data: data,
+            }));
+          } catch (serializeError) {
+            logger.error(`[Fetch ${id}] Failed to serialize response data:`, serializeError.message);
+            fetchResults.set(id, JSON.stringify({
+              ok: response.ok,
+              status: response.status,
+              data: '[Serialization Error]',
+            }));
+          }
+        } catch (error) {
+          logger.error(`[Fetch ${id}] Error:`, error.message);
+          try {
+            fetchResults.set(id, JSON.stringify({
+              ok: false,
+              error: error.message,
+            }));
+          } catch (serializeError) {
+            fetchResults.set(id, JSON.stringify({
+              ok: false,
+              error: 'Serialization error',
+            }));
+          }
+        }
+      })();
       
       return id;
     });
@@ -821,7 +821,7 @@ export class SandboxExecutor {
       /Function\(/gi,
       /__dirname/gi,
       /__filename/gi,
-      /global\./gi
+      /global\./gi,
     ];
 
     const errors = [];
@@ -834,7 +834,7 @@ export class SandboxExecutor {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -848,7 +848,7 @@ export class SandboxExecutor {
       // Validate the state before serialization
       const validation = validateSerialization(state, {
         maxDepth: 10,
-        includeCircularRefs: true
+        includeCircularRefs: true,
       });
 
       // Only log validation issues if not in test mode
@@ -868,7 +868,7 @@ export class SandboxExecutor {
       return sharedSerializeState(state, {
         maxDepth: 10,
         includeCircularRefs: true,
-        circularRefMarker: '[Circular Reference]'
+        circularRefMarker: '[Circular Reference]',
       });
     } catch (error) {
       logger.error('Failed to serialize state:', error);
@@ -895,16 +895,16 @@ export class SandboxExecutor {
             id: context.interaction.user.id || null,
             username: context.interaction.user.username || null,
             tag: context.interaction.user.tag || null,
-            bot: context.interaction.user.bot || false
+            bot: context.interaction.user.bot || false,
           } : null,
           guild: context.interaction.guild ? {
             id: context.interaction.guild.id || null,
-            name: context.interaction.guild.name || null
+            name: context.interaction.guild.name || null,
           } : null,
           channel: context.interaction.channel ? {
             id: context.interaction.channel.id || null,
-            name: context.interaction.channel.name || null
-          } : null
+            name: context.interaction.channel.name || null,
+          } : null,
         };
       }
 
@@ -912,7 +912,7 @@ export class SandboxExecutor {
       if (context.guild) {
         safeContext.guild = {
           id: context.guild.id || null,
-          name: context.guild.name || null
+          name: context.guild.name || null,
         };
       }
 
@@ -936,7 +936,7 @@ export class SandboxExecutor {
         guildId: context.guildId || null,
         pluginId: context.pluginId || null,
         pluginName: context.pluginName || null,
-        state: {}
+        state: {},
       };
     }
   }

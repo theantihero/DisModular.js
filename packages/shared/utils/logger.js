@@ -58,7 +58,7 @@ export class Logger {
       'Circular reference detected - will be replaced with marker',
       'Max depth',
       'State validation found issues',
-      'Serialization issue at'
+      'Serialization issue at',
     ];
     
     return expectedWarnings.some(pattern => message.includes(pattern));

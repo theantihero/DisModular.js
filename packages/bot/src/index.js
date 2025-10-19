@@ -37,11 +37,11 @@ const config = {
   pluginsDirectory: process.env.PLUGINS_DIR ? join(workspaceRoot, process.env.PLUGINS_DIR) : join(workspaceRoot, 'plugins'),
   // Privileged intents (require enabling in Discord Developer Portal)
   enableMessageContent: process.env.ENABLE_MESSAGE_CONTENT === 'true',
-  enableGuildMembers: process.env.ENABLE_GUILD_MEMBERS === 'true'
+  enableGuildMembers: process.env.ENABLE_GUILD_MEMBERS === 'true',
 };
 
 logger.info('Starting Discord Bot Modular Platform...');
-logger.info(`Database: PostgreSQL with Prisma`);
+logger.info('Database: PostgreSQL with Prisma');
 logger.info(`Plugins Directory: ${config.pluginsDirectory}`);
 logger.info(`Command Prefix: ${config.prefix}`);
 

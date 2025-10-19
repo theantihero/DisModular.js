@@ -36,11 +36,11 @@ describe('Plugin Toggle Functionality Fix', () => {
       plugin: {
         findUnique: () => Promise.resolve({ id: 'test', name: 'Test Plugin', enabled: false }),
         update: () => Promise.resolve({ id: 'test', name: 'Test Plugin', enabled: true }),
-        create: () => Promise.resolve({})
+        create: () => Promise.resolve({}),
       },
       auditLog: {
-        create: () => Promise.resolve({})
-      }
+        create: () => Promise.resolve({}),
+      },
     };
     
     const controller = new PluginController(mockDb, '/tmp/plugins');
@@ -54,13 +54,13 @@ describe('Plugin Toggle Functionality Fix', () => {
   test('should verify frontend API service has toggleEnabled method', () => {
     // Test the API service structure
     const mockApiClient = {
-      patch: (url, data) => Promise.resolve({ data: { success: true } })
+      patch: (_url, _data) => Promise.resolve({ data: { success: true } }),
     };
     
     const api = {
       plugins: {
-        toggleEnabled: (id, enabled) => mockApiClient.patch(`/api/plugins/${id}/toggle`, { enabled })
-      }
+        toggleEnabled: (id, enabled) => mockApiClient.patch(`/api/plugins/${id}/toggle`, { enabled }),
+      },
     };
     
     // Verify the method exists and works
@@ -78,13 +78,13 @@ describe('Plugin Toggle Functionality Fix', () => {
     const mockPlugin = {
       id: 'test-plugin',
       name: 'Test Plugin',
-      enabled: false
+      enabled: false,
     };
 
     const togglePlugin = (plugin, newEnabled) => {
       return {
         ...plugin,
-        enabled: newEnabled
+        enabled: newEnabled,
       };
     };
 

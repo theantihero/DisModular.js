@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { Logger } from '@dismodular/shared';
 
 const logger = new Logger('Database');
@@ -15,15 +15,18 @@ export class DatabaseModel {
    * Initialize Database with Prisma Client
    */
   constructor() {
-    this.prisma = new PrismaClient();
-    logger.info('Prisma Client initialized');
+    this.prisma = null; // Will be initialized lazily
+    logger.info('Database Model initialized');
   }
 
   /**
-   * Get Prisma client instance
-   * @returns {PrismaClient} Prisma client instance
+   * Get Prisma client instance (lazy initialization)
+   * @returns {PrismaClient|null} Prisma client instance or null if not available
    */
   getInstance() {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient();
+    }
     return this.prisma;
   }
 
@@ -31,8 +34,10 @@ export class DatabaseModel {
    * Close database connection
    */
   async close() {
-    await this.prisma.$disconnect();
-    logger.info('Database connection closed');
+    if (this.prisma) {
+      await this.prisma.$disconnect();
+      logger.info('Database connection closed');
+    }
   }
 
   /**
@@ -41,14 +46,19 @@ export class DatabaseModel {
    */
   async addAuditLog(entry) {
     try {
-      await this.prisma.auditLog.create({
+      const prisma = this.getInstance();
+      if (!prisma) {
+        logger.warn('Prisma client not available for audit log');
+        return;
+      }
+      await prisma.auditLog.create({
         data: {
           userId: entry.userId,
           action: entry.action,
           resourceType: entry.resourceType,
           resourceId: entry.resourceId,
-          details: entry.details || {}
-        }
+          details: entry.details || {},
+        },
       });
     } catch (error) {
       logger.error('Failed to add audit log:', error);
@@ -62,6 +72,11 @@ export class DatabaseModel {
    */
   async getAuditLogs(options = {}) {
     try {
+      const prisma = this.getInstance();
+      if (!prisma) {
+        logger.warn('Prisma client not available for audit logs');
+        return [];
+      }
       const where = {};
       
       if (options.userId) {
@@ -72,7 +87,7 @@ export class DatabaseModel {
         where.resourceType = options.resourceType;
       }
 
-      const auditLogs = await this.prisma.auditLog.findMany({
+      const auditLogs = await prisma.auditLog.findMany({
         where,
         orderBy: { created_at: 'desc' },
         take: options.limit,
@@ -81,10 +96,10 @@ export class DatabaseModel {
             select: {
               id: true,
               username: true,
-              discord_id: true
-            }
-          }
-        }
+              discord_id: true,
+            },
+          },
+        },
       });
 
       return auditLogs;
@@ -101,7 +116,11 @@ export class DatabaseModel {
    */
   async upsertUser(userData) {
     try {
-      return await this.prisma.user.upsert({
+      const prisma = this.getInstance();
+      if (!prisma) {
+        throw new Error('Database not available');
+      }
+      return await prisma.user.upsert({
         where: { discord_id: userData.discord_id },
         update: {
           username: userData.username,
@@ -109,7 +128,7 @@ export class DatabaseModel {
           avatar: userData.avatar,
           access_token: userData.access_token,
           refresh_token: userData.refresh_token,
-          last_login: new Date()
+          last_login: new Date(),
         },
         create: {
           discord_id: userData.discord_id,
@@ -119,8 +138,8 @@ export class DatabaseModel {
           access_token: userData.access_token,
           refresh_token: userData.refresh_token,
           is_admin: userData.is_admin || false,
-          admin_notes: userData.admin_notes
-        }
+          admin_notes: userData.admin_notes,
+        },
       });
     } catch (error) {
       logger.error('Failed to upsert user:', error);
@@ -135,8 +154,13 @@ export class DatabaseModel {
    */
   async getUserByDiscordId(discordId) {
     try {
-      return await this.prisma.user.findUnique({
-        where: { discord_id: discordId }
+      const prisma = this.getInstance();
+      if (!prisma) {
+        logger.warn('Prisma client not available for user lookup');
+        return null;
+      }
+      return await prisma.user.findUnique({
+        where: { discord_id: discordId },
       });
     } catch (error) {
       logger.error('Failed to get user by Discord ID:', error);
@@ -152,12 +176,16 @@ export class DatabaseModel {
    */
   async setUserAdmin(userId, isAdmin, notes = null) {
     try {
-      await this.prisma.user.update({
+      const prisma = this.getInstance();
+      if (!prisma) {
+        throw new Error('Database not available');
+      }
+      await prisma.user.update({
         where: { id: userId },
         data: {
           is_admin: isAdmin,
-          admin_notes: notes
-        }
+          admin_notes: notes,
+        },
       });
     } catch (error) {
       logger.error('Failed to set user admin status:', error);
@@ -172,8 +200,13 @@ export class DatabaseModel {
    */
   async getBotConfig(key) {
     try {
-      const config = await this.prisma.botConfig.findUnique({
-        where: { key }
+      const prisma = this.getInstance();
+      if (!prisma) {
+        logger.warn('Prisma client not available for bot config');
+        return null;
+      }
+      const config = await prisma.botConfig.findUnique({
+        where: { key },
       });
       return config ? config.value : null;
     } catch (error) {
@@ -189,10 +222,14 @@ export class DatabaseModel {
    */
   async setBotConfig(key, value) {
     try {
-      await this.prisma.botConfig.upsert({
+      const prisma = this.getInstance();
+      if (!prisma) {
+        throw new Error('Database not available');
+      }
+      await prisma.botConfig.upsert({
         where: { key },
         update: { value },
-        create: { key, value }
+        create: { key, value },
       });
     } catch (error) {
       logger.error('Failed to set bot config:', error);

@@ -83,6 +83,7 @@ export const api = {
   bot: {
     getStatus: () => apiClient.get('/bot/status'),
     getBotStatus: () => apiClient.get('/bot/bot-status'),
+    getGuildCount: () => apiClient.get('/bot/guild-count'),
     getConfig: () => apiClient.get('/bot/config'),
     updateConfig: (key, value) => apiClient.put('/bot/config', { key, value }),
     getAuditLogs: (limit = 50) => apiClient.get(`/bot/audit?limit=${limit}`)

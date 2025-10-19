@@ -5,7 +5,7 @@
  * @date 2025-10-18
  */
 
-import { expect, afterEach, vi } from 'vitest';
+import { _expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
@@ -30,6 +30,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
+// eslint-disable-next-line no-undef
 global.IntersectionObserver = class IntersectionObserver {
   constructor() {}
   disconnect() {}
@@ -41,6 +42,7 @@ global.IntersectionObserver = class IntersectionObserver {
 };
 
 // Mock ResizeObserver
+// eslint-disable-next-line no-undef
 global.ResizeObserver = class ResizeObserver {
   constructor() {}
   disconnect() {}
@@ -50,6 +52,7 @@ global.ResizeObserver = class ResizeObserver {
 
 // Suppress console errors in tests
 const originalError = console.error;
+// eslint-disable-next-line no-undef
 beforeAll(() => {
   console.error = (...args) => {
     if (
@@ -64,6 +67,7 @@ beforeAll(() => {
   };
 });
 
+// eslint-disable-next-line no-undef
 afterAll(() => {
   console.error = originalError;
 });

@@ -5,9 +5,9 @@
  * @date 2025-10-18
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, ThemeContext } from '../src/contexts/ThemeContext';
+import { describe, it, expect, beforeEach, afterEach, _vi } from 'vitest';
+import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
+import { _ThemeProvider, ThemeContext } from '../src/contexts/ThemeContext';
 import { useContext } from 'react';
 
 // Mock localStorage
@@ -26,7 +26,7 @@ Object.defineProperty(window, 'localStorage', {
 });
 
 // Test component that uses theme context
-function TestComponent() {
+function _TestComponent() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   return (
     <div>
@@ -40,11 +40,13 @@ function TestComponent() {
 
 describe('ThemeContext', () => {
   beforeEach(() => {
+    // eslint-disable-next-line no-undef
     localStorage.clear();
     document.documentElement.className = '';
   });
 
   afterEach(() => {
+    // eslint-disable-next-line no-undef
     localStorage.clear();
     document.documentElement.className = '';
   });
@@ -52,7 +54,7 @@ describe('ThemeContext', () => {
   it('should default to space theme when no preference is stored', () => {
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 
@@ -61,11 +63,12 @@ describe('ThemeContext', () => {
   });
 
   it('should load space theme from localStorage', () => {
+    // eslint-disable-next-line no-undef
     localStorage.setItem('dismodular-theme', 'space');
     
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 
@@ -76,7 +79,7 @@ describe('ThemeContext', () => {
   it('should always use space theme regardless of toggle', () => {
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 
@@ -98,26 +101,29 @@ describe('ThemeContext', () => {
   it('should persist space theme to localStorage on change', () => {
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 
     const toggleButton = screen.getByTestId('toggle-button');
 
     // Should start with space theme
+    // eslint-disable-next-line no-undef
     expect(localStorage.getItem('dismodular-theme')).toBe('space');
 
     fireEvent.click(toggleButton);
+    // eslint-disable-next-line no-undef
     expect(localStorage.getItem('dismodular-theme')).toBe('space');
 
     fireEvent.click(toggleButton);
+    // eslint-disable-next-line no-undef
     expect(localStorage.getItem('dismodular-theme')).toBe('space');
   });
 
   it('should update document class to space theme', () => {
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 
@@ -128,11 +134,12 @@ describe('ThemeContext', () => {
   });
 
   it('should handle space theme from localStorage', () => {
+    // eslint-disable-next-line no-undef
     localStorage.setItem('dismodular-theme', 'space');
     
     render(
       <ThemeProvider>
-        <TestComponent />
+        <_TestComponent />
       </ThemeProvider>
     );
 

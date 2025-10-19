@@ -16,7 +16,7 @@ export const authLimiter = rateLimit({
   max: 20,
   message: {
     success: false,
-    error: 'Too many authentication attempts, please try again later'
+    error: 'Too many authentication attempts, please try again later',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -29,7 +29,7 @@ export const authLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 /**
@@ -41,7 +41,7 @@ export const apiLimiter = rateLimit({
   max: 60,
   message: {
     success: false,
-    error: 'Too many requests, please slow down'
+    error: 'Too many requests, please slow down',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -54,7 +54,7 @@ export const apiLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 /**
@@ -66,7 +66,7 @@ export const pluginLimiter = rateLimit({
   max: 200,
   message: {
     success: false,
-    error: 'Too many plugin operations, please slow down'
+    error: 'Too many plugin operations, please slow down',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -79,7 +79,7 @@ export const pluginLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 /**
@@ -91,7 +91,7 @@ export const adminLimiter = rateLimit({
   max: 100,
   message: {
     success: false,
-    error: 'Too many admin operations, please slow down'
+    error: 'Too many admin operations, please slow down',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -104,7 +104,7 @@ export const adminLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 /**
@@ -116,7 +116,7 @@ export const guildLimiter = rateLimit({
   max: 50,
   message: {
     success: false,
-    error: 'Too many guild operations, please slow down'
+    error: 'Too many guild operations, please slow down',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -129,7 +129,7 @@ export const guildLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 /**
@@ -141,7 +141,7 @@ export const templateLimiter = rateLimit({
   max: 30,
   message: {
     success: false,
-    error: 'Too many template operations, please slow down'
+    error: 'Too many template operations, please slow down',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -154,7 +154,7 @@ export const templateLimiter = rateLimit({
     const ip = ipKeyGenerator(req);
     const userAgent = req.get('User-Agent') || 'unknown';
     return `${ip}-${userAgent}`;
-  }
+  },
 });
 
 export default {
@@ -163,5 +163,5 @@ export default {
   pluginLimiter,
   adminLimiter,
   guildLimiter,
-  templateLimiter
+  templateLimiter,
 };

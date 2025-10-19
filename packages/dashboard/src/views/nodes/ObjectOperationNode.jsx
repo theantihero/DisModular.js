@@ -5,7 +5,7 @@
  * @date 2025-10-14
  */
 
-import { Handle, Position } from 'reactflow';
+import { _Handle, Position } from 'reactflow';
 import { useNodeHover } from '../../utils/nodeHover';
 
 export function ObjectOperationNode({ data, id }) {

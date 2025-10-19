@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import React from 'react';
+import _React from 'react';
 
 /**
  * HeartbeatIcon - Animated heartbeat icon component

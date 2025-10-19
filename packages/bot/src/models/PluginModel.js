@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { Logger, safeStringify } from '@dismodular/shared';
 
 const logger = new Logger('PluginModel');
@@ -13,10 +13,23 @@ const logger = new Logger('PluginModel');
 export class PluginModel {
   /**
    * Initialize Plugin Model with Prisma Client
+   * @param {string} databaseUrl - Optional database URL override
    */
-  constructor() {
-    this.prisma = new PrismaClient();
-    logger.info('PluginModel initialized with Prisma');
+  constructor(databaseUrl = null) {
+    this.databaseUrl = databaseUrl;
+    this.prisma = null; // Will be initialized lazily
+    logger.info('PluginModel initialized');
+  }
+
+  /**
+   * Get Prisma client instance (lazy initialization)
+   * @returns {PrismaClient|null} Prisma client instance or null if not available
+   */
+  getPrisma() {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient(this.databaseUrl);
+    }
+    return this.prisma;
   }
 
   /**
@@ -28,9 +41,9 @@ export class PluginModel {
     try {
       const where = enabledOnly ? { enabled: true } : {};
       
-      const plugins = await this.prisma.plugin.findMany({
+      const plugins = await this.getPrisma().plugin.findMany({
         where,
-        orderBy: { created_at: 'desc' }
+        orderBy: { created_at: 'desc' },
       });
       
       return plugins.map(plugin => ({
@@ -43,9 +56,9 @@ export class PluginModel {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
           event: plugin.trigger_event,
-          pattern: plugin.trigger_pattern
+          pattern: plugin.trigger_pattern,
         },
-        trigger_command: plugin.trigger_command // Keep for backward compatibility
+        trigger_command: plugin.trigger_command, // Keep for backward compatibility
       }));
     } catch (error) {
       logger.error('Failed to get plugins:', error);
@@ -60,11 +73,11 @@ export class PluginModel {
    */
   async getById(id) {
     try {
-      const plugin = await this.prisma.plugin.findUnique({
-        where: { id }
+      const plugin = await this.getPrisma().plugin.findUnique({
+        where: { id },
       });
       
-      if (!plugin) return null;
+      if (!plugin) {return null;}
 
       return {
         ...plugin,
@@ -76,9 +89,9 @@ export class PluginModel {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
           event: plugin.trigger_event,
-          pattern: plugin.trigger_pattern
+          pattern: plugin.trigger_pattern,
         },
-        trigger_command: plugin.trigger_command // Keep for backward compatibility
+        trigger_command: plugin.trigger_command, // Keep for backward compatibility
       };
     } catch (error) {
       logger.error(`Failed to get plugin ${id}:`, error);
@@ -93,7 +106,7 @@ export class PluginModel {
    */
   async upsert(pluginData) {
     try {
-      await this.prisma.plugin.upsert({
+      await this.getPrisma().plugin.upsert({
         where: { id: pluginData.id },
         update: {
           name: pluginData.name,
@@ -111,7 +124,7 @@ export class PluginModel {
           edges: pluginData.edges || [],
           compiled: pluginData.compiled || '',
           is_template: pluginData.is_template || false,
-          template_category: pluginData.template_category || null
+          template_category: pluginData.template_category || null,
         },
         create: {
           id: pluginData.id,
@@ -131,8 +144,8 @@ export class PluginModel {
           compiled: pluginData.compiled || '',
           created_by: null, // System-created plugins don't have a specific creator
           is_template: pluginData.is_template || false,
-          template_category: pluginData.template_category || null
-        }
+          template_category: pluginData.template_category || null,
+        },
       });
 
       logger.success(`Plugin ${pluginData.name} saved successfully`);
@@ -150,8 +163,8 @@ export class PluginModel {
    */
   async delete(id) {
     try {
-      await this.prisma.plugin.delete({
-        where: { id }
+      await this.getPrisma().plugin.delete({
+        where: { id },
       });
       logger.success(`Plugin ${id} deleted successfully`);
       return true;
@@ -169,19 +182,19 @@ export class PluginModel {
    */
   async setState(pluginId, key, value) {
     try {
-      await this.prisma.pluginState.upsert({
+      await this.getPrisma().pluginState.upsert({
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
-            key: key
-          }
+            key: key,
+          },
         },
         update: {
           value: safeStringify(value, {
             maxDepth: 10,
             includeCircularRefs: true,
-            circularRefMarker: '[Circular Reference]'
-          })
+            circularRefMarker: '[Circular Reference]',
+          }),
         },
         create: {
           plugin_id: pluginId,
@@ -189,9 +202,9 @@ export class PluginModel {
           value: safeStringify(value, {
             maxDepth: 10,
             includeCircularRefs: true,
-            circularRefMarker: '[Circular Reference]'
-          })
-        }
+            circularRefMarker: '[Circular Reference]',
+          }),
+        },
       });
       return true;
     } catch (error) {
@@ -208,13 +221,13 @@ export class PluginModel {
    */
   async getState(pluginId, key) {
     try {
-      const result = await this.prisma.pluginState.findUnique({
+      const result = await this.getPrisma().pluginState.findUnique({
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
-            key: key
-          }
-        }
+            key: key,
+          },
+        },
       });
       
       return result ? JSON.parse(result.value) : null;
@@ -228,7 +241,7 @@ export class PluginModel {
    * Log command execution for analytics
    * @param {Object} execution - Execution data
    */
-  async logCommandExecution(execution) {
+  async logCommandExecution(_execution) {
     try {
       // Note: This would require adding a command_executions table to the schema
       // For now, we'll skip this functionality or implement it later
@@ -246,21 +259,21 @@ export class PluginModel {
    */
   async getGuildPlugin(guildId, pluginId) {
     try {
-      const guildPlugin = await this.prisma.guildPlugin.findUnique({
+      const guildPlugin = await this.getPrisma().guildPlugin.findUnique({
         where: {
           guild_id_plugin_id: {
             guild_id: guildId,
-            plugin_id: pluginId
-          }
-        }
+            plugin_id: pluginId,
+          },
+        },
       });
 
       // If no guild-specific record exists, return a default enabled state
       // This allows plugins to inherit the global enabled status
       if (!guildPlugin) {
-        const plugin = await this.prisma.plugin.findUnique({
+        const plugin = await this.getPrisma().plugin.findUnique({
           where: { id: pluginId },
-          select: { enabled: true }
+          select: { enabled: true },
         });
         
         return plugin ? { enabled: plugin.enabled } : { enabled: false };
@@ -277,7 +290,7 @@ export class PluginModel {
    * Close database connection
    */
   async close() {
-    await this.prisma.$disconnect();
+    await this.getPrisma().$disconnect();
     logger.info('PluginModel database connection closed');
   }
 }

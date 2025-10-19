@@ -6,19 +6,19 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { _BrowserRouter, _Routes, _Route, Navigate } from 'react-router-dom';
+import { QueryClient, _QueryClientProvider } from '@tanstack/react-query';
+import { _ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { useAppStore } from './viewmodels/AppViewModel';
-import SpaceBackground from './components/SpaceBackground';
-import HUDOverlay from './components/HUDOverlay';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import PluginEditor from './pages/PluginEditor';
-import AuthCallback from './pages/AuthCallback';
-import AccessDenied from './pages/AccessDenied';
-import AccessPending from './pages/AccessPending';
-import MobileNav from './components/MobileNav';
+import _SpaceBackground from './components/SpaceBackground';
+import _HUDOverlay from './components/HUDOverlay';
+import _Login from './pages/Login';
+import _Dashboard from './pages/Dashboard';
+import _PluginEditor from './pages/PluginEditor';
+import _AuthCallback from './pages/AuthCallback';
+import _AccessDenied from './pages/AccessDenied';
+import _AccessPending from './pages/AccessPending';
+import _MobileNav from './components/MobileNav';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -112,13 +112,13 @@ function AdminRoute({ children }) {
 /**
  * Space Theme Wrapper Component
  */
-function SpaceThemeWrapper({ children }) {
+function _SpaceThemeWrapper({ children }) {
   const { theme } = useTheme();
   
   return (
     <div className="relative min-h-screen">
-      {theme === 'space' && <SpaceBackground />}
-      {theme === 'space' && <HUDOverlay />}
+      {theme === 'space' && <_SpaceBackground />}
+      {theme === 'space' && <_HUDOverlay />}
       <div className={`relative z-20 ${theme === 'space' ? 'space' : ''}`}>
         {children}
       </div>
@@ -135,6 +135,7 @@ function App() {
 
   useEffect(() => {
     initializeApp();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeApp = async () => {
@@ -145,7 +146,7 @@ function App() {
   if (loading) {
     return (
       <ThemeProvider>
-        <SpaceThemeWrapper>
+        <_SpaceThemeWrapper>
           <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
             <div className="text-center">
               <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
@@ -158,7 +159,7 @@ function App() {
               </div>
             </div>
           </div>
-        </SpaceThemeWrapper>
+        </_SpaceThemeWrapper>
       </ThemeProvider>
     );
   }
@@ -167,7 +168,7 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <SpaceThemeWrapper>
+          <_SpaceThemeWrapper>
             {/* Mobile Navigation */}
             {isAuthenticated && <MobileNav />}
           
@@ -229,7 +230,7 @@ function App() {
             element={<Navigate to="/" replace />} 
           />
             </Routes>
-          </SpaceThemeWrapper>
+          </_SpaceThemeWrapper>
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>

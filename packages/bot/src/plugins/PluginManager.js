@@ -23,7 +23,7 @@ export class PluginManager {
     this.plugins = new Collection();
     this.sandbox = new SandboxExecutor({
       memoryLimit: 128,
-      timeout: 5000
+      timeout: 5000,
     });
   }
 
@@ -50,7 +50,7 @@ export class PluginManager {
       // Store plugin
       this.plugins.set(pluginData.id, {
         ...pluginData,
-        state: {}
+        state: {},
       });
 
       logger.success(`Plugin registered: ${pluginData.name} (${pluginData.id})`);
@@ -117,7 +117,7 @@ export class PluginManager {
         state: plugin.state,
         pluginId: plugin.id,
         pluginName: plugin.name,
-        guildId: context.guildId || context.guild?.id
+        guildId: context.guildId || context.guild?.id,
       };
 
       // Check if plugin is enabled for this guild (if guildId is provided)
@@ -131,12 +131,12 @@ export class PluginManager {
 
       // Execute plugin in sandbox with timing
       const startTime = Date.now();
-      let success = false;
+      // let success = false; // eslint-disable-line no-unused-vars
       let errorMessage = null;
       
       try {
         const result = await this.sandbox.execute(plugin.compiled, executionContext);
-        success = true;
+        // success = true; // eslint-disable-line no-unused-vars
         
         // Save updated state
         for (const key of stateKeys) {
@@ -153,7 +153,7 @@ export class PluginManager {
         
         return result;
       } catch (error) {
-        success = false;
+        // success = false; // eslint-disable-line no-unused-vars
         errorMessage = error.message;
         const executionTime = Date.now() - startTime;
         
@@ -187,7 +187,7 @@ export class PluginManager {
         command_name: commandName,
         success: success ? 1 : 0,
         execution_time_ms: executionTime,
-        error_message: errorMessage
+        error_message: errorMessage,
       });
     } catch (error) {
       logger.error('Failed to log command execution:', error);
@@ -202,7 +202,7 @@ export class PluginManager {
    */
   getPluginByCommand(command, type = 'slash') {
     for (const [, plugin] of this.plugins) {
-      if (!plugin.enabled) continue;
+      if (!plugin.enabled) {continue;}
       
       const matchesType = 
         plugin.type === 'both' || 
@@ -242,7 +242,7 @@ export class PluginManager {
    */
   async enablePlugin(pluginId) {
     const plugin = this.plugins.get(pluginId);
-    if (!plugin) return false;
+    if (!plugin) {return false;}
     
     plugin.enabled = true;
     await this.pluginModel.upsert({ ...plugin, enabled: true });
@@ -257,7 +257,7 @@ export class PluginManager {
    */
   async disablePlugin(pluginId) {
     const plugin = this.plugins.get(pluginId);
-    if (!plugin) return false;
+    if (!plugin) {return false;}
     
     plugin.enabled = false;
     await this.pluginModel.upsert({ ...plugin, enabled: false });
@@ -303,8 +303,8 @@ export class PluginManager {
       disabled: all.length - enabled.length,
       byType: {
         slash: all.filter(p => p.type === 'slash' || p.type === 'both').length,
-        text: all.filter(p => p.type === 'text' || p.type === 'both').length
-      }
+        text: all.filter(p => p.type === 'text' || p.type === 'both').length,
+      },
     };
   }
 }

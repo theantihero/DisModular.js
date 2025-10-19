@@ -10,13 +10,14 @@ import cors from 'cors';
 import session from 'express-session';
 import passport from 'passport';
 import helmet from 'helmet';
+import lusca from 'lusca';
 import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+// import { fileURLToPath } from 'url';
+// import { dirname } from 'path';
 import { Logger } from '@dismodular/shared';
 import DatabaseModel from './models/Database.js';
 import { initializePassport, requireApprovedAccess, requireAdmin } from './middleware/auth.js';
-import { authLimiter, apiLimiter, pluginLimiter, adminLimiter, guildLimiter, templateLimiter } from './middleware/rateLimiter.js';
+import { authLimiter, apiLimiter, pluginLimiter, adminLimiter, guildLimiter } from './middleware/rateLimiter.js';
 import PluginController from './controllers/PluginController.js';
 import { createPluginRoutes } from './routes/plugins.js';
 import { createBotRoutes } from './routes/bot.js';
@@ -24,8 +25,8 @@ import { createAuthRoutes } from './routes/auth.js';
 import { createAdminRoutes } from './routes/admin.js';
 import { createGuildRoutes } from './routes/guild.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
 
 const logger = new Logger('API');
 
@@ -49,16 +50,16 @@ const config = {
   discord: {
     clientId: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    callbackUrl: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3002/auth/discord/callback'
+    callbackUrl: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3002/auth/discord/callback',
   },
   session: {
     secret: process.env.SESSION_SECRET,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  }
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
 };
 
 logger.info('Starting API Server...');
-logger.info(`Database: PostgreSQL with Prisma`);
+logger.info('Database: PostgreSQL with Prisma');
 logger.info(`Plugins Directory: ${config.pluginsDir}`);
 logger.info(`Dashboard Directory: ${config.dashboardDir}`);
 
@@ -76,36 +77,36 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production'
     ? {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'"],
-          fontSrc: ["'self'"],
-          objectSrc: ["'none'"],
-          mediaSrc: ["'self'"],
-          frameSrc: ["'none'"]
-        }
-      }
+      directives: {
+        defaultSrc: ['\'self\''],
+        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+        styleSrc: ['\'self\'', '\'unsafe-inline\''],
+        imgSrc: ['\'self\'', 'data:', 'https:'],
+        connectSrc: ['\'self\''],
+        fontSrc: ['\'self\''],
+        objectSrc: ['\'none\''],
+        mediaSrc: ['\'self\''],
+        frameSrc: ['\'none\''],
+      },
+    }
     : {
-        directives: {
-          defaultSrc: ["'self'", "http://localhost:5173"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "ws://localhost:5173"],
-          fontSrc: ["'self'"],
-          objectSrc: ["'none'"],
-         mediaSrc: ["'self'"],
-         frameSrc: ["'self'", "http://localhost:5173"]
-       }
-     }
+      directives: {
+        defaultSrc: ['\'self\'', 'http://localhost:5173'],
+        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+        styleSrc: ['\'self\'', '\'unsafe-inline\''],
+        imgSrc: ['\'self\'', 'data:', 'https:'],
+        connectSrc: ['\'self\'', 'ws://localhost:5173'],
+        fontSrc: ['\'self\''],
+        objectSrc: ['\'none\''],
+        mediaSrc: ['\'self\''],
+        frameSrc: ['\'self\'', 'http://localhost:5173'],
+      },
+    },
 }));
 
 app.use(cors({
   origin: process.env.VITE_API_URL ? process.env.VITE_API_URL.replace(':3002', ':5173') : 'http://localhost:5173',
-  credentials: true
+  credentials: true,
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -120,14 +121,16 @@ app.use(session({
     maxAge: config.session.maxAge,
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax'
-  }
+    sameSite: 'lax',
+  },
 }));
 
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 initializePassport(config.discord);
+// Add CSRF protection middleware
+app.use(lusca.csrf());
 
 // Initialize controllers
 const pluginController = new PluginController(db, config.pluginsDir);
@@ -137,7 +140,7 @@ app.get('/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
@@ -170,7 +173,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'Discord Bot Modular API',
     version: '0.0.1',
-    author: 'fkndean_'
+    author: 'fkndean_',
   });
 });
 
@@ -180,12 +183,12 @@ app.get('*', apiLimiter, (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   logger.error('Unhandled error:', err);
   res.status(500).json({
     success: false,
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });
 
@@ -193,7 +196,7 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Not found'
+    error: 'Not found',
   });
 });
 

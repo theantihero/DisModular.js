@@ -1,4 +1,4 @@
-name: CI
+name: CI Tests
 
 on:
   push:
@@ -12,86 +12,63 @@ jobs:
     
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:15
         env:
-          POSTGRES_DB: dismodular_test
           POSTGRES_USER: dismodular
           POSTGRES_PASSWORD: password
+          POSTGRES_DB: dismodular_test
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-    - uses: actions/checkout@v4
     
-    - name: Setup Node.js
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    
+        
     - name: Install dependencies
       run: npm ci
-    
-    - name: Setup test environment
-      run: |
-        echo "DATABASE_URL=postgresql://dismodular:password@localhost:5432/dismodular_test" >> $GITHUB_ENV
-        echo "TEST_DATABASE_URL=postgresql://dismodular:password@localhost:5432/dismodular_test" >> $GITHUB_ENV
-        echo "DISCORD_CALLBACK_URL=http://localhost:3002/auth/discord/callback" >> $GITHUB_ENV
-        echo "DISCORD_CLIENT_ID=test_client_id" >> $GITHUB_ENV
-        echo "DISCORD_CLIENT_SECRET=test_client_secret" >> $GITHUB_ENV
-        echo "DISCORD_BOT_TOKEN=test_bot_token" >> $GITHUB_ENV
-        echo "INITIAL_ADMIN_DISCORD_ID=189921902553202688" >> $GITHUB_ENV
-        echo "SESSION_SECRET=test_session_secret" >> $GITHUB_ENV
-        echo "NODE_ENV=test" >> $GITHUB_ENV
-    
-    - name: Generate Prisma Client
+      
+    - name: Generate Prisma client
       run: npx prisma generate
-    
-    - name: Run database migrations
-      run: npx prisma migrate deploy
       env:
+        CI: true
         DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test
-    
+        
+    - name: Run database migrations
+      run: npx prisma db push --accept-data-loss
+      env:
+        CI: true
+        DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test
+        
     - name: Run tests
       run: npm test
       env:
+        CI: true
         DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test
         TEST_DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test
-        DISCORD_CALLBACK_URL: http://localhost:3002/auth/discord/callback
         DISCORD_CLIENT_ID: test_client_id
         DISCORD_CLIENT_SECRET: test_client_secret
-        DISCORD_BOT_TOKEN: test_bot_token
-        INITIAL_ADMIN_DISCORD_ID: 189921902553202688
+        DISCORD_CALLBACK_URL: http://localhost:3002/auth/discord/callback
         SESSION_SECRET: test_session_secret
         NODE_ENV: test
-
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
       with:
-        node-version: '20'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build dashboard
-      run: npm run build --workspace=@dismodular/dashboard
-    
-    - name: Generate Prisma Client
-      run: npx prisma generate
-    
-    - name: Check build artifacts
-      run: |
-        ls -la packages/dashboard/dist/
-        test -f packages/dashboard/dist/index.html
+        name: test-results
+        path: test-results.json

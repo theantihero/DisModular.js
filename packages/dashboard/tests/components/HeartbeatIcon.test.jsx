@@ -6,7 +6,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import HeartbeatIcon from '../components/HeartbeatIcon';
+import _HeartbeatIcon from '../components/HeartbeatIcon';
 
 describe('HeartbeatIcon', () => {
   it('renders online heartbeat icon', () => {

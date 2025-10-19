@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "echo 'Prepare script completed'",
     "dev": "concurrently \"npm run dev:bot\" \"npm run dev:api\" \"npm run dev:dashboard\"",
     "dev:bot": "npm run dev --workspace=@dismodular/bot",
     "dev:api": "npm run dev --workspace=@dismodular/api",
@@ -28,11 +29,14 @@
     "db:test-admin": "node scripts/test-admin-access.js",
     "kill-ports": "node scripts/kill-ports.js",
     "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "lint:ci": "npm run lint:ci --workspaces",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
+    "ci:setup": "node scripts/ci-setup.js",
     "release": "node scripts/bump-version.js",
     "release:patch": "node scripts/bump-version.js patch",
     "release:minor": "node scripts/bump-version.js minor",
@@ -41,6 +45,8 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^1.0.0",
     "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
+    "prisma": "^6.17.1",
     "supertest": "^6.3.3",
     "vitest": "^1.0.0"
   },
@@ -48,11 +54,9 @@
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
-  "prisma": {
-    "schema": "prisma/schema.prisma"
-  },
   "dependencies": {
     "@aashari/nodejs-geocoding": "^2.7.2",
+    "@prisma/client": "^6.17.1",
     "express-rate-limit": "^8.1.0",
     "node-fetch": "^3.3.2"
   }

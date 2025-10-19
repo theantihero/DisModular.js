@@ -5,6 +5,8 @@
  * @date 2025-10-14
  */
 
+/* eslint-disable no-case-declarations */
+
 import { Logger } from '@dismodular/shared';
 
 const logger = new Logger('NodeCompiler');
@@ -21,7 +23,7 @@ export class NodeCompiler {
     // Find all variable nodes with user_input type
     const inputNodes = nodes.filter(node => 
       node.type === 'variable' && 
-      node.data?.config?.type === 'user_input'
+      node.data?.config?.type === 'user_input',
     );
     
     for (const node of inputNodes) {
@@ -31,7 +33,7 @@ export class NodeCompiler {
           type: 3, // STRING type
           name: config.name,
           description: config.description || `Enter ${config.name}`,
-          required: config.required !== false // Default to required
+          required: config.required !== false, // Default to required
         });
       }
     }
@@ -83,7 +85,7 @@ export class NodeCompiler {
       graph.set(node.id, {
         node,
         next: [],
-        previous: []
+        previous: [],
       });
     }
 
@@ -95,11 +97,11 @@ export class NodeCompiler {
       if (sourceEntry && targetEntry) {
         sourceEntry.next.push({
           nodeId: edge.target,
-          handle: edge.sourceHandle
+          handle: edge.sourceHandle,
         });
         targetEntry.previous.push({
           nodeId: edge.source,
-          handle: edge.targetHandle
+          handle: edge.targetHandle,
         });
       }
     }
@@ -115,7 +117,7 @@ export class NodeCompiler {
    * @param {Array} edges - All edges
    * @returns {string} Generated code
    */
-  generateCode(startNode, graph, nodes, edges) {
+  generateCode(startNode, graph, _nodes, _edges) {
     const codeLines = [];
 
     // Add header
@@ -156,11 +158,11 @@ export class NodeCompiler {
    * @param {number} indent - Indentation level
    */
   generateNodeCode(nodeId, graph, codeLines, visited, indent = 0) {
-    if (visited.has(nodeId)) return;
+    if (visited.has(nodeId)) {return;}
     visited.add(nodeId);
 
     const entry = graph.get(nodeId);
-    if (!entry) return;
+    if (!entry) {return;}
 
     const { node } = entry;
     // Limit indent depth to prevent resource exhaustion
@@ -169,85 +171,85 @@ export class NodeCompiler {
 
     // Generate code based on node type
     switch (node.type) {
-      case 'trigger':
-        this.generateTriggerCode(node, codeLines, indentStr);
-        break;
+    case 'trigger':
+      this.generateTriggerCode(node, codeLines, indentStr);
+      break;
 
-      case 'response':
-        this.generateResponseCode(node, codeLines, indentStr);
-        break;
+    case 'response':
+      this.generateResponseCode(node, codeLines, indentStr);
+      break;
 
-      case 'variable':
-        this.generateVariableCode(node, codeLines, indentStr);
-        break;
+    case 'variable':
+      this.generateVariableCode(node, codeLines, indentStr);
+      break;
 
-      case 'condition':
-        this.generateConditionCode(node, entry, graph, codeLines, visited, indent);
-        return; // Condition handles its own next nodes
+    case 'condition':
+      this.generateConditionCode(node, entry, graph, codeLines, visited, indent);
+      return; // Condition handles its own next nodes
 
-      case 'permission':
-        this.generatePermissionCode(node, entry, graph, codeLines, visited, indent);
-        return; // Permission handles its own next nodes
+    case 'permission':
+      this.generatePermissionCode(node, entry, graph, codeLines, visited, indent);
+      return; // Permission handles its own next nodes
 
-      case 'comparison':
-        this.generateComparisonCode(node, entry, graph, codeLines, visited, indent);
-        return; // Comparison handles its own next nodes
+    case 'comparison':
+      this.generateComparisonCode(node, entry, graph, codeLines, visited, indent);
+      return; // Comparison handles its own next nodes
 
-      case 'action':
-        this.generateActionCode(node, codeLines, indentStr);
-        break;
+    case 'action':
+      this.generateActionCode(node, codeLines, indentStr);
+      break;
 
-      case 'data':
-        this.generateDataCode(node, codeLines, indentStr);
-        break;
+    case 'data':
+      this.generateDataCode(node, codeLines, indentStr);
+      break;
 
-      case 'http_request':
-        this.generateHTTPRequestCode(node, codeLines, indentStr);
-        break;
+    case 'http_request':
+      this.generateHTTPRequestCode(node, codeLines, indentStr);
+      break;
 
-      case 'embed_builder':
-        this.generateEmbedBuilderCode(node, codeLines, indentStr);
-        break;
+    case 'embed_builder':
+      this.generateEmbedBuilderCode(node, codeLines, indentStr);
+      break;
 
-      case 'embed_response':
-        this.generateEmbedResponseCode(node, codeLines, indentStr);
-        break;
+    case 'embed_response':
+      this.generateEmbedResponseCode(node, codeLines, indentStr);
+      break;
 
-      case 'discord_action':
-        this.generateDiscordActionCode(node, codeLines, indentStr);
-        break;
+    case 'discord_action':
+      this.generateDiscordActionCode(node, codeLines, indentStr);
+      break;
 
-      case 'for_loop':
-        this.generateForLoopCode(node, entry, graph, codeLines, visited, indent);
-        return; // Loop handles its own next nodes
+    case 'for_loop':
+      this.generateForLoopCode(node, entry, graph, codeLines, visited, indent);
+      return; // Loop handles its own next nodes
 
-      case 'while_loop':
-        this.generateWhileLoopCode(node, entry, graph, codeLines, visited, indent);
-        return; // Loop handles its own next nodes
+    case 'while_loop':
+      this.generateWhileLoopCode(node, entry, graph, codeLines, visited, indent);
+      return; // Loop handles its own next nodes
 
-      case 'array_operation':
-        this.generateArrayOperationCode(node, codeLines, indentStr);
-        break;
+    case 'array_operation':
+      this.generateArrayOperationCode(node, codeLines, indentStr);
+      break;
 
-      case 'string_operation':
-        this.generateStringOperationCode(node, codeLines, indentStr);
-        break;
+    case 'string_operation':
+      this.generateStringOperationCode(node, codeLines, indentStr);
+      break;
 
-      case 'object_operation':
-        this.generateObjectOperationCode(node, codeLines, indentStr);
-        break;
+    case 'object_operation':
+      this.generateObjectOperationCode(node, codeLines, indentStr);
+      break;
 
-      case 'math_operation':
-        this.generateMathOperationCode(node, codeLines, indentStr);
-        break;
+    case 'math_operation':
+      this.generateMathOperationCode(node, codeLines, indentStr);
+      break;
 
-      case 'database':
-        this.generateDatabaseCode(node, codeLines, indentStr);
-        break;
+    case 'database':
+      this.generateDatabaseCode(node, codeLines, indentStr);
+      break;
 
-      case 'json':
-        this.generateJSONCode(node, codeLines, indentStr);
-        break;
+    case 'json':
+      this.generateJSONCode(node, codeLines, indentStr);
+      break;
     }
 
     // Process next nodes
@@ -286,35 +288,37 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Variable: ${varName}`);
     
     switch (varType) {
-      case 'user_input':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.options?.getString('${varName}') || message?.content || '';`);
-        break;
-      case 'user_name':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.user?.username || message?.author?.username || 'Unknown';`);
-        break;
-      case 'user_id':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.user?.id || message?.author?.id || '';`);
-        break;
-      case 'channel_id':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.channel?.id || message?.channel?.id || '';`);
-        break;
-      case 'guild_id':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.guild?.id || message?.guild?.id || '';`);
-        break;
-      case 'timestamp':
-        codeLines.push(`${indent}variables['${varName}'] = new Date().toISOString();`);
-        break;
-      case 'random_number':
-        const min = node.data.config?.min || 1;
-        const max = node.data.config?.max || 100;
-        codeLines.push(`${indent}variables['${varName}'] = Math.floor(Math.random() * (${max} - ${min} + 1)) + ${min};`);
-        break;
-      case 'string':
-        const interpolated = this.interpolateVariables(varValue);
-        codeLines.push(`${indent}variables['${varName}'] = \`${interpolated}\`;`);
-        break;
-      default:
-        codeLines.push(`${indent}variables['${varName}'] = \`${varValue}\`;`);
+    case 'user_input':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.options?.getString('${varName}') || message?.content || '';`);
+      break;
+    case 'user_name':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.user?.username || message?.author?.username || 'Unknown';`);
+      break;
+    case 'user_id':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.user?.id || message?.author?.id || '';`);
+      break;
+    case 'channel_id':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.channel?.id || message?.channel?.id || '';`);
+      break;
+    case 'guild_id':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.guild?.id || message?.guild?.id || '';`);
+      break;
+    case 'timestamp':
+      codeLines.push(`${indent}variables['${varName}'] = new Date().toISOString();`);
+      break;
+    case 'random_number': {
+      const min = node.data.config?.min || 1;
+      const max = node.data.config?.max || 100;
+      codeLines.push(`${indent}variables['${varName}'] = Math.floor(Math.random() * (${max} - ${min} + 1)) + ${min};`);
+      break;
+    }
+    case 'string': {
+      const interpolated = this.interpolateVariables(varValue);
+      codeLines.push(`${indent}variables['${varName}'] = \`${interpolated}\`;`);
+      break;
+    }
+    default:
+      codeLines.push(`${indent}variables['${varName}'] = \`${varValue}\`;`);
     }
   }
 
@@ -422,27 +426,29 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Action: ${node.data.label || 'Do something'}`);
 
     switch (actionType) {
-      case 'log':
-        const logMessage = this.interpolateVariables(node.data.config?.message || 'Log message');
-        codeLines.push(`${indent}console.log(\`${logMessage}\`);`);
-        break;
+    case 'log': {
+      const logMessage = this.interpolateVariables(node.data.config?.message || 'Log message');
+      codeLines.push(`${indent}console.log(\`${logMessage}\`);`);
+      break;
+    }
 
-      case 'wait':
-        const durationConfig = node.data.config?.duration || 1000;
-        const duration = typeof durationConfig === 'string' && durationConfig.includes('{') 
-          ? this.interpolateVariables(durationConfig)
-          : durationConfig;
-        const durationCode = typeof duration === 'string' && duration.includes('variables')
-          ? `Number(\`${duration}\`)`
-          : duration;
-        codeLines.push(`${indent}await new Promise(resolve => setTimeout(resolve, ${durationCode}));`);
-        break;
+    case 'wait':
+      const durationConfig = node.data.config?.duration || 1000;
+      const duration = typeof durationConfig === 'string' && durationConfig.includes('{') 
+        ? this.interpolateVariables(durationConfig)
+        : durationConfig;
+      const durationCode = typeof duration === 'string' && duration.includes('variables')
+        ? `Number(\`${duration}\`)`
+        : duration;
+      codeLines.push(`${indent}await new Promise(resolve => setTimeout(resolve, ${durationCode}));`);
+      break;
 
-      case 'set_state':
-        const stateKey = node.data.config?.key || 'key';
-        const stateValue = this.interpolateVariables(node.data.config?.value || '');
-        codeLines.push(`${indent}state['${stateKey}'] = \`${stateValue}\`;`);
-        break;
+    case 'set_state': {
+      const stateKey = node.data.config?.key || 'key';
+      const stateValue = this.interpolateVariables(node.data.config?.value || '');
+      codeLines.push(`${indent}state['${stateKey}'] = \`${stateValue}\`;`);
+      break;
+    }
     }
   }
 
@@ -456,15 +462,15 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Data: ${node.data.label || 'Get data'}`);
 
     switch (dataType) {
-      case 'server_name':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.guild?.name || message?.guild?.name || 'Unknown';`);
-        break;
-      case 'channel_name':
-        codeLines.push(`${indent}variables['${varName}'] = interaction?.channel?.name || message?.channel?.name || 'Unknown';`);
-        break;
-      case 'timestamp':
-        codeLines.push(`${indent}variables['${varName}'] = new Date().toISOString();`);
-        break;
+    case 'server_name':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.guild?.name || message?.guild?.name || 'Unknown';`);
+      break;
+    case 'channel_name':
+      codeLines.push(`${indent}variables['${varName}'] = interaction?.channel?.name || message?.channel?.name || 'Unknown';`);
+      break;
+    case 'timestamp':
+      codeLines.push(`${indent}variables['${varName}'] = new Date().toISOString();`);
+      break;
     }
   }
 
@@ -477,7 +483,7 @@ export class NodeCompiler {
    * Escape special characters for template strings
    */
   escapeTemplateString(str) {
-    if (typeof str !== 'string') return str;
+    if (typeof str !== 'string') {return str;}
     return str
       .replace(/\\/g, '\\\\')   // Escape backslashes first
       .replace(/`/g, '\\`')     // Escape backticks  
@@ -486,10 +492,10 @@ export class NodeCompiler {
   }
 
   interpolateVariables(str) {
-    if (typeof str !== 'string') return str;
+    if (typeof str !== 'string') {return str;}
     
     // First escape special characters, then replace {varname} patterns
-    let result = str;
+    // const result = str;
     
     // Split by variable patterns to preserve them
     const parts = [];
@@ -559,8 +565,8 @@ export class NodeCompiler {
 
     codeLines.push(`${indent}// Build Embed`);
     codeLines.push(`${indent}variables['${outputVar}'] = {`);
-    if (config.title) codeLines.push(`${indent}  title: \`${this.interpolateVariables(config.title)}\`,`);
-    if (config.description) codeLines.push(`${indent}  description: \`${this.interpolateVariables(config.description)}\`,`);
+    if (config.title) {codeLines.push(`${indent}  title: \`${this.interpolateVariables(config.title)}\`,`);}
+    if (config.description) {codeLines.push(`${indent}  description: \`${this.interpolateVariables(config.description)}\`,`);}
     if (config.color) {
       // Convert hex color to integer for Discord
       const colorValue = config.color.replace('#', '');
@@ -569,19 +575,19 @@ export class NodeCompiler {
     if (config.author) {
       codeLines.push(`${indent}  author: {`);
       codeLines.push(`${indent}    name: \`${this.interpolateVariables(config.author.name || '')}\`,`);
-      if (config.author.icon) codeLines.push(`${indent}    iconURL: \`${config.author.icon}\`,`);
-      if (config.author.url) codeLines.push(`${indent}    url: \`${config.author.url}\`,`);
+      if (config.author.icon) {codeLines.push(`${indent}    iconURL: \`${config.author.icon}\`,`);}
+      if (config.author.url) {codeLines.push(`${indent}    url: \`${config.author.url}\`,`);}
       codeLines.push(`${indent}  },`);
     }
-    if (config.thumbnail) codeLines.push(`${indent}  thumbnail: { url: \`${config.thumbnail}\` },`);
-    if (config.image) codeLines.push(`${indent}  image: { url: \`${config.image}\` },`);
+    if (config.thumbnail) {codeLines.push(`${indent}  thumbnail: { url: \`${config.thumbnail}\` },`);}
+    if (config.image) {codeLines.push(`${indent}  image: { url: \`${config.image}\` },`);}
     if (config.footer) {
       codeLines.push(`${indent}  footer: {`);
       codeLines.push(`${indent}    text: \`${this.interpolateVariables(config.footer.text || '')}\`,`);
-      if (config.footer.icon) codeLines.push(`${indent}    iconURL: \`${config.footer.icon}\`,`);
+      if (config.footer.icon) {codeLines.push(`${indent}    iconURL: \`${config.footer.icon}\`,`);}
       codeLines.push(`${indent}  },`);
     }
-    if (config.timestamp) codeLines.push(`${indent}  timestamp: new Date().toISOString(),`);
+    if (config.timestamp) {codeLines.push(`${indent}  timestamp: new Date().toISOString(),`);}
     if (config.fields && config.fields.length > 0) {
       codeLines.push(`${indent}  fields: [`);
       config.fields.forEach(field => {
@@ -620,140 +626,143 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Discord Action: ${action}`);
     
     switch (action) {
-      case 'send_dm':
-        const userId = this.interpolateVariables(node.data.config?.userId || '');
-        const dmMessage = this.interpolateVariables(node.data.config?.message || '');
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const dmUser = await client.users.fetch(\`${userId}\`);`);
-        codeLines.push(`${indent}  await dmUser.send(\`${dmMessage}\`);`);
-        codeLines.push(`${indent}} catch(e) { console.error('DM failed:', e); }`);
-        break;
+    case 'send_dm': {
+      const userId = this.interpolateVariables(node.data.config?.userId || '');
+      const dmMessage = this.interpolateVariables(node.data.config?.message || '');
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const dmUser = await client.users.fetch(\`${userId}\`);`);
+      codeLines.push(`${indent}  await dmUser.send(\`${dmMessage}\`);`);
+      codeLines.push(`${indent}} catch(e) { console.error('DM failed:', e); }`);
+      break;
+    }
       
-      case 'add_reaction':
-        const emoji = node.data.config?.emoji || '👍';
-        codeLines.push(`${indent}if (message) await message.react('${emoji}');`);
-        break;
+    case 'add_reaction': {
+      const emoji = node.data.config?.emoji || '👍';
+      codeLines.push(`${indent}if (message) await message.react('${emoji}');`);
+      break;
+    }
       
-      case 'add_multiple_reactions':
-        // Don't interpolate - just extract the variable name
-        let emojisVar = node.data.config?.emojis || 'emojis';
-        // Remove curly braces if present (e.g., "{reaction_emojis}" -> "reaction_emojis")
-        emojisVar = emojisVar.replace(/^\{|\}$/g, '');
+    case 'add_multiple_reactions': {
+      // Don't interpolate - just extract the variable name
+      let emojisVar = node.data.config?.emojis || 'emojis';
+      // Remove curly braces if present (e.g., "{reaction_emojis}" -> "reaction_emojis")
+      emojisVar = emojisVar.replace(/^\{|\}$/g, '');
         
-        codeLines.push(`${indent}// Add Multiple Reactions`);
-        codeLines.push(`${indent}if (variables['_sent_message'] && variables['${emojisVar}']) {`);
-        codeLines.push(`${indent}  for (const emoji of variables['${emojisVar}']) {`);
-        codeLines.push(`${indent}    try { await variables['_sent_message'].react(emoji); } catch(e) { console.log('Reaction failed:', e); }`);
-        codeLines.push(`${indent}  }`);
-        codeLines.push(`${indent}} else if (message && variables['${emojisVar}']) {`);
-        codeLines.push(`${indent}  for (const emoji of variables['${emojisVar}']) {`);
-        codeLines.push(`${indent}    try { await message.react(emoji); } catch(e) { console.log('Reaction failed:', e); }`);
-        codeLines.push(`${indent}  }`);
-        codeLines.push(`${indent}}`);
-        break;
+      codeLines.push(`${indent}// Add Multiple Reactions`);
+      codeLines.push(`${indent}if (variables['_sent_message'] && variables['${emojisVar}']) {`);
+      codeLines.push(`${indent}  for (const emoji of variables['${emojisVar}']) {`);
+      codeLines.push(`${indent}    try { await variables['_sent_message'].react(emoji); } catch(e) { console.log('Reaction failed:', e); }`);
+      codeLines.push(`${indent}  }`);
+      codeLines.push(`${indent}} else if (message && variables['${emojisVar}']) {`);
+      codeLines.push(`${indent}  for (const emoji of variables['${emojisVar}']) {`);
+      codeLines.push(`${indent}    try { await message.react(emoji); } catch(e) { console.log('Reaction failed:', e); }`);
+      codeLines.push(`${indent}  }`);
+      codeLines.push(`${indent}}`);
+      break;
+    }
       
-      case 'setup_single_choice_voting':
-        // Setup single-choice voting collector
-        let scEmojisVar = node.data.config?.emojis || 'emojis';
-        let scDurationVar = node.data.config?.duration || 'duration_ms';
-        // Remove curly braces if present
-        scEmojisVar = scEmojisVar.replace(/^\{|\}$/g, '');
-        scDurationVar = scDurationVar.replace(/^\{|\}$/g, '');
+    case 'setup_single_choice_voting':
+      // Setup single-choice voting collector
+      let scEmojisVar = node.data.config?.emojis || 'emojis';
+      let scDurationVar = node.data.config?.duration || 'duration_ms';
+      // Remove curly braces if present
+      scEmojisVar = scEmojisVar.replace(/^\{|\}$/g, '');
+      scDurationVar = scDurationVar.replace(/^\{|\}$/g, '');
         
-        codeLines.push(`${indent}// Setup Single-Choice Voting`);
-        codeLines.push(`${indent}console.log('[Setup] Checking conditions:', {`);
-        codeLines.push(`${indent}  hasMessage: !!variables['_sent_message'],`);
-        codeLines.push(`${indent}  hasEmojis: !!variables['${scEmojisVar}'],`);
-        codeLines.push(`${indent}  hasDuration: !!variables['${scDurationVar}'],`);
-        codeLines.push(`${indent}  durationValue: variables['${scDurationVar}'],`);
-        codeLines.push(`${indent}  hasMethod: typeof variables['_sent_message']?.setupSingleChoiceVoting`);
-        codeLines.push(`${indent}});`);
-        codeLines.push(`${indent}if (variables['_sent_message'] && variables['${scEmojisVar}'] && variables['${scDurationVar}']) {`);
-        codeLines.push(`${indent}  try {`);
-        codeLines.push(`${indent}    variables['_sent_message'].setupSingleChoiceVoting(variables['${scEmojisVar}'], variables['${scDurationVar}']);`);
-        codeLines.push(`${indent}  } catch(e) { console.log('[Setup] Error:', e.message); }`);
-        codeLines.push(`${indent}}`);
-        break;
+      codeLines.push(`${indent}// Setup Single-Choice Voting`);
+      codeLines.push(`${indent}console.log('[Setup] Checking conditions:', {`);
+      codeLines.push(`${indent}  hasMessage: !!variables['_sent_message'],`);
+      codeLines.push(`${indent}  hasEmojis: !!variables['${scEmojisVar}'],`);
+      codeLines.push(`${indent}  hasDuration: !!variables['${scDurationVar}'],`);
+      codeLines.push(`${indent}  durationValue: variables['${scDurationVar}'],`);
+      codeLines.push(`${indent}  hasMethod: typeof variables['_sent_message']?.setupSingleChoiceVoting`);
+      codeLines.push(`${indent}});`);
+      codeLines.push(`${indent}if (variables['_sent_message'] && variables['${scEmojisVar}'] && variables['${scDurationVar}']) {`);
+      codeLines.push(`${indent}  try {`);
+      codeLines.push(`${indent}    variables['_sent_message'].setupSingleChoiceVoting(variables['${scEmojisVar}'], variables['${scDurationVar}']);`);
+      codeLines.push(`${indent}  } catch(e) { console.log('[Setup] Error:', e.message); }`);
+      codeLines.push(`${indent}}`);
+      break;
       
-      case 'check_role':
-        const roleId = node.data.config?.roleId || '';
-        const roleVar = node.data.config?.outputVar || 'hasRole';
-        codeLines.push(`${indent}variables['${roleVar}'] = interaction?.member?.roles?.cache?.has('${roleId}') || message?.member?.roles?.cache?.has('${roleId}') || false;`);
-        break;
+    case 'check_role':
+      const roleId = node.data.config?.roleId || '';
+      const roleVar = node.data.config?.outputVar || 'hasRole';
+      codeLines.push(`${indent}variables['${roleVar}'] = interaction?.member?.roles?.cache?.has('${roleId}') || message?.member?.roles?.cache?.has('${roleId}') || false;`);
+      break;
       
-      case 'add_role':
-        const addRoleId = node.data.config?.roleId || '';
-        const addUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${addUserId}\`);`);
-        codeLines.push(`${indent}  if (member) await member.roles.add('${addRoleId}');`);
-        codeLines.push(`${indent}} catch(e) { console.error('Add role failed:', e); }`);
-        break;
+    case 'add_role':
+      const addRoleId = node.data.config?.roleId || '';
+      const addUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${addUserId}\`);`);
+      codeLines.push(`${indent}  if (member) await member.roles.add('${addRoleId}');`);
+      codeLines.push(`${indent}} catch(e) { console.error('Add role failed:', e); }`);
+      break;
       
-      case 'remove_role':
-        const removeRoleId = node.data.config?.roleId || '';
-        const removeUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${removeUserId}\`);`);
-        codeLines.push(`${indent}  if (member) await member.roles.remove('${removeRoleId}');`);
-        codeLines.push(`${indent}} catch(e) { console.error('Remove role failed:', e); }`);
-        break;
+    case 'remove_role':
+      const removeRoleId = node.data.config?.roleId || '';
+      const removeUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${removeUserId}\`);`);
+      codeLines.push(`${indent}  if (member) await member.roles.remove('${removeRoleId}');`);
+      codeLines.push(`${indent}} catch(e) { console.error('Remove role failed:', e); }`);
+      break;
       
-      case 'kick_member':
-        const kickUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
-        const kickReason = this.interpolateVariables(node.data.config?.reason || 'Kicked by bot');
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${kickUserId}\`);`);
-        codeLines.push(`${indent}  if (member) await member.kick(\`${kickReason}\`);`);
-        codeLines.push(`${indent}} catch(e) { console.error('Kick failed:', e); }`);
-        break;
+    case 'kick_member':
+      const kickUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
+      const kickReason = this.interpolateVariables(node.data.config?.reason || 'Kicked by bot');
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const member = interaction?.guild?.members?.fetch(\`${kickUserId}\`);`);
+      codeLines.push(`${indent}  if (member) await member.kick(\`${kickReason}\`);`);
+      codeLines.push(`${indent}} catch(e) { console.error('Kick failed:', e); }`);
+      break;
       
-      case 'ban_member':
-        const banUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
-        const banReason = this.interpolateVariables(node.data.config?.reason || 'Banned by bot');
-        const deleteDays = node.data.config?.deleteDays || 0;
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  await interaction?.guild?.members?.ban(\`${banUserId}\`, { reason: \`${banReason}\`, deleteMessageDays: ${deleteDays} });`);
-        codeLines.push(`${indent}} catch(e) { console.error('Ban failed:', e); }`);
-        break;
+    case 'ban_member':
+      const banUserId = this.interpolateVariables(node.data.config?.userId || 'interaction?.user?.id');
+      const banReason = this.interpolateVariables(node.data.config?.reason || 'Banned by bot');
+      const deleteDays = node.data.config?.deleteDays || 0;
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  await interaction?.guild?.members?.ban(\`${banUserId}\`, { reason: \`${banReason}\`, deleteMessageDays: ${deleteDays} });`);
+      codeLines.push(`${indent}} catch(e) { console.error('Ban failed:', e); }`);
+      break;
       
-      case 'create_channel':
-        const channelName = this.interpolateVariables(node.data.config?.name || 'new-channel');
-        const channelType = node.data.config?.type || 'text';
-        const channelTopic = this.interpolateVariables(node.data.config?.topic || '');
-        const channelVar = node.data.config?.outputVar || 'newChannel';
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const channel = await interaction?.guild?.channels?.create({`);
-        codeLines.push(`${indent}    name: \`${channelName}\`,`);
-        codeLines.push(`${indent}    type: ${channelType},`);
-        codeLines.push(`${indent}    topic: \`${channelTopic}\``);
-        codeLines.push(`${indent}  });`);
-        codeLines.push(`${indent}  variables['${channelVar}'] = channel;`);
-        codeLines.push(`${indent}} catch(e) { console.error('Create channel failed:', e); }`);
-        break;
+    case 'create_channel':
+      const channelName = this.interpolateVariables(node.data.config?.name || 'new-channel');
+      const channelType = node.data.config?.type || 'text';
+      const channelTopic = this.interpolateVariables(node.data.config?.topic || '');
+      const channelVar = node.data.config?.outputVar || 'newChannel';
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const channel = await interaction?.guild?.channels?.create({`);
+      codeLines.push(`${indent}    name: \`${channelName}\`,`);
+      codeLines.push(`${indent}    type: ${channelType},`);
+      codeLines.push(`${indent}    topic: \`${channelTopic}\``);
+      codeLines.push(`${indent}  });`);
+      codeLines.push(`${indent}  variables['${channelVar}'] = channel;`);
+      codeLines.push(`${indent}} catch(e) { console.error('Create channel failed:', e); }`);
+      break;
       
-      case 'delete_channel':
-        const deleteChannelId = this.interpolateVariables(node.data.config?.channelId || 'interaction?.channel?.id');
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const channel = interaction?.guild?.channels?.fetch(\`${deleteChannelId}\`);`);
-        codeLines.push(`${indent}  if (channel) await channel.delete();`);
-        codeLines.push(`${indent}} catch(e) { console.error('Delete channel failed:', e); }`);
-        break;
+    case 'delete_channel':
+      const deleteChannelId = this.interpolateVariables(node.data.config?.channelId || 'interaction?.channel?.id');
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const channel = interaction?.guild?.channels?.fetch(\`${deleteChannelId}\`);`);
+      codeLines.push(`${indent}  if (channel) await channel.delete();`);
+      codeLines.push(`${indent}} catch(e) { console.error('Delete channel failed:', e); }`);
+      break;
       
-      case 'collect_reactions':
-        const collectChannelId = this.interpolateVariables(node.data.config?.channelId || 'interaction?.channel?.id');
-        const collectMessageId = this.interpolateVariables(node.data.config?.messageId || '');
-        const collectEmoji = node.data.config?.emoji || '👍';
-        const collectTime = node.data.config?.time || 30000;
-        const collectVar = node.data.config?.outputVar || 'reactions';
-        codeLines.push(`${indent}try {`);
-        codeLines.push(`${indent}  const channel = interaction?.guild?.channels?.fetch(\`${collectChannelId}\`);`);
-        codeLines.push(`${indent}  const message = await channel?.messages?.fetch(\`${collectMessageId}\`);`);
-        codeLines.push(`${indent}  const filter = (reaction, user) => reaction.emoji.name === '${collectEmoji}' && !user.bot;`);
-        codeLines.push(`${indent}  const collected = await message?.awaitReactions({ filter, time: ${collectTime}, errors: ['time'] });`);
-        codeLines.push(`${indent}  variables['${collectVar}'] = collected?.get('${collectEmoji}')?.count || 0;`);
-        codeLines.push(`${indent}} catch(e) { console.error('Collect reactions failed:', e); }`);
-        break;
+    case 'collect_reactions':
+      const collectChannelId = this.interpolateVariables(node.data.config?.channelId || 'interaction?.channel?.id');
+      const collectMessageId = this.interpolateVariables(node.data.config?.messageId || '');
+      const collectEmoji = node.data.config?.emoji || '👍';
+      const collectTime = node.data.config?.time || 30000;
+      const collectVar = node.data.config?.outputVar || 'reactions';
+      codeLines.push(`${indent}try {`);
+      codeLines.push(`${indent}  const channel = interaction?.guild?.channels?.fetch(\`${collectChannelId}\`);`);
+      codeLines.push(`${indent}  const message = await channel?.messages?.fetch(\`${collectMessageId}\`);`);
+      codeLines.push(`${indent}  const filter = (reaction, user) => reaction.emoji.name === '${collectEmoji}' && !user.bot;`);
+      codeLines.push(`${indent}  const collected = await message?.awaitReactions({ filter, time: ${collectTime}, errors: ['time'] });`);
+      codeLines.push(`${indent}  variables['${collectVar}'] = collected?.get('${collectEmoji}')?.count || 0;`);
+      codeLines.push(`${indent}} catch(e) { console.error('Collect reactions failed:', e); }`);
+      break;
     }
   }
 
@@ -830,17 +839,17 @@ export class NodeCompiler {
 
     let condition;
     switch (operator) {
-      case 'includes':
-        condition = `(\`${left}\`).includes(\`${right}\`)`;
-        break;
-      case 'startsWith':
-        condition = `(\`${left}\`).startsWith(\`${right}\`)`;
-        break;
-      case 'endsWith':
-        condition = `(\`${left}\`).endsWith(\`${right}\`)`;
-        break;
-      default:
-        condition = `\`${left}\` ${operator} \`${right}\``;
+    case 'includes':
+      condition = `(\`${left}\`).includes(\`${right}\`)`;
+      break;
+    case 'startsWith':
+      condition = `(\`${left}\`).startsWith(\`${right}\`)`;
+      break;
+    case 'endsWith':
+      condition = `(\`${left}\`).endsWith(\`${right}\`)`;
+      break;
+    default:
+      condition = `\`${left}\` ${operator} \`${right}\``;
     }
 
     codeLines.push(`${indentStr}// Comparison: ${operator}`);
@@ -871,48 +880,48 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Array Operation: ${operation}`);
 
     switch (operation) {
-      case 'create':
-        const items = node.data.config?.items || '';
-        codeLines.push(`${indent}variables['${outputVar}'] = [\`${this.interpolateVariables(items)}\`.split(',').map(s => s.trim())];`);
-        break;
-      case 'push':
-        const arrayVar = node.data.config?.arrayVar || 'array';
-        const item = this.interpolateVariables(node.data.config?.item || '');
-        codeLines.push(`${indent}if (!variables['${arrayVar}']) variables['${arrayVar}'] = [];`);
-        codeLines.push(`${indent}variables['${arrayVar}'].push(\`${item}\`);`);
-        break;
-      case 'pop':
-        const popArray = node.data.config?.arrayVar || 'array';
-        codeLines.push(`${indent}variables['${outputVar}'] = variables['${popArray}']?.pop();`);
-        break;
-      case 'filter':
-        const filterArray = node.data.config?.arrayVar || 'array';
-        const filterExpr = this.interpolateVariables(node.data.config?.expression || 'true');
-        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${filterArray}'] || []).filter(item => ${filterExpr});`);
-        break;
-      case 'map':
-        const mapArray = node.data.config?.arrayVar || 'array';
-        const mapExpr = node.data.config?.expression || 'item';
-        // Don't interpolate - use expression as-is JavaScript
-        if (mapExpr.includes('index')) {
-          codeLines.push(`${indent}variables['${outputVar}'] = (variables['${mapArray}'] || []).map((item, index) => ${mapExpr});`);
-        } else {
-          codeLines.push(`${indent}variables['${outputVar}'] = (variables['${mapArray}'] || []).map(item => ${mapExpr});`);
-        }
-        break;
-      case 'length':
-        const lengthArray = node.data.config?.arrayVar || 'array';
-        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${lengthArray}'] || []).length;`);
-        break;
-      case 'join':
-        const joinArray = node.data.config?.arrayVar || 'array';
-        const separator = node.data.config?.separator || ', ';
-        // Handle escape sequences in separator
-        const escapedSep = separator.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r');
-        const sepCode = JSON.stringify(escapedSep);
-        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${sepCode});`);
-        logger.debug(`Generated join operation: variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${sepCode});`);
-        break;
+    case 'create':
+      const items = node.data.config?.items || '';
+      codeLines.push(`${indent}variables['${outputVar}'] = [\`${this.interpolateVariables(items)}\`.split(',').map(s => s.trim())];`);
+      break;
+    case 'push':
+      const arrayVar = node.data.config?.arrayVar || 'array';
+      const item = this.interpolateVariables(node.data.config?.item || '');
+      codeLines.push(`${indent}if (!variables['${arrayVar}']) variables['${arrayVar}'] = [];`);
+      codeLines.push(`${indent}variables['${arrayVar}'].push(\`${item}\`);`);
+      break;
+    case 'pop':
+      const popArray = node.data.config?.arrayVar || 'array';
+      codeLines.push(`${indent}variables['${outputVar}'] = variables['${popArray}']?.pop();`);
+      break;
+    case 'filter':
+      const filterArray = node.data.config?.arrayVar || 'array';
+      const filterExpr = this.interpolateVariables(node.data.config?.expression || 'true');
+      codeLines.push(`${indent}variables['${outputVar}'] = (variables['${filterArray}'] || []).filter(item => ${filterExpr});`);
+      break;
+    case 'map':
+      const mapArray = node.data.config?.arrayVar || 'array';
+      const mapExpr = node.data.config?.expression || 'item';
+      // Don't interpolate - use expression as-is JavaScript
+      if (mapExpr.includes('index')) {
+        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${mapArray}'] || []).map((item, index) => ${mapExpr});`);
+      } else {
+        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${mapArray}'] || []).map(item => ${mapExpr});`);
+      }
+      break;
+    case 'length':
+      const lengthArray = node.data.config?.arrayVar || 'array';
+      codeLines.push(`${indent}variables['${outputVar}'] = (variables['${lengthArray}'] || []).length;`);
+      break;
+    case 'join':
+      const joinArray = node.data.config?.arrayVar || 'array';
+      const separator = node.data.config?.separator || ', ';
+      // Handle escape sequences in separator
+      const escapedSep = separator.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r');
+      const sepCode = JSON.stringify(escapedSep);
+      codeLines.push(`${indent}variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${sepCode});`);
+      logger.debug(`Generated join operation: variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${sepCode});`);
+      break;
     }
   }
 
@@ -926,75 +935,75 @@ export class NodeCompiler {
     codeLines.push(`${indent}// String Operation: ${operation}`);
 
     switch (operation) {
-      case 'concat':
-        const strings = (node.data.config?.strings || []).map(s => this.interpolateVariables(s));
-        codeLines.push(`${indent}variables['${outputVar}'] = [\`${strings.join('\`, \`')}\`].join('');`);
-        break;
-      case 'split':
-        const str = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        const delimiter = node.data.config?.delimiter || ',';
-        codeLines.push(`${indent}variables['${outputVar}'] = \`${str}\`.split('${delimiter}');`);
-        break;
-      case 'replace':
-        const replaceStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        const search = node.data.config?.param1 || node.data.config?.search || '';
-        const replace = this.interpolateVariables(node.data.config?.param2 || node.data.config?.replace || '');
-        codeLines.push(`${indent}variables['${outputVar}'] = \`${replaceStr}\`.replace(/${search}/g, \`${replace}\`);`);
-        break;
-      case 'uppercase':
-        const upperStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        codeLines.push(`${indent}variables['${outputVar}'] = \`${upperStr}\`.toUpperCase();`);
-        break;
-      case 'lowercase':
-        const lowerStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        codeLines.push(`${indent}variables['${outputVar}'] = \`${lowerStr}\`.toLowerCase();`);
-        break;
-      case 'trim':
-        const trimStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        codeLines.push(`${indent}variables['${outputVar}'] = \`${trimStr}\`.trim();`);
-        break;
-      case 'substring':
-        const substringStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
-        const start = node.data.config?.start || '0';
-        const end = node.data.config?.end || '';
-        if (end) {
-          codeLines.push(`${indent}variables['${outputVar}'] = \`${substringStr}\`.substring(${start}, ${end});`);
-        } else {
-          codeLines.push(`${indent}variables['${outputVar}'] = \`${substringStr}\`.substring(${start});`);
-        }
-        break;
+    case 'concat':
+      const strings = (node.data.config?.strings || []).map(s => this.interpolateVariables(s));
+      codeLines.push(`${indent}variables['${outputVar}'] = [\`${strings.join('`, `')}\`].join('');`);
+      break;
+    case 'split':
+      const str = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      const delimiter = node.data.config?.delimiter || ',';
+      codeLines.push(`${indent}variables['${outputVar}'] = \`${str}\`.split('${delimiter}');`);
+      break;
+    case 'replace':
+      const replaceStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      const search = node.data.config?.param1 || node.data.config?.search || '';
+      const replace = this.interpolateVariables(node.data.config?.param2 || node.data.config?.replace || '');
+      codeLines.push(`${indent}variables['${outputVar}'] = \`${replaceStr}\`.replace(/${search}/g, \`${replace}\`);`);
+      break;
+    case 'uppercase':
+      const upperStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      codeLines.push(`${indent}variables['${outputVar}'] = \`${upperStr}\`.toUpperCase();`);
+      break;
+    case 'lowercase':
+      const lowerStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      codeLines.push(`${indent}variables['${outputVar}'] = \`${lowerStr}\`.toLowerCase();`);
+      break;
+    case 'trim':
+      const trimStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      codeLines.push(`${indent}variables['${outputVar}'] = \`${trimStr}\`.trim();`);
+      break;
+    case 'substring':
+      const substringStr = this.interpolateVariables(node.data.config?.input || node.data.config?.string || '');
+      const start = node.data.config?.start || '0';
+      const end = node.data.config?.end || '';
+      if (end) {
+        codeLines.push(`${indent}variables['${outputVar}'] = \`${substringStr}\`.substring(${start}, ${end});`);
+      } else {
+        codeLines.push(`${indent}variables['${outputVar}'] = \`${substringStr}\`.substring(${start});`);
+      }
+      break;
       
-      case 'condition':
-        const condInput = this.interpolateVariables(node.data.config?.input || '');
-        const conditions = node.data.config?.conditions || [];
-        const defaultValue = node.data.config?.default || '';
+    case 'condition':
+      const condInput = this.interpolateVariables(node.data.config?.input || '');
+      const conditions = node.data.config?.conditions || [];
+      const defaultValue = node.data.config?.default || '';
         
-        codeLines.push(`${indent}// String condition mapping`);
-        codeLines.push(`${indent}const condValue = \`${condInput}\`;`);
-        codeLines.push(`${indent}let ${outputVar}_result = '${defaultValue}';`);
+      codeLines.push(`${indent}// String condition mapping`);
+      codeLines.push(`${indent}const condValue = \`${condInput}\`;`);
+      codeLines.push(`${indent}let ${outputVar}_result = '${defaultValue}';`);
         
-        conditions.forEach((cond, idx) => {
-          const ifValues = cond.if.split(',').map(v => v.trim());
-          const thenValue = cond.then || '';
-          const ifStatement = idx === 0 ? 'if' : 'else if';
-          const conditions = ifValues.map(v => `condValue === '${v}'`).join(' || ');
+      conditions.forEach((cond, idx) => {
+        const ifValues = cond.if.split(',').map(v => v.trim());
+        const thenValue = cond.then || '';
+        const ifStatement = idx === 0 ? 'if' : 'else if';
+        const conditions = ifValues.map(v => `condValue === '${v}'`).join(' || ');
           
-          codeLines.push(`${indent}${ifStatement} (${conditions}) {`);
-          codeLines.push(`${indent}  ${outputVar}_result = '${thenValue}';`);
-          codeLines.push(`${indent}}`);
-        });
+        codeLines.push(`${indent}${ifStatement} (${conditions}) {`);
+        codeLines.push(`${indent}  ${outputVar}_result = '${thenValue}';`);
+        codeLines.push(`${indent}}`);
+      });
         
-        codeLines.push(`${indent}variables['${outputVar}'] = ${outputVar}_result;`);
-        break;
+      codeLines.push(`${indent}variables['${outputVar}'] = ${outputVar}_result;`);
+      break;
       
-      case 'join':
-        const joinArray = node.data.config?.arrayVar || 'array';
-        const joinSeparator = node.data.config?.separator || ', ';
-        // Handle escape sequences in separator
-        const escapedJoinSep = joinSeparator.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r');
-        const joinSepCode = JSON.stringify(escapedJoinSep);
-        codeLines.push(`${indent}variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${joinSepCode});`);
-        break;
+    case 'join':
+      const joinArray = node.data.config?.arrayVar || 'array';
+      const joinSeparator = node.data.config?.separator || ', ';
+      // Handle escape sequences in separator
+      const escapedJoinSep = joinSeparator.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r');
+      const joinSepCode = JSON.stringify(escapedJoinSep);
+      codeLines.push(`${indent}variables['${outputVar}'] = (variables['${joinArray}'] || []).join(${joinSepCode});`);
+      break;
     }
   }
 
@@ -1008,34 +1017,34 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Object Operation: ${operation}`);
 
     switch (operation) {
-      case 'create':
-        const pairs = node.data.config?.pairs || [];
-        codeLines.push(`${indent}variables['${outputVar}'] = {`);
-        pairs.forEach(pair => {
-          codeLines.push(`${indent}  '${pair.key}': \`${this.interpolateVariables(pair.value)}\`,`);
-        });
-        codeLines.push(`${indent}};`);
-        break;
-      case 'get':
-        const objVar = node.data.config?.objectVar || 'object';
-        const key = node.data.config?.key || '';
-        codeLines.push(`${indent}variables['${outputVar}'] = variables['${objVar}']?.['${key}'];`);
-        break;
-      case 'set':
-        const setObjVar = node.data.config?.objectVar || 'object';
-        const setKey = node.data.config?.key || '';
-        const setValue = this.interpolateVariables(node.data.config?.value || '');
-        codeLines.push(`${indent}if (!variables['${setObjVar}']) variables['${setObjVar}'] = {};`);
-        codeLines.push(`${indent}variables['${setObjVar}']['${setKey}'] = \`${setValue}\`;`);
-        break;
-      case 'keys':
-        const keysObj = node.data.config?.objectVar || 'object';
-        codeLines.push(`${indent}variables['${outputVar}'] = Object.keys(variables['${keysObj}'] || {});`);
-        break;
-      case 'values':
-        const valuesObj = node.data.config?.objectVar || 'object';
-        codeLines.push(`${indent}variables['${outputVar}'] = Object.values(variables['${valuesObj}'] || {});`);
-        break;
+    case 'create':
+      const pairs = node.data.config?.pairs || [];
+      codeLines.push(`${indent}variables['${outputVar}'] = {`);
+      pairs.forEach(pair => {
+        codeLines.push(`${indent}  '${pair.key}': \`${this.interpolateVariables(pair.value)}\`,`);
+      });
+      codeLines.push(`${indent}};`);
+      break;
+    case 'get':
+      const objVar = node.data.config?.objectVar || 'object';
+      const key = node.data.config?.key || '';
+      codeLines.push(`${indent}variables['${outputVar}'] = variables['${objVar}']?.['${key}'];`);
+      break;
+    case 'set':
+      const setObjVar = node.data.config?.objectVar || 'object';
+      const setKey = node.data.config?.key || '';
+      const setValue = this.interpolateVariables(node.data.config?.value || '');
+      codeLines.push(`${indent}if (!variables['${setObjVar}']) variables['${setObjVar}'] = {};`);
+      codeLines.push(`${indent}variables['${setObjVar}']['${setKey}'] = \`${setValue}\`;`);
+      break;
+    case 'keys':
+      const keysObj = node.data.config?.objectVar || 'object';
+      codeLines.push(`${indent}variables['${outputVar}'] = Object.keys(variables['${keysObj}'] || {});`);
+      break;
+    case 'values':
+      const valuesObj = node.data.config?.objectVar || 'object';
+      codeLines.push(`${indent}variables['${outputVar}'] = Object.values(variables['${valuesObj}'] || {});`);
+      break;
     }
   }
 
@@ -1051,30 +1060,30 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Math: ${operation}`);
 
     switch (operation) {
-      case 'add':
-        codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) + Number(\`${right}\`);`);
-        break;
-      case 'subtract':
-        codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) - Number(\`${right}\`);`);
-        break;
-      case 'multiply':
-        codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) * Number(\`${right}\`);`);
-        break;
-      case 'divide':
-        codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) / Number(\`${right}\`);`);
-        break;
-      case 'modulo':
-        codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) % Number(\`${right}\`);`);
-        break;
-      case 'power':
-        codeLines.push(`${indent}variables['${outputVar}'] = Math.pow(Number(\`${left}\`), Number(\`${right}\`));`);
-        break;
-      case 'sqrt':
-        codeLines.push(`${indent}variables['${outputVar}'] = Math.sqrt(Number(\`${left}\`));`);
-        break;
-      case 'abs':
-        codeLines.push(`${indent}variables['${outputVar}'] = Math.abs(Number(\`${left}\`));`);
-        break;
+    case 'add':
+      codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) + Number(\`${right}\`);`);
+      break;
+    case 'subtract':
+      codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) - Number(\`${right}\`);`);
+      break;
+    case 'multiply':
+      codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) * Number(\`${right}\`);`);
+      break;
+    case 'divide':
+      codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) / Number(\`${right}\`);`);
+      break;
+    case 'modulo':
+      codeLines.push(`${indent}variables['${outputVar}'] = Number(\`${left}\`) % Number(\`${right}\`);`);
+      break;
+    case 'power':
+      codeLines.push(`${indent}variables['${outputVar}'] = Math.pow(Number(\`${left}\`), Number(\`${right}\`));`);
+      break;
+    case 'sqrt':
+      codeLines.push(`${indent}variables['${outputVar}'] = Math.sqrt(Number(\`${left}\`));`);
+      break;
+    case 'abs':
+      codeLines.push(`${indent}variables['${outputVar}'] = Math.abs(Number(\`${left}\`));`);
+      break;
     }
   }
 
@@ -1089,22 +1098,22 @@ export class NodeCompiler {
     codeLines.push(`${indent}// Database: ${operation}`);
 
     switch (operation) {
-      case 'get':
-        codeLines.push(`${indent}variables['${outputVar}'] = await state.get('${key}');`);
-        break;
-      case 'set':
-        const value = this.interpolateVariables(node.data.config?.value || '');
-        codeLines.push(`${indent}await state.set('${key}', \`${value}\`);`);
-        break;
-      case 'delete':
-        codeLines.push(`${indent}await state.delete('${key}');`);
-        break;
-      case 'list':
-        codeLines.push(`${indent}variables['${outputVar}'] = await state.list();`);
-        break;
-      case 'exists':
-        codeLines.push(`${indent}variables['${outputVar}'] = await state.exists('${key}');`);
-        break;
+    case 'get':
+      codeLines.push(`${indent}variables['${outputVar}'] = await state.get('${key}');`);
+      break;
+    case 'set':
+      const value = this.interpolateVariables(node.data.config?.value || '');
+      codeLines.push(`${indent}await state.set('${key}', \`${value}\`);`);
+      break;
+    case 'delete':
+      codeLines.push(`${indent}await state.delete('${key}');`);
+      break;
+    case 'list':
+      codeLines.push(`${indent}variables['${outputVar}'] = await state.list();`);
+      break;
+    case 'exists':
+      codeLines.push(`${indent}variables['${outputVar}'] = await state.exists('${key}');`);
+      break;
     }
   }
 
@@ -1194,9 +1203,9 @@ export class NodeCompiler {
         
         // Find matching closing bracket
         while (i < path.length && bracketDepth > 0) {
-          if (path[i] === '[') bracketDepth++;
-          else if (path[i] === ']') bracketDepth--;
-          else bracketContent += path[i];
+          if (path[i] === '[') {bracketDepth++;}
+          else if (path[i] === ']') {bracketDepth--;}
+          else {bracketContent += path[i];}
           i++;
         }
         
@@ -1264,7 +1273,7 @@ export class NodeCompiler {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }

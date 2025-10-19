@@ -100,7 +100,7 @@ export const usePluginStore = create((set, get) => ({
   updatePlugin: async (id, pluginData) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.plugins.update(id, pluginData);
+      const _response = await api.plugins.update(id, pluginData);
       
       // Fetch updated plugin data from server to ensure consistency
       const updatedPlugin = await api.plugins.getById(id);

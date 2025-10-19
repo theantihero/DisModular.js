@@ -1,3 +1,4 @@
+/* eslint-env browser, node */
 /**
  * App ViewModel - Global State Management
  * MVVM pattern - manages authentication and global app state
@@ -16,6 +17,7 @@ export const useAppStore = create((set, get) => ({
   user: null,
   apiStatus: null,
   botStatus: null,
+  guildCount: null,
   isAuthenticated: false,
   isAdmin: false,
   isLoading: false,
@@ -32,6 +34,7 @@ export const useAppStore = create((set, get) => ({
   
   setApiStatus: (status) => set({ apiStatus: status }),
   setBotStatus: (status) => set({ botStatus: status }),
+  setGuildCount: (count) => set({ guildCount: count }),
   
   setLoading: (isLoading) => set({ isLoading }),
   
@@ -43,8 +46,10 @@ export const useAppStore = create((set, get) => ({
   setSelectedGuildId: (guildId) => {
     set({ selectedGuildId: guildId });
     if (guildId) {
+      // eslint-disable-next-line no-undef
       localStorage.setItem('dismodular_selected_guild_id', guildId);
     } else {
+      // eslint-disable-next-line no-undef
       localStorage.removeItem('dismodular_selected_guild_id');
     }
   },
@@ -53,6 +58,7 @@ export const useAppStore = create((set, get) => ({
    * Get cached guild selection
    */
   getCachedGuildId: () => {
+    // eslint-disable-next-line no-undef
     const cached = localStorage.getItem('dismodular_selected_guild_id');
     return cached || null;
   },
@@ -85,9 +91,11 @@ export const useAppStore = create((set, get) => ({
       set({ refreshCooldown: 60 });
       
       // Start countdown
+      // eslint-disable-next-line no-undef
       const countdown = setInterval(() => {
         const currentCooldown = get().refreshCooldown;
         if (currentCooldown <= 1) {
+          // eslint-disable-next-line no-undef
           clearInterval(countdown);
           set({ refreshCooldown: 0 });
         } else {
@@ -190,6 +198,26 @@ export const useAppStore = create((set, get) => ({
     } catch (error) {
       console.error('Failed to fetch status:', error);
       return null;
+    }
+  },
+
+  /**
+   * Fetch guild count
+   * @date 2025-01-27
+   */
+  fetchGuildCount: async () => {
+    try {
+      const response = await api.bot.getGuildCount();
+      
+      set({ 
+        guildCount: response.data
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch guild count:', error);
+      set({ error: error.message });
+      throw error;
     }
   },
 

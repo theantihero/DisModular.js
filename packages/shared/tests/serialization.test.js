@@ -50,7 +50,7 @@ describe('Serialization Utilities', () => {
         regex: /test/gi,
         error: new Error('Test error'),
         map: new Map([['key', 'value']]),
-        set: new Set([1, 2, 3])
+        set: new Set([1, 2, 3]),
       };
       
       const result = safeStringify(obj);
@@ -59,20 +59,20 @@ describe('Serialization Utilities', () => {
       expect(parsed.date).toBe('2025-01-27T10:00:00.000Z');
       expect(parsed.regex).toEqual({
         source: 'test',
-        flags: 'gi'
+        flags: 'gi',
       });
       expect(parsed.error).toEqual({
         message: 'Test error',
-        name: 'Error'
+        name: 'Error',
       });
       expect(parsed.map).toEqual({
-        key: 'value'
+        key: 'value',
       });
       expect(parsed.set).toEqual([1, 2, 3]);
     });
 
     it('should respect max depth limit', () => {
-      let obj = { level: 0 };
+      const obj = { level: 0 };
       let current = obj;
       
       for (let i = 1; i < 15; i++) {
@@ -100,7 +100,7 @@ describe('Serialization Utilities', () => {
       const obj = {
         func: () => 'test',
         promise: Promise.resolve('test'),
-        data: 'valid'
+        data: 'valid',
       };
       
       const result = safeStringify(obj);
@@ -162,7 +162,7 @@ describe('Serialization Utilities', () => {
         regex: /test/gi,
         error: new Error('Test error'),
         map: new Map([['key', 'value']]),
-        set: new Set([1, 2, 3])
+        set: new Set([1, 2, 3]),
       };
       
       const cloned = safeClone(original);
@@ -182,7 +182,7 @@ describe('Serialization Utilities', () => {
     });
 
     it('should respect max depth limit', () => {
-      let obj = { level: 0 };
+      const obj = { level: 0 };
       let current = obj;
       
       for (let i = 1; i < 15; i++) {
@@ -212,7 +212,7 @@ describe('Serialization Utilities', () => {
     it('should handle circular references in state', () => {
       const state = {
         variables: { count: 5 },
-        circular: {}
+        circular: {},
       };
       state.circular.self = state.circular;
       
@@ -232,12 +232,12 @@ describe('Serialization Utilities', () => {
         variables: {
           date: new Date('2025-01-27T10:00:00Z'),
           regex: /test/gi,
-          error: new Error('Test error')
+          error: new Error('Test error'),
         },
         settings: {
           enabled: true,
-          options: ['option1', 'option2']
-        }
+          options: ['option1', 'option2'],
+        },
       };
       
       const result = serializeState(state);
@@ -245,11 +245,11 @@ describe('Serialization Utilities', () => {
       expect(result.variables.date).toBe('2025-01-27T10:00:00.000Z');
       expect(result.variables.regex).toEqual({
         source: 'test',
-        flags: 'gi'
+        flags: 'gi',
       });
       expect(result.variables.error).toEqual({
         message: 'Test error',
-        name: 'Error'
+        name: 'Error',
       });
       expect(result.settings.enabled).toBe(true);
       expect(result.settings.options).toEqual(['option1', 'option2']);

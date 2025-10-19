@@ -5,9 +5,9 @@
  * @date 2025-10-14
  */
 
-import { Client, GatewayIntentBits, Collection, REST, Routes, MessageFlags } from 'discord.js';
+import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { Logger } from '@dismodular/shared';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import PluginModel from '../models/PluginModel.js';
 import PluginManager from '../plugins/PluginManager.js';
 import PluginLoader from '../plugins/PluginLoader.js';
@@ -21,13 +21,13 @@ export class BotClient {
    */
   constructor(config) {
     this.config = config;
-    this.prisma = new PrismaClient();
+    this.prisma = null; // Will be initialized lazily
     
     // Default intents (non-privileged)
     const intents = [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.GuildMessageReactions
+      GatewayIntentBits.GuildMessageReactions,
     ];
     
     // Add privileged intents if enabled in config
@@ -48,11 +48,22 @@ export class BotClient {
       config.pluginsDirectory,
       this.pluginManager,
       this.pluginModel,
-      () => this.registerSlashCommands() // Re-register commands when plugins change
+      () => this.registerSlashCommands(), // Re-register commands when plugins change
     );
 
     // Setup event handlers
     this.setupEventHandlers();
+  }
+
+  /**
+   * Get Prisma client instance (lazy initialization)
+   * @returns {PrismaClient|null} Prisma client instance or null if not available
+   */
+  getPrisma() {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient(this.config.databaseUrl);
+    }
+    return this.prisma;
   }
 
   /**
@@ -93,7 +104,7 @@ export class BotClient {
   async onInteraction(interaction) {
     const startTime = Date.now();
     
-    if (!interaction.isChatInputCommand()) return;
+    if (!interaction.isChatInputCommand()) {return;}
 
     // Defer reply IMMEDIATELY - no logging or processing before this
     try {
@@ -113,12 +124,12 @@ export class BotClient {
       // Find plugin for this command
       const plugin = this.pluginManager.getPluginByCommand(
         interaction.commandName,
-        'slash'
+        'slash',
       );
 
       if (!plugin) {
         await interaction.editReply({
-          content: 'Command not found.'
+          content: 'Command not found.',
         });
         return;
       }
@@ -135,7 +146,7 @@ export class BotClient {
           } else {
             await interaction.editReply(content);
           }
-        }
+        },
       };
 
       await this.pluginManager.execute(plugin.id, context);
@@ -144,7 +155,7 @@ export class BotClient {
       
       try {
         await interaction.editReply({
-          content: 'An error occurred while executing this command.'
+          content: 'An error occurred while executing this command.',
         });
       } catch (replyError) {
         logger.error('Failed to send error message:', replyError);
@@ -158,13 +169,13 @@ export class BotClient {
    */
   async onMessage(message) {
     // Ignore bot messages
-    if (message.author.bot) return;
+    if (message.author.bot) {return;}
 
     try {
       const prefix = this.config.prefix || '!';
       
       // Check if message starts with prefix
-      if (!message.content.startsWith(prefix)) return;
+      if (!message.content.startsWith(prefix)) {return;}
 
       // Parse command
       const args = message.content.slice(prefix.length).trim().split(/ +/);
@@ -175,7 +186,7 @@ export class BotClient {
       // Find plugin for this command
       const plugin = this.pluginManager.getPluginByCommand(commandName, 'text');
 
-      if (!plugin) return; // Silently ignore unknown commands
+      if (!plugin) {return;} // Silently ignore unknown commands
 
       // Execute plugin
       const context = {
@@ -186,7 +197,7 @@ export class BotClient {
         guildId: message.guild?.id,
         reply: async (content) => {
           await message.reply(content);
-        }
+        },
       };
 
       await this.pluginManager.execute(plugin.id, context);
@@ -212,7 +223,7 @@ export class BotClient {
       const guilds = this.client.guilds.cache;
       logger.info(`Registering commands for ${guilds.size} guilds...`);
 
-      for (const [guildId, guild] of guilds) {
+      for (const [guildId] of guilds) {
         await this.registerGuildCommands(guildId);
       }
 
@@ -234,7 +245,7 @@ export class BotClient {
       // Get enabled plugins for this guild
       const enabledPlugins = await this.getEnabledPluginsForGuild(guildId);
       const slashPlugins = enabledPlugins.filter(
-        p => p.type === 'slash' || p.type === 'both'
+        p => p.type === 'slash' || p.type === 'both',
       );
 
       if (slashPlugins.length === 0) {
@@ -253,7 +264,7 @@ export class BotClient {
         return {
           name: commandName.toLowerCase(),
           description: plugin.description || `Execute ${plugin.name}`,
-          options: plugin.options || []
+          options: plugin.options || [],
         };
       }).filter(Boolean);
 
@@ -261,7 +272,7 @@ export class BotClient {
 
       await rest.put(
         Routes.applicationGuildCommands(this.config.clientId, guildId),
-        { body: commands }
+        { body: commands },
       );
 
       logger.debug(`Registered ${commands.length} commands for guild ${guildId}`);
@@ -282,18 +293,18 @@ export class BotClient {
         return;
       }
 
-      await this.prisma.guild.upsert({
+      await this.getPrisma().guild.upsert({
         where: { id: guildId },
         update: {
           name: guild.name,
-          enabled: true
+          enabled: true,
         },
         create: {
           id: guildId,
           name: guild.name,
           enabled: true,
-          settings: {}
-        }
+          settings: {},
+        },
       });
 
       logger.debug(`Ensured guild ${guild.name} (${guildId}) exists in database`);
@@ -309,14 +320,14 @@ export class BotClient {
    */
   async getEnabledPluginsForGuild(guildId) {
     try {
-      const guildPlugins = await this.prisma.guildPlugin.findMany({
+      const guildPlugins = await this.getPrisma().guildPlugin.findMany({
         where: {
           guild_id: guildId,
-          enabled: true
+          enabled: true,
         },
         include: {
-          plugin: true
-        }
+          plugin: true,
+        },
       });
 
       return guildPlugins.map(gp => gp.plugin);
@@ -364,7 +375,7 @@ export class BotClient {
       guilds: this.client.guilds.cache.size,
       users: this.client.users.cache.size,
       channels: this.client.channels.cache.size,
-      plugins: this.pluginManager.getStatistics()
+      plugins: this.pluginManager.getStatistics(),
     };
   }
 
@@ -397,9 +408,9 @@ export class BotClient {
       logger.info(`Left guild: ${guild.name} (${guild.id})`);
       
       // Mark guild as disabled in database
-      await this.prisma.guild.update({
+      await this.getPrisma().guild.update({
         where: { id: guild.id },
-        data: { enabled: false }
+        data: { enabled: false },
       });
       
       logger.success(`Guild ${guild.name} marked as disabled`);

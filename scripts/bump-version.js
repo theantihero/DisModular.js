@@ -7,7 +7,7 @@
  * @date 2025-10-15
  */
 
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
@@ -31,7 +31,7 @@ try {
   console.log(`📦 Current version: ${currentVersion}`);
   
   // Bump version using npm
-  execSync(`npm version ${versionType} --no-git-tag-version`, { stdio: 'inherit' });
+  execFileSync('npm', ['version', versionType, '--no-git-tag-version'], { stdio: 'inherit' });
   
   // Read new version
   const newPackageJson = JSON.parse(readFileSync(packagePath, 'utf8'));

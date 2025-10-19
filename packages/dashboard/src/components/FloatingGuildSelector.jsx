@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import _React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useToast } from '../hooks/useToast';
@@ -51,6 +51,7 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
     fetchGuilds();
     // Initialize position to bottom right
     setPosition({ x: window.innerWidth - 320, y: window.innerHeight - 200 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle window resize to keep widget in bounds and close dropdown
@@ -343,7 +344,7 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
           <div
             ref={buttonRef}
             onMouseDown={handleDragStart}
-            onClick={(e) => {
+            onClick={(_e) => {
               // Only expand if not dragging and mouse hasn't moved significantly
               if (!isDragging && !dragRef.current.hasMoved) {
                 setIsMinimized(false);
