@@ -259,6 +259,8 @@ export class PluginModel {
    */
   async getGuildPlugin(guildId, pluginId) {
     try {
+      logger.debug(`Getting guild plugin for guild ${guildId}, plugin ${pluginId}`);
+      
       const guildPlugin = await this.getPrisma().guildPlugin.findUnique({
         where: {
           guild_id_plugin_id: {
@@ -266,6 +268,13 @@ export class PluginModel {
             plugin_id: pluginId,
           },
         },
+      });
+
+      logger.debug(`Guild plugin query result:`, {
+        guildId,
+        pluginId,
+        guildPlugin,
+        hasGuildPlugin: !!guildPlugin
       });
 
       // If no guild-specific record exists, return a default enabled state
@@ -276,13 +285,22 @@ export class PluginModel {
           select: { enabled: true },
         });
         
+        logger.debug(`No guild plugin found, falling back to global plugin:`, {
+          plugin,
+          globalEnabled: plugin?.enabled
+        });
+        
         return plugin ? { enabled: plugin.enabled } : { enabled: false };
       }
+
+      logger.debug(`Returning guild-specific plugin setting:`, {
+        enabled: guildPlugin.enabled
+      });
 
       return guildPlugin;
     } catch (error) {
       logger.error('Failed to get guild plugin:', error);
-      return null;
+      return { enabled: false };
     }
   }
 

@@ -410,8 +410,10 @@ export class BotClient {
         };
       }).filter(Boolean);
 
+      logger.debug(`Generated ${commands.length} commands for guild ${guild.name} (${guildId})`);
+
       if (commands.length === 0) {
-        logger.warn(`No valid commands to register for guild ${guild.name} (${guildId})`);
+        logger.info(`No commands to register for guild ${guild.name} (${guildId}) - skipping registration`);
         return;
       }
 
@@ -442,10 +444,22 @@ export class BotClient {
       
       const rest = new REST({ version: '10' }).setToken(this.config.token);
 
-      await rest.put(
+      logger.debug(`About to register commands for guild ${guildId}:`, commands.map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        options: cmd.options?.length || 0
+      })));
+
+      const response = await rest.put(
         Routes.applicationGuildCommands(this.config.clientId, guildId),
         { body: commands },
       );
+
+      logger.debug(`Discord API response for guild ${guildId}:`, {
+        status: response?.status,
+        data: response?.data,
+        headers: response?.headers
+      });
 
       // Update cache
       const commandNames = new Set(commands.map(cmd => cmd.name));
@@ -455,6 +469,11 @@ export class BotClient {
       logger.success(`Registered ${commands.length} commands for guild ${guild.name} (${guildId})`);
       logger.debug(`Commands: ${commands.map(c => c.name).join(', ')}`);
     } catch (error) {
+      // Log the raw error first
+      logger.error(`Raw error object:`, error);
+      logger.error(`Error type:`, typeof error);
+      logger.error(`Error constructor:`, error?.constructor?.name);
+      
       // Handle different types of errors more gracefully
       if (error.code === 429) {
         logger.warn(`Rate limited while registering commands for guild ${guild.name} (${guildId}), Discord will retry automatically`);
