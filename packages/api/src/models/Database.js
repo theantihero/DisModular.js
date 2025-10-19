@@ -1,143 +1,37 @@
 /**
- * Database Model - SQLite Database Connection
- * Manages database schema and connections
+ * Database Model - Prisma Client Connection
+ * Manages database schema and connections using Prisma ORM
  * @author fkndean_
- * @date 2025-10-14
+ * @date 2025-01-27
  */
 
-import Database from 'better-sqlite3';
+import { PrismaClient } from '@prisma/client';
 import { Logger } from '@dismodular/shared';
 
 const logger = new Logger('Database');
 
 export class DatabaseModel {
   /**
-   * Initialize Database
-   * @param {string} dbPath - Path to SQLite database
+   * Initialize Database with Prisma Client
    */
-  constructor(dbPath) {
-    this.dbPath = dbPath;
-    this.db = new Database(dbPath);
-    this.db.pragma('journal_mode = WAL'); // Enable WAL mode for better performance
-    this.initializeTables();
+  constructor() {
+    this.prisma = new PrismaClient();
+    logger.info('Prisma Client initialized');
   }
 
   /**
-   * Initialize all database tables
-   */
-  initializeTables() {
-    try {
-      // Users table for OAuth
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
-          discord_id TEXT UNIQUE NOT NULL,
-          username TEXT NOT NULL,
-          discriminator TEXT,
-          avatar TEXT,
-          access_token TEXT,
-          refresh_token TEXT,
-          is_admin INTEGER DEFAULT 0,
-          admin_notes TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          last_login DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      // Migration: Add is_admin column if it doesn't exist
-      try {
-        const tableInfo = this.db.prepare("PRAGMA table_info(users)").all();
-        const hasIsAdmin = tableInfo.some(col => col.name === 'is_admin');
-        
-        if (!hasIsAdmin) {
-          logger.info('Migrating users table: adding is_admin column');
-          this.db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
-          this.db.exec('ALTER TABLE users ADD COLUMN admin_notes TEXT');
-          logger.success('Users table migrated successfully');
-        }
-      } catch (migrationError) {
-        logger.warn('Migration check/execution skipped:', migrationError.message);
-      }
-
-      // Plugins table
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS plugins (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          version TEXT NOT NULL,
-          description TEXT,
-          author TEXT,
-          type TEXT NOT NULL,
-          enabled INTEGER DEFAULT 1,
-          trigger_type TEXT,
-          trigger_command TEXT,
-          trigger_event TEXT,
-          trigger_pattern TEXT,
-          nodes TEXT NOT NULL,
-          edges TEXT NOT NULL,
-          compiled TEXT NOT NULL,
-          created_by TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (created_by) REFERENCES users(id)
-        )
-      `);
-
-      // Plugin state table
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS plugin_state (
-          plugin_id TEXT NOT NULL,
-          key TEXT NOT NULL,
-          value TEXT,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (plugin_id, key),
-          FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
-        )
-      `);
-
-      // Bot configuration table
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS bot_config (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      // Audit log table
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS audit_log (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT,
-          action TEXT NOT NULL,
-          resource_type TEXT,
-          resource_id TEXT,
-          details TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-      `);
-
-      logger.success('Database tables initialized');
-    } catch (error) {
-      logger.error('Failed to initialize database tables:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get database instance
-   * @returns {Database} Database instance
+   * Get Prisma client instance
+   * @returns {PrismaClient} Prisma client instance
    */
   getInstance() {
-    return this.db;
+    return this.prisma;
   }
 
   /**
    * Close database connection
    */
-  close() {
-    this.db.close();
+  async close() {
+    await this.prisma.$disconnect();
     logger.info('Database connection closed');
   }
 
@@ -145,20 +39,17 @@ export class DatabaseModel {
    * Add audit log entry
    * @param {Object} entry - Audit log entry
    */
-  addAuditLog(entry) {
+  async addAuditLog(entry) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO audit_log (user_id, action, resource_type, resource_id, details)
-        VALUES (?, ?, ?, ?, ?)
-      `);
-
-      stmt.run(
-        entry.userId,
-        entry.action,
-        entry.resourceType,
-        entry.resourceId,
-        JSON.stringify(entry.details || {})
-      );
+      await this.prisma.auditLog.create({
+        data: {
+          userId: entry.userId,
+          action: entry.action,
+          resourceType: entry.resourceType,
+          resourceId: entry.resourceId,
+          details: entry.details || {}
+        }
+      });
     } catch (error) {
       logger.error('Failed to add audit log:', error);
     }
@@ -169,37 +60,143 @@ export class DatabaseModel {
    * @param {Object} options - Query options
    * @returns {Array} Audit logs
    */
-  getAuditLogs(options = {}) {
+  async getAuditLogs(options = {}) {
     try {
-      let query = 'SELECT * FROM audit_log';
-      const conditions = [];
-      const params = [];
-
+      const where = {};
+      
       if (options.userId) {
-        conditions.push('user_id = ?');
-        params.push(options.userId);
+        where.userId = options.userId;
       }
 
       if (options.resourceType) {
-        conditions.push('resource_type = ?');
-        params.push(options.resourceType);
+        where.resourceType = options.resourceType;
       }
 
-      if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
-      }
+      const auditLogs = await this.prisma.auditLog.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        take: options.limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              discord_id: true
+            }
+          }
+        }
+      });
 
-      query += ' ORDER BY created_at DESC';
-
-      if (options.limit) {
-        query += ' LIMIT ?';
-        params.push(options.limit);
-      }
-
-      return this.db.prepare(query).all(...params);
+      return auditLogs;
     } catch (error) {
       logger.error('Failed to get audit logs:', error);
       return [];
+    }
+  }
+
+  /**
+   * Create or update user
+   * @param {Object} userData - User data
+   * @returns {Object} Created/updated user
+   */
+  async upsertUser(userData) {
+    try {
+      return await this.prisma.user.upsert({
+        where: { discord_id: userData.discord_id },
+        update: {
+          username: userData.username,
+          discriminator: userData.discriminator,
+          avatar: userData.avatar,
+          access_token: userData.access_token,
+          refresh_token: userData.refresh_token,
+          last_login: new Date()
+        },
+        create: {
+          discord_id: userData.discord_id,
+          username: userData.username,
+          discriminator: userData.discriminator,
+          avatar: userData.avatar,
+          access_token: userData.access_token,
+          refresh_token: userData.refresh_token,
+          is_admin: userData.is_admin || false,
+          admin_notes: userData.admin_notes
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to upsert user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user by Discord ID
+   * @param {string} discordId - Discord user ID
+   * @returns {Object|null} User object or null
+   */
+  async getUserByDiscordId(discordId) {
+    try {
+      return await this.prisma.user.findUnique({
+        where: { discord_id: discordId }
+      });
+    } catch (error) {
+      logger.error('Failed to get user by Discord ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set user admin status
+   * @param {string} userId - User ID
+   * @param {boolean} isAdmin - Admin status
+   * @param {string} notes - Admin notes
+   */
+  async setUserAdmin(userId, isAdmin, notes = null) {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          is_admin: isAdmin,
+          admin_notes: notes
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to set user admin status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bot configuration
+   * @param {string} key - Configuration key
+   * @returns {string|null} Configuration value
+   */
+  async getBotConfig(key) {
+    try {
+      const config = await this.prisma.botConfig.findUnique({
+        where: { key }
+      });
+      return config ? config.value : null;
+    } catch (error) {
+      logger.error('Failed to get bot config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set bot configuration
+   * @param {string} key - Configuration key
+   * @param {string} value - Configuration value
+   */
+  async setBotConfig(key, value) {
+    try {
+      await this.prisma.botConfig.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value }
+      });
+    } catch (error) {
+      logger.error('Failed to set bot config:', error);
+      throw error;
     }
   }
 }

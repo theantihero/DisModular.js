@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  discord_id      String   @unique
+  username        String
+  discriminator   String?
+  avatar          String?
+  access_token    String?
+  refresh_token   String?
+  is_admin        Boolean  @default(false)
+  admin_notes     String?
+  access_status   String   @default("pending") // pending, approved, denied
+  access_requested_at DateTime?
+  access_message  String?  // Custom message for denial or approval
+  access_request_message String?  // User's message when requesting access
+  created_at      DateTime @default(now())
+  last_login      DateTime @default(now())
+
+  // Relations
+  plugins         Plugin[]
+  audit_logs      AuditLog[]
+  guild_permissions UserGuildPermission[]
+
+  @@map("users")
+}
+
+model Plugin {
+  id               String   @id @default(cuid())
+  name             String
+  version          String
+  description      String?
+  author           String?
+  type             String
+  enabled          Boolean  @default(true)
+  trigger_type     String?
+  trigger_command  String?
+  trigger_event    String?
+  trigger_pattern  String?
+  options          Json     @default("[]")
+  nodes            Json
+  edges            Json
+  compiled         String
+  created_by       String?
+  is_template      Boolean  @default(false)
+  template_category String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // Relations
+  creator          User?    @relation(fields: [created_by], references: [id])
+  plugin_states    PluginState[]
+  guild_plugins    GuildPlugin[]
+
+  @@map("plugins")
+}
+
+model PluginState {
+  plugin_id   String
+  key         String
+  value       String?
+  updated_at  DateTime @default(now()) @updatedAt
+
+  // Relations
+  plugin      Plugin  @relation(fields: [plugin_id], references: [id], onDelete: Cascade)
+
+  @@id([plugin_id, key])
+  @@map("plugin_state")
+}
+
+model BotConfig {
+  key         String   @id
+  value       String
+  updated_at  DateTime @default(now()) @updatedAt
+
+  @@map("bot_config")
+}
+
+model AuditLog {
+  id             Int      @id @default(autoincrement())
+  user_id        String?
+  action         String
+  resource_type  String?
+  resource_id    String?
+  details        Json?
+  created_at     DateTime @default(now())
+
+  // Relations
+  user           User?    @relation(fields: [user_id], references: [id])
+
+  @@map("audit_log")
+}
+
+model Guild {
+  id              String   @id // Discord guild ID
+  name            String
+  enabled         Boolean  @default(true)
+  settings        Json     @default("{}")
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  guild_plugins   GuildPlugin[]
+  user_permissions UserGuildPermission[]
+  @@map("guilds")
+}
+
+model GuildPlugin {
+  guild_id        String
+  plugin_id       String
+  enabled         Boolean  @default(true)
+  settings        Json     @default("{}")
+  created_at      DateTime @default(now())
+  
+  guild           Guild    @relation(fields: [guild_id], references: [id], onDelete: Cascade)
+  plugin          Plugin   @relation(fields: [plugin_id], references: [id], onDelete: Cascade)
+  
+  @@id([guild_id, plugin_id])
+  @@map("guild_plugins")
+}
+
+model UserGuildPermission {
+  user_id         String
+  guild_id        String
+  is_admin        Boolean  @default(false)
+  permissions     BigInt   @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  // Relations
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  guild           Guild    @relation(fields: [guild_id], references: [id], onDelete: Cascade)
+  
+  @@id([user_id, guild_id])
+  @@map("user_guild_permissions")
+}
+
+model DiscordApiCache {
+  id              String   @id @default(cuid())
+  cache_key       String   @unique
+  cache_type      String   // 'user_guilds', 'bot_guilds', 'guild_info', etc.
+  user_id         String?  // For user-specific caches
+  data            Json     // Cached API response data
+  expires_at      DateTime // When this cache entry expires
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@map("discord_api_cache")
+}

@@ -7,9 +7,9 @@
  * @date 2025-10-15
  */
 
-const { execSync } = require('child_process');
-const { readFileSync, writeFileSync } = require('fs');
-const { join } = require('path');
+import { execSync } from 'child_process';
+import { readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
 const VERSION_TYPES = ['patch', 'minor', 'major'];
 const versionType = process.argv[2];

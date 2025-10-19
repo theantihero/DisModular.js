@@ -6,6 +6,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTheme } from '../hooks/useTheme';
 
 /**
  * Toast Component
@@ -16,6 +17,8 @@ import { useEffect } from 'react';
  * @param {number} props.duration - Auto-close duration in ms (default: 3000)
  */
 export function Toast({ message, type = 'info', onClose, duration = 3000 }) {
+  const { theme } = useTheme();
+  
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(() => {
@@ -25,12 +28,24 @@ export function Toast({ message, type = 'info', onClose, duration = 3000 }) {
     }
   }, [duration, onClose]);
 
-  const typeStyles = {
-    success: 'bg-green-600 border-green-500',
-    error: 'bg-red-600 border-red-500',
-    warning: 'bg-yellow-600 border-yellow-500',
-    info: 'bg-blue-600 border-blue-500'
+  const getTypeStyles = () => {
+    if (theme === 'space') {
+      return {
+        success: 'holographic border-energy-green/50 bg-energy-green/20',
+        error: 'holographic border-red-500/50 bg-red-500/20',
+        warning: 'holographic border-yellow-500/50 bg-yellow-500/20',
+        info: 'holographic border-hologram-500/50 bg-hologram-500/20'
+      };
+    }
+    return {
+      success: 'bg-green-600 border-green-500',
+      error: 'bg-red-600 border-red-500',
+      warning: 'bg-yellow-600 border-yellow-500',
+      info: 'bg-blue-600 border-blue-500'
+    };
   };
+
+  const typeStyles = getTypeStyles();
 
   const icons = {
     success: (
@@ -56,7 +71,9 @@ export function Toast({ message, type = 'info', onClose, duration = 3000 }) {
   };
 
   return (
-    <div className={`${typeStyles[type]} border-l-4 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md animate-slide-in`}>
+    <div className={`${typeStyles[type]} border-l-4 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md animate-slide-in ${
+      theme === 'space' ? 'animate-cosmic-glow' : ''
+    }`}>
       <div className="flex-shrink-0">
         {icons[type]}
       </div>

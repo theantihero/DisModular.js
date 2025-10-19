@@ -6,4 +6,5 @@
 
 export * from './types/plugin.js';
 export * from './utils/logger.js';
+export * from './utils/serialization.js';
 

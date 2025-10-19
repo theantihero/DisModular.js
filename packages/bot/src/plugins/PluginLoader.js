@@ -111,6 +111,11 @@ export class PluginLoader {
         return;
       }
 
+      // Mark as template if from plugins directory
+      const isTemplate = filePath.includes('/plugins/') || filePath.includes('\\plugins\\');
+      pluginData.is_template = isTemplate;
+      pluginData.template_category = isTemplate ? 'example' : null;
+
       // Auto-compile if no compiled code present
       if (!pluginData.compiled && pluginData.nodes && pluginData.edges) {
         try {
@@ -129,7 +134,7 @@ export class PluginLoader {
       }
 
       // Save to database
-      const saved = this.pluginModel.upsert(pluginData);
+      const saved = await this.pluginModel.upsert(pluginData);
       if (!saved) {
         logger.error(`Failed to save plugin ${pluginData.name} to database`);
         return;
@@ -161,12 +166,12 @@ export class PluginLoader {
       const pluginDir = parts[parts.length - 2];
       
       // Try to find plugin by directory name
-      const plugins = this.pluginModel.getAll();
+      const plugins = await this.pluginModel.getAll();
       const plugin = plugins.find(p => p.id === pluginDir || p.name === pluginDir);
       
       if (plugin) {
         this.pluginManager.unregister(plugin.id);
-        this.pluginModel.delete(plugin.id);
+        await this.pluginModel.delete(plugin.id);
         logger.success(`Plugin unloaded: ${plugin.name}`);
       }
     } catch (error) {
@@ -179,7 +184,7 @@ export class PluginLoader {
    */
   async loadAllFromDatabase() {
     try {
-      const plugins = this.pluginModel.getAll(true); // Only enabled
+      const plugins = await this.pluginModel.getAll(true); // Only enabled
       
       logger.info(`Loading ${plugins.length} plugins from database...`);
       
@@ -276,8 +281,8 @@ export class PluginLoader {
   async syncPlugins() {
     logger.info('Syncing plugins...');
     
-    // First, scan directory and load any new plugins
-    await this.scanPluginsDirectory();
+    // First, load all plugins from filesystem (this will save them to database)
+    await this.loadAllFromFilesystem();
     
     // Then, load all plugins from database (includes scanned + previously saved)
     await this.loadAllFromDatabase();

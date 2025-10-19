@@ -6,7 +6,10 @@
 
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+
+const prisma = new PrismaClient();
 
 /**
  * Create bot routes
@@ -17,18 +20,20 @@ export function createBotRoutes(db) {
   const router = Router();
 
   /**
-   * Get bot status and statistics (read-only, requires auth)
+   * Get API status and statistics (read-only, requires auth)
    */
   router.get('/status', requireAuth, async (req, res) => {
     try {
       // Get plugin statistics from database
-      const totalPlugins = db.prepare('SELECT COUNT(*) as count FROM plugins').get().count;
-      const enabledPlugins = db.prepare('SELECT COUNT(*) as count FROM plugins WHERE enabled = 1').get().count;
+      const [totalPlugins, enabledPlugins] = await Promise.all([
+        prisma.plugin.count(),
+        prisma.plugin.count({ where: { enabled: true } })
+      ]);
 
       res.json({
         success: true,
         data: {
-          status: 'online',
+          api_status: 'online',
           uptime: process.uptime(),
           plugins: {
             total: totalPlugins,
@@ -38,6 +43,68 @@ export function createBotRoutes(db) {
           version: '0.0.1'
         }
       });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get API status'
+      });
+    }
+  });
+
+  /**
+   * Get actual bot status from bot service (read-only, requires auth)
+   */
+  router.get('/bot-status', requireAuth, async (req, res) => {
+    try {
+      const botApiUrl = process.env.BOT_API_URL || 'http://localhost:3001';
+      
+      try {
+        const response = await axios.get(`${botApiUrl}/api/bot/status`, {
+          timeout: 3000
+        });
+
+        res.json({
+          success: true,
+          data: {
+            bot_status: response.data.status || 'online',
+            bot_uptime: response.data.uptime || 0,
+            bot_guilds: response.data.guilds || 0,
+            bot_users: response.data.users || 0,
+            last_heartbeat: response.data.last_heartbeat || null
+          }
+        });
+      } catch (botError) {
+        // Check if bot is actually running by checking guild count in database
+        const guildCount = await prisma.guild.count();
+        
+        if (guildCount > 0) {
+          // Bot is likely online if there are guilds in the database
+          res.json({
+            success: true,
+            data: {
+              bot_status: 'online',
+              bot_uptime: 0,
+              bot_guilds: guildCount,
+              bot_users: 0,
+              last_heartbeat: null,
+              note: 'Status inferred from database'
+            }
+          });
+        } else {
+          // Bot service is not available and no guilds found
+          res.json({
+            success: true,
+            data: {
+              bot_status: 'offline',
+              bot_uptime: 0,
+              bot_guilds: 0,
+              bot_users: 0,
+              last_heartbeat: null,
+              error: 'Bot service unavailable'
+            }
+          });
+        }
+      }
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -51,7 +118,7 @@ export function createBotRoutes(db) {
    */
   router.get('/config', requireAuth, async (req, res) => {
     try {
-      const configs = db.prepare('SELECT * FROM bot_config').all();
+      const configs = await prisma.botConfig.findMany();
       
       const configObj = {};
       for (const config of configs) {
@@ -84,15 +151,11 @@ export function createBotRoutes(db) {
         });
       }
 
-      const stmt = db.prepare(`
-        INSERT INTO bot_config (key, value, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO UPDATE SET
-          value = excluded.value,
-          updated_at = CURRENT_TIMESTAMP
-      `);
-
-      stmt.run(key, value);
+      await prisma.botConfig.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value }
+      });
 
       res.json({
         success: true,
@@ -114,9 +177,20 @@ export function createBotRoutes(db) {
   router.get('/audit', requireAdmin, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 50;
-      const logs = db
-        .prepare('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?')
-        .all(limit);
+      const logs = await prisma.auditLog.findMany({
+        take: limit,
+        orderBy: {
+          created_at: 'desc'
+        },
+        include: {
+          user: {
+            select: {
+              username: true,
+              discord_id: true
+            }
+          }
+        }
+      });
 
       res.json({
         success: true,

@@ -1,13 +1,9 @@
 {
   "name": "@dismodular/shared",
-  "version": "0.0.1",
-  "description": "DisModular.js shared types and utilities",
-  "author": "fkndean_",
-  "license": "MIT",
-  "main": "index.js",
+  "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "test": "node --test tests/"
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
   }
 }
-

@@ -211,25 +211,25 @@ describe('PluginManager', () => {
       pluginManager.register(plugin);
     });
 
-    it('should disable an enabled plugin', () => {
-      const result = pluginManager.disablePlugin('toggle-plugin');
+    it('should disable an enabled plugin', async () => {
+      const result = await pluginManager.disablePlugin('toggle-plugin');
       assert.strictEqual(result, true);
       
       const plugin = pluginManager.plugins.get('toggle-plugin');
       assert.strictEqual(plugin.enabled, false);
     });
 
-    it('should enable a disabled plugin', () => {
-      pluginManager.disablePlugin('toggle-plugin');
-      const result = pluginManager.enablePlugin('toggle-plugin');
+    it('should enable a disabled plugin', async () => {
+      await pluginManager.disablePlugin('toggle-plugin');
+      const result = await pluginManager.enablePlugin('toggle-plugin');
       assert.strictEqual(result, true);
       
       const plugin = pluginManager.plugins.get('toggle-plugin');
       assert.strictEqual(plugin.enabled, true);
     });
 
-    it('should return false for non-existent plugin', () => {
-      const result = pluginManager.enablePlugin('non-existent');
+    it('should return false for non-existent plugin', async () => {
+      const result = await pluginManager.enablePlugin('non-existent');
       assert.strictEqual(result, false);
     });
   });
