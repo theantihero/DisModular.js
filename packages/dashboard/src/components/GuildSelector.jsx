@@ -79,7 +79,7 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/auth/guilds', {
+      const response = await fetch('/auth/guilds', {
         credentials: 'include'
       });
       

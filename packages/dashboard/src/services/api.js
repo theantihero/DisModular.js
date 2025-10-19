@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     // Don't redirect on 401 if we're checking auth or already on login page
-    const isCheckingAuth = error.config?.url?.includes('/api/auth/me');
+    const isCheckingAuth = error.config?.url?.includes('/auth/me');
     const isOnLoginPage = window.location.pathname === '/login';
     
     if (error.response?.status === 401 && !isCheckingAuth && !isOnLoginPage) {

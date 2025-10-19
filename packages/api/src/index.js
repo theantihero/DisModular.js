@@ -69,6 +69,9 @@ const db = database.getInstance();
 // Initialize Express app
 const app = express();
 
+// Trust proxy for rate limiting (required when behind reverse proxy)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false // Allow embedding for development
