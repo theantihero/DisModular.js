@@ -177,7 +177,7 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
     return (
       <div className={`macos-card p-6 ${className}`}>
         <div className="text-center">
-          <div className="text-red-400 text-lg mb-2">⚠️</div>
+          <div className="text-red-400 text-lg mb-2">🚨</div>
           <p className="text-red-300 mb-4">{error}</p>
           <button
             onClick={fetchGuilds}
@@ -315,9 +315,11 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          // Guild selected
-                          onGuildSelect(guild);
-                          setDropdownOpen(false);
+                          // Guild selected with null checks
+                          if (onGuildSelect && guild && guild.id) {
+                            onGuildSelect(guild);
+                            setDropdownOpen(false);
+                          }
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:macos-glass transition-all duration-200"
                       >

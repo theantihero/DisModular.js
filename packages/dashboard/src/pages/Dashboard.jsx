@@ -15,6 +15,8 @@ import { useTheme } from '../hooks/useTheme';
 import AdminPanel from '../components/AdminPanel';
 import CryptoSupport from '../components/CryptoSupport';
 import GuildSelector from '../components/GuildSelector';
+import FloatingGuildSelector from '../components/FloatingGuildSelector';
+import PaginatedPluginManager from '../components/PaginatedPluginManager';
 import HeartbeatIcon from '../components/HeartbeatIcon';
 
 /**
@@ -66,8 +68,13 @@ export function Dashboard() {
    * Handle guild selection with caching
    */
   const handleGuildSelect = (guild) => {
-    setSelectedGuild(guild);
-    setSelectedGuildId(guild.id);
+    if (guild && guild.id) {
+      setSelectedGuild(guild);
+      setSelectedGuildId(guild.id);
+    } else {
+      setSelectedGuild(null);
+      setSelectedGuildId(null);
+    }
   };
 
   const loadGuildSettings = async () => {
@@ -435,14 +442,6 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Guild Selection */}
-        <div className="mb-8">
-          <GuildSelector 
-            selectedGuild={selectedGuild}
-            onGuildSelect={handleGuildSelect}
-            cachedGuildId={selectedGuildId}
-          />
-        </div>
 
         {/* Plugins Section */}
         <div className={`rounded-xl shadow-xl ${
@@ -570,13 +569,9 @@ export function Dashboard() {
                     <span className="text-lg">➕</span>
                     <span>Invite Bot to Server</span>
                   </button>
-                  <button
-                    onClick={() => setSelectedGuild(null)}
-                    className="macos-button px-6 py-3 text-gray-300 font-medium flex items-center gap-2 hover:scale-105 transition-all duration-200 bg-gray-600/20 hover:bg-gray-600/30"
-                  >
-                    <span className="text-lg">🔄</span>
-                    <span>Select Different Server</span>
-                  </button>
+                  <p className="text-gray-400 text-sm text-center mt-4">
+                    💡 To select a different server, go back to the guild selector above
+                  </p>
                 </div>
               </div>
             ) : (Array.isArray(plugins) ? plugins : []).length === 0 ? (
@@ -619,139 +614,17 @@ export function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {(Array.isArray(plugins) ? plugins : []).map((plugin) => {
-                  const isActive = selectedGuild ? plugin.guild_enabled : plugin.enabled;
-                  const statusColor = isActive ? 'energy-green' : 'red-400';
-                  const statusEmoji = isActive ? '🟢' : '🔴';
-                  
-                  return (
-                    <div 
-                      key={plugin.id} 
-                      className={`macos-card transition-all duration-300 hover:scale-[1.02] border-2 ${
-                        isActive 
-                          ? 'border-energy-green/50 shadow-energy-green/20 shadow-lg' 
-                          : 'border-red-400/50 shadow-red-400/20 shadow-lg'
-                      }`}
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 macos-icon flex items-center justify-center">
-                              <span className="text-white text-xl">{getPluginIcon(plugin.type)}</span>
-                            </div>
-                            <div>
-                              <h3 className="text-white font-semibold text-lg">{plugin.name}</h3>
-                              <p className="text-gray-400 text-sm">v{plugin.version}</p>
-                            </div>
-                          </div>
-                          
-                          <div className={`macos-badge flex items-center space-x-2 ${
-                            isActive 
-                              ? 'bg-energy-green/20 border-energy-green/30' 
-                              : 'bg-red-400/20 border-red-400/30'
-                          }`}>
-                            <span className="text-lg">{statusEmoji}</span>
-                            <span className={`text-xs font-medium capitalize ${
-                              isActive ? 'text-energy-green' : 'text-red-400'
-                            }`}>
-                              {selectedGuild ? (plugin.guild_enabled ? 'Active' : 'Inactive') : (plugin.enabled ? 'Active' : 'Inactive')}
-                            </span>
-                            {selectedGuild && plugin.enabled !== plugin.guild_enabled && (
-                              <span className="text-xs text-gray-400">
-                                ({plugin.enabled ? 'Global' : 'Disabled'})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                      <p className="text-gray-300 text-sm mb-4 line-clamp-2">{plugin.description}</p>
-
-                      <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
-                        <span className="flex items-center">
-                          <span className="mr-1">👤</span>
-                          {plugin.author || 'Unknown'}
-                        </span>
-                        <span className="flex items-center">
-                          <span className="mr-1">⚡</span>
-                          {plugin.type}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleTogglePlugin(plugin)}
-                            disabled={togglingPlugins.has(plugin.id) || arePluginButtonsDisabled()}
-                            className={`macos-button text-xs font-medium ${
-                              selectedGuild ? (plugin.guild_enabled 
-                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/30 hover:border-red-500/50' 
-                                : 'bg-energy-green/20 hover:bg-energy-green/30 text-energy-green border-energy-green/30 hover:border-energy-green/50')
-                                : (plugin.enabled 
-                                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/30 hover:border-red-500/50' 
-                                : 'bg-energy-green/20 hover:bg-energy-green/30 text-energy-green border-energy-green/30 hover:border-energy-green/50')
-                            } ${(togglingPlugins.has(plugin.id) || arePluginButtonsDisabled()) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={
-                              arePluginButtonsDisabled() 
-                                ? 'Please wait for data to load...' 
-                                : togglingPlugins.has(plugin.id) 
-                                  ? 'Toggling plugin...' 
-                                  : selectedGuild 
-                                    ? (plugin.guild_enabled ? 'Disable plugin for this guild' : 'Enable plugin for this guild')
-                                    : (plugin.enabled ? 'Disable plugin globally' : 'Enable plugin globally')
-                            }
-                          >
-                            {togglingPlugins.has(plugin.id) ? (
-                              <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              selectedGuild ? (plugin.guild_enabled ? '🔴 Disable' : '🟢 Enable') : (plugin.enabled ? '🔴 Disable' : '🟢 Enable')
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => navigate(`/plugins/${plugin.id}/edit`)}
-                            disabled={arePluginButtonsDisabled()}
-                            className={`macos-button text-xs font-medium bg-hologram-500/20 hover:bg-hologram-500/30 text-hologram-cyan border-hologram-500/30 hover:border-hologram-500/50 ${
-                              arePluginButtonsDisabled() ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            title={
-                              arePluginButtonsDisabled() 
-                                ? 'Please wait for data to load...' 
-                                : 'Edit plugin configuration'
-                            }
-                          >
-                            ✏️ Edit
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={() => handleDeletePlugin(plugin)}
-                          disabled={deletingPlugins.has(plugin.id) || arePluginButtonsDisabled()}
-                          className={`macos-button text-xs font-medium ${
-                            (deletingPlugins.has(plugin.id) || arePluginButtonsDisabled())
-                              ? 'opacity-50 cursor-not-allowed bg-gray-500/20 text-gray-400 border-gray-500/30' 
-                              : 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/30 hover:border-red-500/50'
-                          }`}
-                          title={
-                            arePluginButtonsDisabled() 
-                              ? 'Please wait for data to load...' 
-                              : deletingPlugins.has(plugin.id) 
-                                ? 'Deleting plugin...' 
-                                : 'Delete this plugin permanently'
-                          }
-                        >
-                          {deletingPlugins.has(plugin.id) ? (
-                            <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
-                          ) : (
-                            '🗑️ Delete'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+              <PaginatedPluginManager
+                plugins={Array.isArray(plugins) ? plugins : []}
+                selectedGuild={selectedGuild}
+                handleTogglePlugin={handleTogglePlugin}
+                handleDeletePlugin={handleDeletePlugin}
+                togglingPlugins={togglingPlugins}
+                deletingPlugins={deletingPlugins}
+                arePluginButtonsDisabled={arePluginButtonsDisabled}
+                getPluginIcon={getPluginIcon}
+                theme={theme}
+              />
             )}
           </div>
         </div>
@@ -797,30 +670,6 @@ export function Dashboard() {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Welcome Message
-                </label>
-                <textarea
-                  value={guildSettings.welcomeMessage || ''}
-                  onChange={(e) => setGuildSettings(prev => ({ ...prev, welcomeMessage: e.target.value }))}
-                  className="w-full px-3 py-2 macos-glass rounded-lg text-white bg-transparent border-0 h-20 resize-none"
-                  placeholder="Welcome to the server!"
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="autoModeration"
-                  checked={guildSettings.autoModeration || false}
-                  onChange={(e) => setGuildSettings(prev => ({ ...prev, autoModeration: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="autoModeration" className="text-sm text-gray-300">
-                  Enable Auto Moderation
-                </label>
-              </div>
             </div>
             
             <div className="flex items-center justify-end space-x-3 mt-6">
@@ -856,6 +705,13 @@ export function Dashboard() {
       <CryptoSupport 
         isOpen={showCryptoSupport} 
         onClose={() => setShowCryptoSupport(false)} 
+      />
+
+      {/* Floating Guild Selector */}
+      <FloatingGuildSelector
+        selectedGuild={selectedGuild}
+        onGuildSelect={handleGuildSelect}
+        cachedGuildId={selectedGuildId}
       />
     </div>
   );
