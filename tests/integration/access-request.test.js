@@ -421,39 +421,40 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
-      // Create a custom app for this test with the correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
+      // Use the main app but temporarily override the authentication middleware
+      // to ensure the user is properly authenticated
+      const originalMiddleware = app._router.stack.find(layer => 
+        layer.name === 'middleware' && layer.regexp.test('/')
+      );
       
-      // Set up authentication for this specific test with correct user ID
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, // Use the actual database ID
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
+      // Create a temporary middleware that sets the user correctly
+      app.use((req, res, next) => {
+        // Only override if this is our test request
+        if (req.path === '/auth/request-access' && req.method === 'POST') {
+          req.isAuthenticated = () => true;
+          req.user = { 
+            id: user.id,
+            username: 'testuser', 
+            is_admin: false,
+            access_status: 'denied'
+          };
+        }
         next();
       });
-      
-      // Ensure PrismaService uses test database
-      process.env.NODE_ENV = 'test';
-      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
-      
-      testApp.use('/auth', createAuthRoutes());
 
-      const response = await request(testApp)
+      const response = await request(app)
         .post('/auth/request-access')
-        .send({ message: requestMessage })
-        .expect(200);
+        .send({ message: requestMessage });
 
+      console.log('Response status:', response.status);
+      console.log('Response body:', response.body);
+      
+      if (response.status !== 200) {
+        console.error('Request failed with status:', response.status);
+        console.error('Response body:', response.body);
+      }
+
+      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
