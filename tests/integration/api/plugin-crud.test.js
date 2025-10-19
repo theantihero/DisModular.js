@@ -214,8 +214,8 @@ describe('Plugin CRUD Integration Tests', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.name).toBe(pluginData.name);
-      expect(response.body.data.version).toBe(pluginData.version);
+      expect(response.body.data.id).toBeDefined();
+      expect(response.body.data.message).toBe('Plugin created successfully');
 
       // Verify plugin was created in database
       const createdPlugin = await prisma.plugin.findUnique({

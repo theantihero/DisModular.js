@@ -138,15 +138,16 @@ describe('Access Request Flow', () => {
     if (prisma) {
       // Create test user
       await prisma.user.upsert({
-        where: { id: testUserId },
+        where: { discord_id: '111111111' },
         update: {
+          id: testUserId,
           username: 'testuser',
           access_status: 'denied',
           is_admin: false
         },
         create: {
           id: testUserId,
-          discord_id: '123456789',
+          discord_id: '111111111',
           username: 'testuser',
           discriminator: '1234',
           access_status: 'denied',
@@ -157,15 +158,16 @@ describe('Access Request Flow', () => {
       // Create admin user
       try {
         const adminUser = await prisma.user.upsert({
-          where: { id: adminUserId },
+          where: { discord_id: '222222222' },
           update: {
+            id: adminUserId,
             username: 'adminuser',
             access_status: 'approved',
             is_admin: true
           },
           create: {
             id: adminUserId,
-            discord_id: '987654321',
+            discord_id: '222222222',
             username: 'adminuser',
             discriminator: '5678',
             access_status: 'approved',
@@ -205,7 +207,7 @@ describe('Access Request Flow', () => {
         await prisma.user.create({
           data: {
             id: testUserId,
-            discord_id: '123456789',
+            discord_id: '111111111',
             username: 'testuser',
             discriminator: '1234',
             access_status: 'denied', // Start with denied status
@@ -735,7 +737,7 @@ describe('Access Request Flow', () => {
           update: { is_admin: true },
           create: {
             id: adminUserId,
-            discord_id: '987654321',
+            discord_id: '222222222',
             username: 'adminuser',
             discriminator: '5678',
             access_status: 'approved',

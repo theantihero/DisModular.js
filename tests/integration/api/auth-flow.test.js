@@ -151,10 +151,10 @@ describe('Auth Flow Integration Tests', () => {
       // Verify response structure
       expect(response.body).toBeDefined();
       expect(response.body.success).toBe(true);
-      expect(response.body.user).toBeDefined();
-      expect(response.body.user.id).toBe(user.id);
-      expect(response.body.user.username).toBe(user.username);
-      expect(response.body.user.is_admin).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(user.id);
+      expect(response.body.data.username).toBe(user.username);
+      expect(response.body.data.is_admin).toBe(true);
     });
   });
 
