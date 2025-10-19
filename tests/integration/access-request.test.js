@@ -316,7 +316,7 @@ describe('Access Request Flow', () => {
     it('should get user access status', async () => {
       // Set up user with access request
       await prisma.user.upsert({
-        where: { discord_id: '111111111' },
+        where: { id: testUserId },
         update: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -376,6 +376,13 @@ describe('Access Request Flow', () => {
       // Mock admin routes for testing
       adminRouter.get('/access-requests', async (req, res) => {
         try {
+          if (!prisma) {
+            return res.status(500).json({
+              success: false,
+              error: 'Database not available'
+            });
+          }
+          
           const pendingUsers = await prisma.user.findMany({
             where: { access_status: 'pending' },
             select: {
@@ -400,6 +407,13 @@ describe('Access Request Flow', () => {
       
       adminRouter.post('/access-requests/:userId/approve', async (req, res) => {
         try {
+          if (!prisma) {
+            return res.status(500).json({
+              success: false,
+              error: 'Database not available'
+            });
+          }
+          
           const { userId } = req.params;
           const { message } = req.body;
           
@@ -436,6 +450,13 @@ describe('Access Request Flow', () => {
       
       adminRouter.post('/access-requests/:userId/deny', async (req, res) => {
         try {
+          if (!prisma) {
+            return res.status(500).json({
+              success: false,
+              error: 'Database not available'
+            });
+          }
+          
           const { userId } = req.params;
           const { message } = req.body;
           
@@ -479,6 +500,13 @@ describe('Access Request Flow', () => {
       
       adminRouter.post('/users/:userId/revoke-access', async (req, res) => {
         try {
+          if (!prisma) {
+            return res.status(500).json({
+              success: false,
+              error: 'Database not available'
+            });
+          }
+          
           const { userId } = req.params;
           const { reason } = req.body;
           
@@ -529,6 +557,13 @@ describe('Access Request Flow', () => {
       
       adminRouter.post('/users/:userId/grant-access', async (req, res) => {
         try {
+          if (!prisma) {
+            return res.status(500).json({
+              success: false,
+              error: 'Database not available'
+            });
+          }
+          
           const { userId } = req.params;
           const { message } = req.body;
           

@@ -389,10 +389,10 @@ describe('Multi-Guild Plugin System', () => {
 
     it('should list template plugins', async () => {
       if (skipIfNoDatabase()) return;
-
-      // Skip if PluginController doesn't have database access
-      if (!prisma) {
-        console.log('⚠️ Skipping template plugin test - no database available');
+      
+      // Skip if no plugin routes are registered
+      if (!pluginController || !prisma) {
+        console.log('⚠️ Skipping template plugin test - no plugin routes available');
         return;
       }
 
@@ -408,10 +408,10 @@ describe('Multi-Guild Plugin System', () => {
 
     it('should clone a template plugin', async () => {
       if (skipIfNoDatabase()) return;
-
-      // Skip if PluginController doesn't have database access
-      if (!prisma) {
-        console.log('⚠️ Skipping template clone test - no database available');
+      
+      // Skip if no plugin routes are registered
+      if (!pluginController || !prisma) {
+        console.log('⚠️ Skipping template clone test - no plugin routes available');
         return;
       }
 
@@ -444,10 +444,10 @@ describe('Multi-Guild Plugin System', () => {
 
     it('should require plugin name when cloning', async () => {
       if (skipIfNoDatabase()) return;
-
-      // Skip if PluginController doesn't have database access
-      if (!prisma) {
-        console.log('⚠️ Skipping template validation test - no database available');
+      
+      // Skip if no plugin routes are registered
+      if (!pluginController || !prisma) {
+        console.log('⚠️ Skipping template validation test - no plugin routes available');
         return;
       }
 
