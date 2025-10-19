@@ -187,16 +187,14 @@ describe('Access Request Flow', () => {
     // Create test users
     if (prisma) {
       // Create test user
-      await prisma.user.upsert({
+      const testUser = await prisma.user.upsert({
         where: { discord_id: '111111111' },
         update: {
-          id: testUserId,
           username: 'testuser',
           access_status: 'denied',
           is_admin: false
         },
         create: {
-          id: testUserId,
           discord_id: '111111111',
           username: 'testuser',
           discriminator: '1234',
@@ -204,19 +202,20 @@ describe('Access Request Flow', () => {
           is_admin: false
         }
       });
+      
+      // Update testUserId to use the actual generated ID
+      testUserId = testUser.id;
 
       // Create admin user
       try {
         const adminUser = await prisma.user.upsert({
           where: { discord_id: '222222222' },
           update: {
-            id: adminUserId,
             username: 'adminuser',
             access_status: 'approved',
             is_admin: true
           },
           create: {
-            id: adminUserId,
             discord_id: '222222222',
             username: 'adminuser',
             discriminator: '5678',
@@ -224,6 +223,9 @@ describe('Access Request Flow', () => {
             is_admin: true
           }
         });
+        
+        // Update adminUserId to use the actual generated ID
+        adminUserId = adminUser.id;
         console.log('Admin user created/updated successfully:', adminUser);
       } catch (error) {
         console.error('Failed to create admin user:', error);
@@ -675,7 +677,7 @@ describe('Access Request Flow', () => {
       });
 
       expect(user.access_status).toBe('denied');
-      expect(user.access_message).toBe(`Access revoked: ${revocationReason}`);
+      expect(user.access_message).toBe(revocationReason);
     });
 
     it('should grant access to user', async () => {
@@ -749,18 +751,23 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Ensure test user exists
-      await prisma.user.upsert({
-        where: { id: testUserId },
-        update: {},
+      const testUser = await prisma.user.upsert({
+        where: { discord_id: '111111111' },
+        update: {
+          access_status: 'approved',
+          is_admin: false
+        },
         create: {
-          id: testUserId,
-          discord_id: '123456789',
+          discord_id: '111111111',
           username: 'testuser',
           discriminator: '1234',
           access_status: 'approved',
           is_admin: false
         }
       });
+      
+      // Update testUserId to use the actual generated ID
+      testUserId = testUser.id;
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)

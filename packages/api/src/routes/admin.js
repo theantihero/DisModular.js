@@ -465,14 +465,14 @@ export function createAdminRoutes() {
         });
       }
 
-      // Update user access status to denied
-      await getPrisma().user.update({
-        where: { id: userId },
-        data: {
-          access_status: 'denied',
-          access_message: reason,
-        },
-      });
+        // Update user access status to denied
+        await getPrisma().user.update({
+          where: { id: userId },
+          data: {
+            access_status: 'denied',
+            access_message: reason,
+          },
+        });
 
       // Revoke all guild permissions for this user (bot access denial)
       await getPrisma().userGuildPermission.deleteMany({

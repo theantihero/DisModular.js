@@ -744,15 +744,14 @@ export class PluginController {
    */
   async getTemplates(req, res) {
     try {
-      const prisma = getPrismaClient();
-      if (!prisma) {
+      if (!this.db) {
         return res.status(500).json({
           success: false,
           error: 'Database not available',
         });
       }
 
-      const templates = await prisma.plugin.findMany({
+      const templates = await this.db.plugin.findMany({
         where: { is_template: true },
         select: {
           id: true,
@@ -788,8 +787,7 @@ export class PluginController {
    */
   async cloneTemplate(req, res) {
     try {
-      const prisma = getPrismaClient();
-      if (!prisma) {
+      if (!this.db) {
         return res.status(500).json({
           success: false,
           error: 'Database not available',
@@ -807,7 +805,7 @@ export class PluginController {
       }
 
       // Get the template plugin
-      const template = await prisma.plugin.findFirst({
+      const template = await this.db.plugin.findFirst({
         where: { 
           id: templateId,
           is_template: true,
@@ -847,7 +845,7 @@ export class PluginController {
       };
 
       // Save to database
-      const savedPlugin = await prisma.plugin.create({
+      const savedPlugin = await this.db.plugin.create({
         data: newPlugin,
       });
 
@@ -857,7 +855,7 @@ export class PluginController {
       // Create audit log (only if user exists in database)
       if (req.user?.id) {
         try {
-          await prisma.auditLog.create({
+          await this.db.auditLog.create({
             data: {
               user_id: req.user.id,
               action: 'CLONE_TEMPLATE',
