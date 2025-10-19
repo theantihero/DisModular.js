@@ -9,7 +9,7 @@ import { Logger } from '@dismodular/shared';
 import NodeCompiler from '../services/NodeCompiler.js';
 import { getPrismaClient } from '../services/PrismaService.js';
 import { writeFile, rm } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 const logger = new Logger('PluginController');
 
@@ -25,6 +25,149 @@ function validatePluginId(id) {
   // Only allow alphanumeric characters, underscores, and hyphens
   // Must start with a letter or underscore
   return /^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(id) && id.length <= 100;
+}
+
+/**
+ * Validate plugin ID with path canonicalization to prevent path traversal
+ * @param {string} pluginId - Plugin ID to validate
+ * @param {string} pluginsDir - Base plugins directory
+ * @returns {boolean} Whether the path is safe
+ */
+function validatePluginPath(pluginId, pluginsDir) {
+  if (!validatePluginId(pluginId)) {
+    return false;
+  }
+  
+  try {
+    // Resolve the full path
+    const resolvedPath = resolve(pluginsDir, pluginId);
+    const baseDir = resolve(pluginsDir);
+    
+    // Ensure the resolved path is within the plugins directory
+    return resolvedPath.startsWith(baseDir + '/') || resolvedPath === baseDir;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Sanitize string input to prevent injection attacks
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string
+ */
+function sanitizeString(str) {
+  if (typeof str !== 'string') {
+    return String(str);
+  }
+  
+  return str
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+    .replace(/[<>]/g, '') // Remove potential HTML/XML tags
+    .trim()
+    .substring(0, 1000); // Limit length
+}
+
+/**
+ * Validate plugin data structure to prevent malicious content
+ * @param {Object} pluginData - Plugin data to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validatePluginData(pluginData) {
+  if (!pluginData || typeof pluginData !== 'object') {
+    return { valid: false, error: 'Invalid plugin data structure' };
+  }
+  
+  // Check for required fields
+  const requiredFields = ['name', 'type', 'trigger', 'nodes', 'edges'];
+  for (const field of requiredFields) {
+    if (!pluginData[field]) {
+      return { valid: false, error: `Missing required field: ${field}` };
+    }
+  }
+  
+  // Validate string fields
+  const stringFields = ['name', 'description', 'author'];
+  for (const field of stringFields) {
+    if (pluginData[field] && typeof pluginData[field] !== 'string') {
+      return { valid: false, error: `Field ${field} must be a string` };
+    }
+    if (pluginData[field] && pluginData[field].length > 1000) {
+      return { valid: false, error: `Field ${field} too long (max 1000 characters)` };
+    }
+  }
+  
+  // Validate arrays
+  if (!Array.isArray(pluginData.nodes)) {
+    return { valid: false, error: 'Nodes must be an array' };
+  }
+  if (!Array.isArray(pluginData.edges)) {
+    return { valid: false, error: 'Edges must be an array' };
+  }
+  
+  // Check array sizes
+  if (pluginData.nodes.length > 100) {
+    return { valid: false, error: 'Too many nodes (max 100)' };
+  }
+  if (pluginData.edges.length > 200) {
+    return { valid: false, error: 'Too many edges (max 200)' };
+  }
+  
+  // Validate nodes structure
+  for (const node of pluginData.nodes) {
+    if (!node || typeof node !== 'object') {
+      return { valid: false, error: 'Invalid node structure' };
+    }
+    if (!node.id || typeof node.id !== 'string') {
+      return { valid: false, error: 'Node must have valid ID' };
+    }
+    if (!validatePluginId(node.id)) {
+      return { valid: false, error: `Invalid node ID: ${node.id}` };
+    }
+  }
+  
+  // Validate edges structure
+  for (const edge of pluginData.edges) {
+    if (!edge || typeof edge !== 'object') {
+      return { valid: false, error: 'Invalid edge structure' };
+    }
+    if (!edge.source || !edge.target) {
+      return { valid: false, error: 'Edge must have source and target' };
+    }
+    if (!validatePluginId(edge.source) || !validatePluginId(edge.target)) {
+      return { valid: false, error: 'Edge has invalid node references' };
+    }
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Sanitize plugin data before writing to file
+ * @param {Object} pluginData - Plugin data to sanitize
+ * @returns {Object} Sanitized plugin data
+ */
+function sanitizePluginData(pluginData) {
+  const sanitized = { ...pluginData };
+  
+  // Sanitize string fields
+  const stringFields = ['name', 'description', 'author'];
+  for (const field of stringFields) {
+    if (sanitized[field]) {
+      sanitized[field] = sanitizeString(sanitized[field]);
+    }
+  }
+  
+  // Sanitize trigger object
+  if (sanitized.trigger && typeof sanitized.trigger === 'object') {
+    const triggerFields = ['command', 'event', 'pattern'];
+    for (const field of triggerFields) {
+      if (sanitized.trigger[field]) {
+        sanitized.trigger[field] = sanitizeString(sanitized.trigger[field]);
+      }
+    }
+  }
+  
+  return sanitized;
 }
 
 /**
@@ -285,26 +428,32 @@ export class PluginController {
 
       const { name, description, type, trigger, nodes, edges, options } = req.body;
 
-      // Validate required fields
-      if (!name || !type || !trigger || !nodes || !edges) {
-        return res.status(400).json({
-          success: false,
-          error: 'Missing required fields',
-        });
-      }
-
-      // Validate node graph structure
-      const validation = this.compiler.validate(nodes, edges);
+      // Validate and sanitize plugin data
+      const pluginData = { name, description, type, trigger, nodes, edges, options };
+      const validation = validatePluginData(pluginData);
       if (!validation.valid) {
         return res.status(400).json({
           success: false,
+          error: 'Invalid plugin data',
+          details: validation.error,
+        });
+      }
+
+      // Sanitize the plugin data
+      const sanitizedData = sanitizePluginData(pluginData);
+
+      // Validate node graph structure
+      const graphValidation = this.compiler.validate(sanitizedData.nodes, sanitizedData.edges);
+      if (!graphValidation.valid) {
+        return res.status(400).json({
+          success: false,
           error: 'Invalid node graph',
-          details: validation.errors,
+          details: graphValidation.errors,
         });
       }
 
       // Prevent resource exhaustion by limiting graph complexity
-      const graphComplexity = validateNodeGraphComplexity(nodes, edges);
+      const graphComplexity = validateNodeGraphComplexity(sanitizedData.nodes, sanitizedData.edges);
       if (!graphComplexity.valid) {
         return res.status(400).json({
           success: false,
@@ -313,10 +462,10 @@ export class PluginController {
       }
 
       // Use provided compiled code or compile fresh (always compile for safety)
-      const compiled = this.compiler.compile(nodes, edges);
+      const compiled = this.compiler.compile(sanitizedData.nodes, sanitizedData.edges);
 
       // Extract options from nodes
-      const extractedOptions = this.compiler.extractOptions(nodes);
+      const extractedOptions = this.compiler.extractOptions(sanitizedData.nodes);
 
       // Generate plugin ID
       const pluginId = `plugin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -340,19 +489,19 @@ export class PluginController {
       await this.db.plugin.create({
         data: {
           id: pluginId,
-          name,
+          name: sanitizedData.name,
           version: '1.0.0',
-          description: description || '',
+          description: sanitizedData.description || '',
           author: req.user?.username || 'Unknown',
-          type,
+          type: sanitizedData.type,
           enabled: true,
-          trigger_type: trigger.type,
-          trigger_command: trigger.command,
-          trigger_event: trigger.event || null,
-          trigger_pattern: trigger.pattern || null,
-          options: options || extractedOptions,
-          nodes,
-          edges,
+          trigger_type: sanitizedData.trigger.type,
+          trigger_command: sanitizedData.trigger.command,
+          trigger_event: sanitizedData.trigger.event || null,
+          trigger_pattern: sanitizedData.trigger.pattern || null,
+          options: sanitizedData.options || extractedOptions,
+          nodes: sanitizedData.nodes,
+          edges: sanitizedData.edges,
           compiled,
           created_by: createdBy,
         },
@@ -362,16 +511,16 @@ export class PluginController {
       try {
         await this.writePluginFile(pluginId, {
           id: pluginId,
-          name,
+          name: sanitizedData.name,
           version: '1.0.0',
-          description,
+          description: sanitizedData.description,
           author: req.user?.username || 'Unknown',
-          type,
+          type: sanitizedData.type,
           enabled: true,
-          trigger,
-          options: options || extractedOptions,
-          nodes,
-          edges,
+          trigger: sanitizedData.trigger,
+          options: sanitizedData.options || extractedOptions,
+          nodes: sanitizedData.nodes,
+          edges: sanitizedData.edges,
           compiled,
         });
       } catch (fileError) {
@@ -679,7 +828,12 @@ export class PluginController {
 
       // Delete plugin folder from filesystem
       try {
-        const pluginDir = join(this.pluginsDir, id);
+        // Validate plugin ID with path canonicalization
+        if (!validatePluginPath(id, this.pluginsDir)) {
+          throw new Error('Invalid plugin ID format or path traversal detected');
+        }
+        
+        const pluginDir = resolve(this.pluginsDir, id);
         await rm(pluginDir, { recursive: true, force: true });
         logger.debug(`Plugin folder deleted: ${pluginDir}`);
       } catch (fsError) {
@@ -772,9 +926,9 @@ export class PluginController {
    */
   async writePluginFile(pluginId, pluginData) {
     try {
-      // Validate plugin ID to prevent path traversal
-      if (!validatePluginId(pluginId)) {
-        throw new Error('Invalid plugin ID format');
+      // Validate plugin ID with path canonicalization to prevent path traversal
+      if (!validatePluginPath(pluginId, this.pluginsDir)) {
+        throw new Error('Invalid plugin ID format or path traversal detected');
       }
 
       // Validate plugin data structure
@@ -782,24 +936,18 @@ export class PluginController {
         throw new Error('Invalid plugin data structure');
       }
 
+      // Sanitize plugin data before writing
+      const sanitizedData = sanitizePluginData(pluginData);
+
       // Check file size limit (10MB max)
-      const jsonString = JSON.stringify(pluginData, null, 2);
+      const jsonString = JSON.stringify(sanitizedData, null, 2);
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
       if (jsonString.length > MAX_FILE_SIZE) {
         throw new Error(`Plugin file too large (max ${MAX_FILE_SIZE} bytes)`);
       }
 
-      // Validate plugin directory path
-      const pluginDir = join(this.pluginsDir, pluginId);
-      
-      // Ensure the resolved path is within the plugins directory (prevent path traversal)
-      const resolvedPluginDir = join(process.cwd(), pluginDir);
-      const resolvedPluginsDir = join(process.cwd(), this.pluginsDir);
-      
-      if (!resolvedPluginDir.startsWith(resolvedPluginsDir)) {
-        throw new Error('Invalid plugin directory path');
-      }
-
+      // Use path.resolve for canonical path resolution
+      const pluginDir = resolve(this.pluginsDir, pluginId);
       const pluginFile = join(pluginDir, 'plugin.json');
 
       // Create directory if it doesn't exist

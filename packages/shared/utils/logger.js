@@ -6,20 +6,38 @@
 
 /**
  * Sanitize log message to prevent log injection attacks
- * @param {string} message - Message to sanitize
+ * @param {*} message - Message to sanitize (can be string, object, array, etc.)
  * @returns {string} Sanitized message
  */
 function sanitizeLogMessage(message) {
-  if (typeof message !== 'string') {
-    return String(message);
+  if (typeof message === 'string') {
+    // Remove newlines and control characters that could be used to forge log entries
+    return message
+      .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with spaces
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+      .trim()
+      .substring(0, 1000); // Limit message length to prevent log flooding
   }
   
-  // Remove newlines and control characters that could be used to forge log entries
-  return message
-    .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with spaces
-    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
-    .trim()
-    .substring(0, 1000); // Limit message length to prevent log flooding
+  if (typeof message === 'object' && message !== null) {
+    try {
+      // For objects and arrays, stringify and sanitize
+      const jsonString = JSON.stringify(message);
+      return jsonString
+        .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with spaces
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+        .substring(0, 1000); // Limit length
+    } catch (error) {
+      // If JSON.stringify fails, fall back to string representation
+      return String(message).substring(0, 1000);
+    }
+  }
+  
+  // For other types (numbers, booleans, etc.), convert to string and sanitize
+  return String(message)
+    .replace(/[\r\n\t]/g, ' ')
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    .substring(0, 1000);
 }
 
 export class Logger {
@@ -40,13 +58,13 @@ export class Logger {
 
   info(message, ...args) {
     const sanitizedMessage = sanitizeLogMessage(message);
-    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    const sanitizedArgs = args.map(arg => sanitizeLogMessage(arg));
     console.log(`[INFO] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   success(message, ...args) {
     const sanitizedMessage = sanitizeLogMessage(message);
-    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    const sanitizedArgs = args.map(arg => sanitizeLogMessage(arg));
     console.log(`[SUCCESS] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
@@ -56,20 +74,20 @@ export class Logger {
       return;
     }
     const sanitizedMessage = sanitizeLogMessage(message);
-    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    const sanitizedArgs = args.map(arg => sanitizeLogMessage(arg));
     console.warn(`[WARN] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   error(message, ...args) {
     const sanitizedMessage = sanitizeLogMessage(message);
-    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    const sanitizedArgs = args.map(arg => sanitizeLogMessage(arg));
     console.error(`[ERROR] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   debug(message, ...args) {
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG) {
       const sanitizedMessage = sanitizeLogMessage(message);
-      const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+      const sanitizedArgs = args.map(arg => sanitizeLogMessage(arg));
       console.debug(`[DEBUG] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
     }
   }

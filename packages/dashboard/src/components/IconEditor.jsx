@@ -6,6 +6,13 @@ import _React, { useState, useEffect } from 'react';
  * 
  * Allows users to set custom icons for plugins/commands via URL or emoji
  * 
+ * SECURITY NOTES:
+ * - All user inputs are automatically escaped by React's JSX rendering
+ * - URL validation prevents javascript: and other dangerous schemes
+ * - Emoji input is limited to 10 characters and uses controlled input
+ * - No dangerouslySetInnerHTML is used anywhere in this component
+ * - Image src attribute uses validated URLs only
+ * 
  * @param {Object} props - Component props
  * @param {string} props.value - Current icon value (URL or emoji)
  * @param {Function} props.onChange - Function called when icon changes
@@ -54,6 +61,8 @@ const IconEditor = ({
   }, [value]);
   
   // URL validation function with scheme validation to prevent XSS
+  // This function prevents javascript:, vbscript:, and other dangerous schemes
+  // It also restricts data: URLs to safe image MIME types only
   const isValidUrl = (url) => {
     try {
       // eslint-disable-next-line no-undef
