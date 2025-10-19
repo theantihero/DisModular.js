@@ -259,7 +259,6 @@ export function Dashboard() {
         throw new Error(errorData.error || 'Failed to re-register commands');
       }
 
-      const result = await response.json();
       toast.success(`✅ Command cache cleared for ${selectedGuild.name}. Bot will re-register commands on next sync.`);
       
       // Set 30 second cooldown
