@@ -74,7 +74,19 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false // Allow embedding for development
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  } : false // Allow embedding for development
 }));
 
 app.use(cors({
@@ -149,7 +161,7 @@ app.get('/api', (req, res) => {
 });
 
 // Catch-all handler: send back React's index.html file for SPA routing
-app.get('*', (req, res) => {
+app.get('*', apiLimiter, (req, res) => {
   res.sendFile(join(config.dashboardDir, 'index.html'));
 });
 

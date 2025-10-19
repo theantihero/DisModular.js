@@ -163,7 +163,9 @@ export class NodeCompiler {
     if (!entry) return;
 
     const { node } = entry;
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
 
     // Generate code based on node type
     switch (node.type) {
@@ -320,7 +322,9 @@ export class NodeCompiler {
    * Generate condition node code
    */
   generateConditionCode(node, entry, graph, codeLines, visited, indent) {
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
     const condition = node.data.config?.condition || 'true';
     const interpolated = this.interpolateVariables(condition);
 
@@ -348,7 +352,9 @@ export class NodeCompiler {
    * Generate permission node code
    */
   generatePermissionCode(node, entry, graph, codeLines, visited, indent) {
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
     const checkType = node.data.config?.checkType || 'user_id';
     const values = node.data.config?.values || [];
     const mode = node.data.config?.mode || 'whitelist';
@@ -755,7 +761,9 @@ export class NodeCompiler {
    * Generate for loop code
    */
   generateForLoopCode(node, entry, graph, codeLines, visited, indent) {
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
     const arrayVar = node.data.config?.arrayVar || 'array';
     const iteratorVar = node.data.config?.iteratorVar || 'item';
     const maxIterations = node.data.config?.maxIterations || 1000;
@@ -786,7 +794,9 @@ export class NodeCompiler {
    * Generate while loop code
    */
   generateWhileLoopCode(node, entry, graph, codeLines, visited, indent) {
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
     const condition = this.interpolateVariables(node.data.config?.condition || 'false');
     const maxIterations = node.data.config?.maxIterations || 1000;
 
@@ -811,7 +821,9 @@ export class NodeCompiler {
    * Generate comparison code
    */
   generateComparisonCode(node, entry, graph, codeLines, visited, indent) {
-    const indentStr = '  '.repeat(indent);
+    // Limit indent depth to prevent resource exhaustion
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    const indentStr = '  '.repeat(safeIndent);
     const operator = node.data.config?.operator || '==';
     const left = this.interpolateVariables(node.data.config?.left || '');
     const right = this.interpolateVariables(node.data.config?.right || '');
@@ -1146,27 +1158,64 @@ export class NodeCompiler {
    * @returns {Array} Array of path parts
    */
   parseJSONPath(path) {
+    // Input validation to prevent ReDoS attacks
+    if (!path || typeof path !== 'string' || path.length > 1000) {
+      return [];
+    }
+
     const parts = [];
-    // Handle paths like: data.weather.temp or items[0].name or data['key']
-    const regex = /([^.\[\]]+)|\[([^\]]+)\]/g;
-    let match;
+    let i = 0;
     
-    while ((match = regex.exec(path)) !== null) {
-      if (match[1]) {
-        // Property access: data or weather
-        parts.push({ type: 'property', value: match[1] });
-      } else if (match[2]) {
-        // Bracket access: [0] or ['key']
-        const bracketContent = match[2].trim();
-        if (bracketContent.match(/^['"](.*)['"]$/)) {
-          // String key: ['key']
-          const key = bracketContent.replace(/^['"]|['"]$/g, '');
-          parts.push({ type: 'property', value: key });
-        } else if (bracketContent.match(/^\d+$/)) {
-          // Numeric index: [0]
-          parts.push({ type: 'index', value: bracketContent });
-        }
+    while (i < path.length) {
+      // Skip dots
+      if (path[i] === '.') {
+        i++;
+        continue;
       }
+      
+      // Handle property names (letters, numbers, underscore)
+      if (/[a-zA-Z_$]/.test(path[i])) {
+        let propertyName = '';
+        while (i < path.length && /[a-zA-Z0-9_$]/.test(path[i])) {
+          propertyName += path[i];
+          i++;
+        }
+        if (propertyName) {
+          parts.push({ type: 'property', value: propertyName });
+        }
+        continue;
+      }
+      
+      // Handle bracket notation
+      if (path[i] === '[') {
+        i++; // Skip opening bracket
+        let bracketContent = '';
+        let bracketDepth = 1;
+        
+        // Find matching closing bracket
+        while (i < path.length && bracketDepth > 0) {
+          if (path[i] === '[') bracketDepth++;
+          else if (path[i] === ']') bracketDepth--;
+          else bracketContent += path[i];
+          i++;
+        }
+        
+        if (bracketDepth === 0) {
+          bracketContent = bracketContent.trim();
+          if (bracketContent.match(/^['"](.*)['"]$/)) {
+            // String key: ['key']
+            const key = bracketContent.replace(/^['"]|['"]$/g, '');
+            parts.push({ type: 'property', value: key });
+          } else if (bracketContent.match(/^\d+$/)) {
+            // Numeric index: [0]
+            parts.push({ type: 'index', value: bracketContent });
+          }
+        }
+        continue;
+      }
+      
+      // Skip invalid characters
+      i++;
     }
     
     return parts;
