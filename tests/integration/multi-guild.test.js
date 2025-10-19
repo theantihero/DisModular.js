@@ -252,7 +252,9 @@ describe('Multi-Guild Plugin System', () => {
           trigger_command: 'template',
           compiled: 'console.log("template");',
           is_template: true,
-          template_category: 'example'
+          template_category: 'example',
+          nodes: [],
+          edges: []
         }
       });
     });
