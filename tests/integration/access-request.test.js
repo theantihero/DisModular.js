@@ -226,13 +226,23 @@ describe('Access Request Flow', () => {
         // Get the current user IDs (they get updated in beforeEach)
         const currentUserId = isAdminRoute ? adminUserId : testUserId;
         
-        // Only set user if we have a valid ID (not the initial string values)
+        // Set user if we have a valid ID (number) or if we're in a test environment
+        // In test environment, we'll use the discord_id to look up the user
         if (currentUserId && typeof currentUserId === 'number') {
           req.user = { 
             id: currentUserId, 
             username: isAdminRoute ? 'adminuser' : 'testuser', 
             is_admin: isAdminRoute,
             access_status: isAdminRoute ? 'approved' : 'denied'
+          };
+        } else if (process.env.NODE_ENV === 'test') {
+          // For test environment, create a mock user with the expected discord_id
+          req.user = { 
+            id: 999999, // Temporary ID for testing
+            username: isAdminRoute ? 'adminuser' : 'testuser', 
+            is_admin: isAdminRoute,
+            access_status: isAdminRoute ? 'approved' : 'denied',
+            discord_id: isAdminRoute ? '222222222' : '111111111'
           };
         }
       }
@@ -747,6 +757,15 @@ describe('Access Request Flow', () => {
     it('should revoke access from approved user', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Get the actual test user from database
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
       // Debug: Check if admin user exists in database
       const adminUser = await prisma.user.findUnique({
         where: { id: adminUserId }
@@ -755,7 +774,7 @@ describe('Access Request Flow', () => {
 
       // Set up approved user
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'approved',
           access_message: 'Welcome!'
@@ -766,7 +785,7 @@ describe('Access Request Flow', () => {
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)
-        .post(`/admin/users/${testUserId}/revoke-access`)
+        .post(`/admin/users/${testUser.id}/revoke-access`)
         .send({ reason: revocationReason })
         .expect(200);
 
@@ -775,7 +794,7 @@ describe('Access Request Flow', () => {
 
       // Verify user access was revoked
       const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+        where: { id: testUser.id }
       });
 
       expect(user.access_status).toBe('denied');
@@ -785,9 +804,18 @@ describe('Access Request Flow', () => {
     it('should grant access to user', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Get the actual test user from database
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
       // Set up denied user
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'denied',
           access_message: 'Previously denied'
@@ -798,7 +826,7 @@ describe('Access Request Flow', () => {
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)
-        .post(`/admin/users/${testUserId}/grant-access`)
+        .post(`/admin/users/${testUser.id}/grant-access`)
         .send({ message: grantMessage })
         .expect(200);
 
@@ -807,7 +835,7 @@ describe('Access Request Flow', () => {
 
       // Verify user access was granted
       const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+        where: { id: testUser.id }
       });
 
       expect(user.access_status).toBe('approved');
