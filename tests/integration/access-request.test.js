@@ -619,9 +619,18 @@ describe('Access Request Flow', () => {
     it('should approve access request with message', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Ensure test user exists and is in pending status
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
       // Set up pending user
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -633,7 +642,7 @@ describe('Access Request Flow', () => {
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)
-        .post(`/admin/access-requests/${testUserId}/approve`)
+        .post(`/admin/access-requests/${testUser.id}/approve`)
         .send({ message: approvalMessage })
         .expect(200);
 
@@ -642,7 +651,7 @@ describe('Access Request Flow', () => {
 
       // Verify user was approved
       const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+        where: { id: testUser.id }
       });
 
       expect(user.access_status).toBe('approved');
@@ -653,7 +662,7 @@ describe('Access Request Flow', () => {
         where: {
           user_id: adminUserId,
           action: 'APPROVE_ACCESS',
-          resource_id: testUserId
+          resource_id: testUser.id
         }
       });
 
@@ -663,9 +672,18 @@ describe('Access Request Flow', () => {
     it('should deny access request with message', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Ensure test user exists and is in pending status
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
       // Set up pending user
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -677,7 +695,7 @@ describe('Access Request Flow', () => {
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)
-        .post(`/admin/access-requests/${testUserId}/deny`)
+        .post(`/admin/access-requests/${testUser.id}/deny`)
         .send({ message: denialMessage })
         .expect(200);
 
@@ -686,7 +704,7 @@ describe('Access Request Flow', () => {
 
       // Verify user was denied
       const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+        where: { id: testUser.id }
       });
 
       expect(user.access_status).toBe('denied');
@@ -697,7 +715,7 @@ describe('Access Request Flow', () => {
         where: {
           user_id: adminUserId,
           action: 'DENY_ACCESS',
-          resource_id: testUserId
+          resource_id: testUser.id
         }
       });
 
