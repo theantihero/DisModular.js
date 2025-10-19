@@ -128,37 +128,6 @@ describe('Access Request Flow', () => {
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
 
-    // Add authentication helper methods and auto-authenticate for testing
-    app.use((req, res, next) => {
-      // Set authentication helper methods
-      req.isAuthenticated = () => !!req.user;
-      req.login = (user, callback) => {
-        req.user = user;
-        if (callback) callback();
-      };
-      req.logout = (callback) => {
-        req.user = null;
-        if (callback) callback();
-      };
-      
-      // For testing, automatically set user if not already set
-      if (!req.user) {
-        // Use admin user for admin routes, regular user for other routes
-        const isAdminRoute = req.path.startsWith('/admin');
-        req.user = { 
-          id: isAdminRoute ? adminUserId : testUserId, 
-          username: isAdminRoute ? 'adminuser' : 'testuser', 
-          is_admin: isAdminRoute,
-          access_status: isAdminRoute ? 'approved' : 'denied'
-        };
-      }
-      
-      next();
-    });
-
-    // Add routes
-    app.use('/auth', createAuthRoutes());
-    
     // Create admin routes with mocked middleware
     const adminRoutes = createAdminRoutes();
     
@@ -205,6 +174,7 @@ describe('Access Request Flow', () => {
       
       // Update testUserId to use the actual generated ID
       testUserId = testUser.id;
+      console.log('Test user created/updated successfully:', testUser);
 
       // Create admin user
       try {
@@ -232,6 +202,37 @@ describe('Access Request Flow', () => {
         throw error;
       }
     }
+
+    // Add authentication helper methods and auto-authenticate for testing
+    app.use((req, res, next) => {
+      // Set authentication helper methods
+      req.isAuthenticated = () => !!req.user;
+      req.login = (user, callback) => {
+        req.user = user;
+        if (callback) callback();
+      };
+      req.logout = (callback) => {
+        req.user = null;
+        if (callback) callback();
+      };
+      
+      // For testing, automatically set user if not already set
+      if (!req.user) {
+        // Use admin user for admin routes, regular user for other routes
+        const isAdminRoute = req.path.startsWith('/admin');
+        req.user = { 
+          id: isAdminRoute ? adminUserId : testUserId, 
+          username: isAdminRoute ? 'adminuser' : 'testuser', 
+          is_admin: isAdminRoute,
+          access_status: isAdminRoute ? 'approved' : 'denied'
+        };
+      }
+      
+      next();
+    });
+
+    // Add auth routes after middleware
+    app.use('/auth', createAuthRoutes());
 
     // Define createAdminApp function with access to prisma
     createAdminApp = () => {
