@@ -7,26 +7,27 @@
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import { Logger } from '@dismodular/shared';
+import { PrismaClient } from '@prisma/client';
 
 const logger = new Logger('AuthMiddleware');
+const prisma = new PrismaClient();
 
 /**
  * Initialize Passport with Discord OAuth
- * @param {Object} db - Database instance
  * @param {Object} config - Auth configuration
  */
-export function initializePassport(db, config) {
+export function initializePassport(config) {
   // Serialize user for session
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
   // Deserialize user from session
-  passport.deserializeUser((id, done) => {
+  passport.deserializeUser(async (id, done) => {
     try {
-      const user = db
-        .prepare('SELECT * FROM users WHERE id = ?')
-        .get(id);
+      const user = await prisma.user.findUnique({
+        where: { id }
+      });
       done(null, user);
     } catch (error) {
       logger.error('Failed to deserialize user:', error);
@@ -49,88 +50,39 @@ export function initializePassport(db, config) {
           const initialAdminId = process.env.INITIAL_ADMIN_DISCORD_ID;
           const isInitialAdmin = initialAdminId && profile.id === initialAdminId;
 
-          // Check if user exists
-          const existingUser = db
-            .prepare('SELECT * FROM users WHERE discord_id = ?')
-            .get(profile.id);
-
-          if (existingUser) {
-            // Update existing user
-            const updateStmt = db.prepare(`
-              UPDATE users 
-              SET username = ?, 
-                  discriminator = ?, 
-                  avatar = ?, 
-                  access_token = ?, 
-                  refresh_token = ?,
-                  is_admin = ?,
-                  last_login = CURRENT_TIMESTAMP
-              WHERE discord_id = ?
-            `);
-
-            // Grant admin if this is the initial admin and they don't have it yet
-            const shouldBeAdmin = isInitialAdmin || existingUser.is_admin;
-
-            updateStmt.run(
-              profile.username,
-              profile.discriminator,
-              profile.avatar,
-              accessToken,
-              refreshToken,
-              shouldBeAdmin ? 1 : 0,
-              profile.id
-            );
-
-            // Fetch updated user
-            const updatedUser = db
-              .prepare('SELECT * FROM users WHERE discord_id = ?')
-              .get(profile.id);
-
-            if (isInitialAdmin && !existingUser.is_admin) {
-              logger.success(`Initial admin granted to: ${profile.username}`);
+          // Use upsert to handle both create and update cases
+          const user = await prisma.user.upsert({
+            where: { discord_id: profile.id },
+            update: {
+              username: profile.username,
+              discriminator: profile.discriminator,
+              avatar: profile.avatar,
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              is_admin: isInitialAdmin || undefined, // Only update admin status if this is initial admin
+              last_login: new Date()
+            },
+            create: {
+              discord_id: profile.id,
+              username: profile.username,
+              discriminator: profile.discriminator,
+              avatar: profile.avatar,
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              is_admin: isInitialAdmin,
+              access_status: isInitialAdmin ? 'approved' : 'pending',
+              admin_notes: isInitialAdmin ? 'Initial admin from environment' : null
             }
-
-            logger.info(`User ${profile.username} logged in`);
-            return done(null, updatedUser);
-          }
-
-          // Create new user
-          const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          const insertStmt = db.prepare(`
-            INSERT INTO users (id, discord_id, username, discriminator, avatar, access_token, refresh_token, is_admin, admin_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-
-          insertStmt.run(
-            userId,
-            profile.id,
-            profile.username,
-            profile.discriminator,
-            profile.avatar,
-            accessToken,
-            refreshToken,
-            isInitialAdmin ? 1 : 0,
-            isInitialAdmin ? 'Initial admin from environment' : null
-          );
-
-          const newUser = {
-            id: userId,
-            discord_id: profile.id,
-            username: profile.username,
-            discriminator: profile.discriminator,
-            avatar: profile.avatar,
-            is_admin: isInitialAdmin ? 1 : 0
-          };
+          });
 
           if (isInitialAdmin) {
-            logger.success(`New user created with admin privileges: ${profile.username}`);
-          } else {
-            logger.success(`New user created: ${profile.username}`);
+            logger.success(`Initial admin ${user.is_admin ? 'granted to' : 'created'}: ${profile.username}`);
           }
-          
-          return done(null, newUser);
+
+          logger.info(`User ${profile.username} logged in`);
+          return done(null, user);
         } catch (error) {
-          logger.error('OAuth error:', error);
+          logger.error('Discord OAuth error:', error);
           return done(error, null);
         }
       }
@@ -182,6 +134,48 @@ export function requireAdmin(req, res, next) {
 export function optionalAuth(req, res, next) {
   // Always proceed, but user info will be available if authenticated
   next();
+}
+
+/**
+ * Middleware to check if user has approved access
+ */
+export function requireApprovedAccess(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required'
+    });
+  }
+
+  // Admins always have access
+  if (req.user.is_admin) {
+    return next();
+  }
+
+  if (req.user.access_status === 'denied') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied',
+      message: req.user.access_message || 'Your access request has been denied.'
+    });
+  }
+
+  if (req.user.access_status === 'pending') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access pending',
+      message: 'Your access request is pending admin approval.'
+    });
+  }
+
+  if (req.user.access_status !== 'approved') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access not approved'
+    });
+  }
+
+  return next();
 }
 
 export default {

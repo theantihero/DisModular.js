@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dismodular-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dismodular}
+      POSTGRES_USER: ${POSTGRES_USER:-dismodular}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_INITDB_ARGS: ${POSTGRES_INITDB_ARGS:---encoding=UTF-8 --lc-collate=C --lc-ctype=C}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dismodular} -d ${POSTGRES_DB:-dismodular}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dismodular-network
+
+  app:
+    build: .
+    container_name: dismodular-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dismodular}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-dismodular}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-your_bot_token_here}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-your_client_id_here}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-your_client_secret_here}
+      INITIAL_ADMIN_DISCORD_ID: ${INITIAL_ADMIN_DISCORD_ID:-your_discord_id_here}
+      API_PORT: ${API_PORT:-3002}
+      API_URL: ${API_URL:-https://dismodular.pulsecord.app}
+      SESSION_SECRET: ${SESSION_SECRET:-your_random_session_secret_here}
+      VITE_API_URL: ${VITE_API_URL:-https://dismodular.pulsecord.app/api}
+      VITE_DISCORD_OAUTH_CALLBACK: ${VITE_DISCORD_OAUTH_CALLBACK:-https://dismodular.pulsecord.app/api/auth/discord/callback}
+      ENABLE_MESSAGE_CONTENT: ${ENABLE_MESSAGE_CONTENT:-false}
+      ENABLE_GUILD_MEMBERS: ${ENABLE_GUILD_MEMBERS:-false}
+      # Prisma configuration
+      PRISMA_MIGRATE_SKIP_GENERATE: "true"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dismodular.rule=Host(`dismodular.pulsecord.app`)"
+      - "traefik.http.routers.dismodular.entrypoints=websecure"
+      - "traefik.http.routers.dismodular.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dismodular-api.rule=Host(`dismodular.pulsecord.app`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.dismodular-api.entrypoints=websecure"
+      - "traefik.http.routers.dismodular-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dismodular.loadbalancer.server.port=3002"
+    volumes:
+      - ./plugins:/app/plugins
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - dismodular-network
+      - proxy
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  dismodular-network:
+    driver: bridge
+  proxy:
+    external: true

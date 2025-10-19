@@ -17,13 +17,13 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
+import { useTheme } from '../hooks/useTheme';
 import { ToastContainer } from '../components/Toast';
 import { ContextMenu } from '../components/ContextMenu';
 import { NodeConfigPanel } from '../components/NodeConfigPanel';
 import { CommandOptionsManager } from '../components/CommandOptionsManager';
 import { CustomEdge } from '../components/CustomEdge';
 import { useToast } from '../hooks/useToast';
-import { useTheme } from '../hooks/useTheme';
 import { getAutoLayout } from '../utils/layoutUtils';
 import { validateConnection, validateGraph } from '../utils/connectionValidation';
 import { toPng } from 'html-to-image';
@@ -251,8 +251,7 @@ export function PluginEditor() {
       setEdges(enhancedEdges);
       
       // Debug: Log edges to console to verify they're loaded correctly
-      console.log('Loaded edges:', enhancedEdges);
-      console.log('Looking for e12 edge:', enhancedEdges.find(e => e.id === 'e12'));
+      // Loaded edges
     } catch (error) {
       console.error('Failed to load plugin:', error);
       toast.error(`Failed to load plugin: ${error.error || error.message}`);
@@ -761,7 +760,7 @@ export function PluginEditor() {
   const handleTestCompile = async () => {
     try {
       const result = await compilePlugin(nodes, edges);
-      console.log('Compiled code:', result.compiled);
+      // Compiled code received
       toast.success('Plugin compiled successfully! Check console for output.');
     } catch (error) {
       toast.error(`Compilation failed: ${error.error || error.message}`);
@@ -927,10 +926,25 @@ export function PluginEditor() {
     );
   }
 
+  const getBackgroundClass = () => {
+    switch (theme) {
+      case 'space':
+        return 'flex h-screen bg-transparent';
+      case 'light':
+        return 'flex h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50';
+      default:
+        return 'flex h-screen';
+    }
+  };
+
   return (
-    <div className="flex h-screen" style={{ background: 'var(--bg-primary)' }}>
+    <div className={getBackgroundClass()} style={{ background: theme === 'space' ? 'transparent' : 'var(--bg-primary)' }}>
       {/* Left Sidebar - Node Palette */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} glass-strong border-r ${sidebarCollapsed ? 'p-3' : 'p-6'} overflow-y-auto transition-all duration-300`} style={{ borderColor: 'var(--border-color)' }}>
+      <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} border-r ${sidebarCollapsed ? 'p-3' : 'p-6'} overflow-y-auto transition-all duration-300 ${
+        theme === 'space'
+          ? 'glass-strong border-hologram-500/30'
+          : 'glass-strong'
+      }`} style={{ borderColor: theme === 'space' ? 'rgba(6, 182, 212, 0.3)' : 'var(--border-color)' }}>
         {sidebarCollapsed ? (
           <div className="flex flex-col items-center">
             <button
@@ -1063,10 +1077,12 @@ export function PluginEditor() {
                 {/* Theme Toggle */}
                 <button
                   onClick={toggleTheme}
-                  className="theme-toggle-btn"
-                  title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                  className={`theme-toggle-btn ${
+                    theme === 'space' ? 'holographic-glow' : ''
+                  }`}
+                  title={`Current theme: ${theme}. Click to switch.`}
                 >
-                  {theme === 'dark' ? '☀️' : '🌙'}
+                  {theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '🚀'}
                 </button>
               </div>
               
@@ -1076,13 +1092,21 @@ export function PluginEditor() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleExport}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all transform hover:scale-105 flex items-center gap-2 shadow-lg"
+                className={`px-4 py-2 text-white rounded-lg transition-all transform hover:scale-105 flex items-center gap-2 shadow-lg ${
+                  theme === 'space'
+                    ? 'holographic-glow bg-gradient-to-r from-hologram-500 to-nebula-purple hover:from-hologram-400 hover:to-nebula-600'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                }`}
                 title="Export workflow as JSON"
               >
                 <span>📤</span>
                 Export
               </button>
-              <label className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg transition-all transform hover:scale-105 cursor-pointer flex items-center gap-2 shadow-lg" title="Import workflow from JSON">
+              <label className={`px-4 py-2 text-white rounded-lg transition-all transform hover:scale-105 cursor-pointer flex items-center gap-2 shadow-lg ${
+                theme === 'space'
+                  ? 'holographic-glow bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500'
+                  : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800'
+              }`} title="Import workflow from JSON">
                 <span>📥</span>
                 Import
                 <input

@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://dismodular.pulsecord.app/sitemap.xml
+
+# Disallow admin areas
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard/admin/
+
+# Allow main pages
+Allow: /
+Allow: /login
+Allow: /dashboard
+Allow: /plugin-editor

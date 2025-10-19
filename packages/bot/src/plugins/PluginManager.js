@@ -105,7 +105,7 @@ export class PluginManager {
       // Load plugin state from database
       const stateKeys = ['variables', 'settings', 'cache'];
       for (const key of stateKeys) {
-        const value = this.pluginModel.getState(pluginId, key);
+        const value = await this.pluginModel.getState(pluginId, key);
         if (value) {
           plugin.state[key] = value;
         }
@@ -116,8 +116,18 @@ export class PluginManager {
         ...context,
         state: plugin.state,
         pluginId: plugin.id,
-        pluginName: plugin.name
+        pluginName: plugin.name,
+        guildId: context.guildId || context.guild?.id
       };
+
+      // Check if plugin is enabled for this guild (if guildId is provided)
+      if (executionContext.guildId) {
+        const guildPlugin = await this.pluginModel.getGuildPlugin(executionContext.guildId, pluginId);
+        if (!guildPlugin || !guildPlugin.enabled) {
+          logger.debug(`Plugin ${plugin.name} is disabled for guild ${executionContext.guildId}`);
+          return null;
+        }
+      }
 
       // Execute plugin in sandbox with timing
       const startTime = Date.now();
@@ -230,12 +240,12 @@ export class PluginManager {
    * @param {string} pluginId - Plugin ID
    * @returns {boolean} Success status
    */
-  enablePlugin(pluginId) {
+  async enablePlugin(pluginId) {
     const plugin = this.plugins.get(pluginId);
     if (!plugin) return false;
     
     plugin.enabled = true;
-    this.pluginModel.upsert({ ...plugin, enabled: true });
+    await this.pluginModel.upsert({ ...plugin, enabled: true });
     logger.success(`Plugin enabled: ${plugin.name}`);
     return true;
   }
@@ -245,12 +255,12 @@ export class PluginManager {
    * @param {string} pluginId - Plugin ID
    * @returns {boolean} Success status
    */
-  disablePlugin(pluginId) {
+  async disablePlugin(pluginId) {
     const plugin = this.plugins.get(pluginId);
     if (!plugin) return false;
     
     plugin.enabled = false;
-    this.pluginModel.upsert({ ...plugin, enabled: false });
+    await this.pluginModel.upsert({ ...plugin, enabled: false });
     logger.success(`Plugin disabled: ${plugin.name}`);
     return true;
   }
@@ -260,9 +270,9 @@ export class PluginManager {
    * @param {string} pluginId - Plugin ID
    * @returns {boolean} Success status
    */
-  reloadPlugin(pluginId) {
+  async reloadPlugin(pluginId) {
     try {
-      const pluginData = this.pluginModel.getById(pluginId);
+      const pluginData = await this.pluginModel.getById(pluginId);
       if (!pluginData) {
         logger.error(`Plugin ${pluginId} not found in database`);
         return false;

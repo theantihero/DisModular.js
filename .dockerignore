@@ -1,0 +1,16 @@
+node_modules
+.git
+.env
+*.log
+data/
+tests/
+*.test.js
+.vscode
+.DS_Store
+*.md
+docs/
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+README.md
+.env.example

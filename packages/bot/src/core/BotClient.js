@@ -7,6 +7,7 @@
 
 import { Client, GatewayIntentBits, Collection, REST, Routes, MessageFlags } from 'discord.js';
 import { Logger } from '@dismodular/shared';
+import { PrismaClient } from '@prisma/client';
 import PluginModel from '../models/PluginModel.js';
 import PluginManager from '../plugins/PluginManager.js';
 import PluginLoader from '../plugins/PluginLoader.js';
@@ -20,6 +21,7 @@ export class BotClient {
    */
   constructor(config) {
     this.config = config;
+    this.prisma = new PrismaClient();
     
     // Default intents (non-privileged)
     const intents = [
@@ -40,7 +42,7 @@ export class BotClient {
     this.client = new Client({ intents });
 
     // Initialize models and managers
-    this.pluginModel = new PluginModel(config.databasePath);
+    this.pluginModel = new PluginModel();
     this.pluginManager = new PluginManager(this.client, this.pluginModel);
     this.pluginLoader = new PluginLoader(
       config.pluginsDirectory,
@@ -62,6 +64,10 @@ export class BotClient {
     this.client.on('interactionCreate', (interaction) => this.onInteraction(interaction));
     this.client.on('messageCreate', (message) => this.onMessage(message));
     this.client.on('error', (error) => this.onError(error));
+    
+    // Guild management events
+    this.client.on('guildCreate', (guild) => this.onGuildJoin(guild));
+    this.client.on('guildDelete', (guild) => this.onGuildLeave(guild));
   }
 
   /**
@@ -121,6 +127,8 @@ export class BotClient {
       const context = {
         interaction,
         client: this.client,
+        guild: interaction.guild,
+        guildId: interaction.guild?.id,
         reply: async (content) => {
           if (typeof content === 'string') {
             await interaction.editReply(content);
@@ -174,6 +182,8 @@ export class BotClient {
         message,
         args,
         client: this.client,
+        guild: message.guild,
+        guildId: message.guild?.id,
         reply: async (content) => {
           await message.reply(content);
         }
@@ -195,38 +205,48 @@ export class BotClient {
   }
 
   /**
-   * Register slash commands with Discord
+   * Register slash commands for all guilds
    */
   async registerSlashCommands() {
     try {
-      const plugins = this.pluginManager.getEnabledPlugins();
-      const slashPlugins = plugins.filter(
+      const guilds = this.client.guilds.cache;
+      logger.info(`Registering commands for ${guilds.size} guilds...`);
+
+      for (const [guildId, guild] of guilds) {
+        await this.registerGuildCommands(guildId);
+      }
+
+      logger.success('All guild commands registered');
+    } catch (error) {
+      logger.error('Failed to register slash commands:', error);
+    }
+  }
+
+  /**
+   * Register slash commands for a specific guild
+   * @param {string} guildId - Discord guild ID
+   */
+  async registerGuildCommands(guildId) {
+    try {
+      // Ensure guild exists in database
+      await this.ensureGuildExists(guildId);
+
+      // Get enabled plugins for this guild
+      const enabledPlugins = await this.getEnabledPluginsForGuild(guildId);
+      const slashPlugins = enabledPlugins.filter(
         p => p.type === 'slash' || p.type === 'both'
       );
 
       if (slashPlugins.length === 0) {
-        logger.info('No slash commands to register');
+        logger.debug(`No slash commands to register for guild ${guildId}`);
         return;
       }
 
-      // Debug: Log plugin data to understand the structure
-      logger.debug('Slash plugins data:', slashPlugins.map(p => ({
-        id: p.id,
-        name: p.name,
-        type: p.type,
-        trigger_command: p.trigger_command,
-        trigger: p.trigger
-      })));
-
       const commands = slashPlugins.map(plugin => {
-        // Try multiple ways to get the command name
         const commandName = plugin.trigger_command || plugin.trigger?.command || 'unknown';
         
         if (!commandName || commandName === 'unknown') {
-          logger.error(`Plugin ${plugin.name} (${plugin.id}) missing command name:`, {
-            trigger_command: plugin.trigger_command,
-            trigger: plugin.trigger
-          });
+          logger.error(`Plugin ${plugin.name} (${plugin.id}) missing command name`);
           return null;
         }
 
@@ -235,28 +255,74 @@ export class BotClient {
           description: plugin.description || `Execute ${plugin.name}`,
           options: plugin.options || []
         };
-      }).filter(Boolean); // Remove null entries
+      }).filter(Boolean);
 
       const rest = new REST({ version: '10' }).setToken(this.config.token);
 
-      logger.info(`Registering ${commands.length} slash commands...`);
+      await rest.put(
+        Routes.applicationGuildCommands(this.config.clientId, guildId),
+        { body: commands }
+      );
 
-      // Register commands globally or per guild
-      if (this.config.guildId) {
-        await rest.put(
-          Routes.applicationGuildCommands(this.config.clientId, this.config.guildId),
-          { body: commands }
-        );
-        logger.success('Guild commands registered');
-      } else {
-        await rest.put(
-          Routes.applicationCommands(this.config.clientId),
-          { body: commands }
-        );
-        logger.success('Global commands registered');
-      }
+      logger.debug(`Registered ${commands.length} commands for guild ${guildId}`);
     } catch (error) {
-      logger.error('Failed to register slash commands:', error);
+      logger.error(`Failed to register commands for guild ${guildId}:`, error);
+    }
+  }
+
+  /**
+   * Ensure guild exists in database
+   * @param {string} guildId - Discord guild ID
+   */
+  async ensureGuildExists(guildId) {
+    try {
+      const guild = this.client.guilds.cache.get(guildId);
+      if (!guild) {
+        logger.warn(`Guild ${guildId} not found in cache`);
+        return;
+      }
+
+      await this.prisma.guild.upsert({
+        where: { id: guildId },
+        update: {
+          name: guild.name,
+          enabled: true
+        },
+        create: {
+          id: guildId,
+          name: guild.name,
+          enabled: true,
+          settings: {}
+        }
+      });
+
+      logger.debug(`Ensured guild ${guild.name} (${guildId}) exists in database`);
+    } catch (error) {
+      logger.error(`Failed to ensure guild ${guildId} exists:`, error);
+    }
+  }
+
+  /**
+   * Get enabled plugins for a specific guild
+   * @param {string} guildId - Discord guild ID
+   * @returns {Array} Array of enabled plugins
+   */
+  async getEnabledPluginsForGuild(guildId) {
+    try {
+      const guildPlugins = await this.prisma.guildPlugin.findMany({
+        where: {
+          guild_id: guildId,
+          enabled: true
+        },
+        include: {
+          plugin: true
+        }
+      });
+
+      return guildPlugins.map(gp => gp.plugin);
+    } catch (error) {
+      logger.error(`Failed to get enabled plugins for guild ${guildId}:`, error);
+      return [];
     }
   }
 
@@ -280,7 +346,7 @@ export class BotClient {
     try {
       logger.info('Stopping bot...');
       this.pluginLoader.stopWatching();
-      this.pluginModel.close();
+      await this.pluginModel.close();
       await this.client.destroy();
       logger.success('Bot stopped');
     } catch (error) {
@@ -300,6 +366,46 @@ export class BotClient {
       channels: this.client.channels.cache.size,
       plugins: this.pluginManager.getStatistics()
     };
+  }
+
+  /**
+   * Handle guild join event
+   * @param {Object} guild - Discord guild object
+   */
+  async onGuildJoin(guild) {
+    try {
+      logger.info(`Joined guild: ${guild.name} (${guild.id})`);
+      
+      // Register guild in database
+      await this.ensureGuildExists(guild.id);
+      
+      // Register commands for this guild
+      await this.registerGuildCommands(guild.id);
+      
+      logger.success(`Guild ${guild.name} setup completed`);
+    } catch (error) {
+      logger.error(`Failed to setup guild ${guild.name}:`, error);
+    }
+  }
+
+  /**
+   * Handle guild leave event
+   * @param {Object} guild - Discord guild object
+   */
+  async onGuildLeave(guild) {
+    try {
+      logger.info(`Left guild: ${guild.name} (${guild.id})`);
+      
+      // Mark guild as disabled in database
+      await this.prisma.guild.update({
+        where: { id: guild.id },
+        data: { enabled: false }
+      });
+      
+      logger.success(`Guild ${guild.name} marked as disabled`);
+    } catch (error) {
+      logger.error(`Failed to update guild ${guild.name}:`, error);
+    }
   }
 }
 

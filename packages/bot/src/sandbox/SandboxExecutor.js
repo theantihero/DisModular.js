@@ -6,7 +6,7 @@
  */
 
 import ivm from 'isolated-vm';
-import { Logger } from '@dismodular/shared';
+import { Logger, serializeState as sharedSerializeState, validateSerialization } from '@dismodular/shared';
 
 const logger = new Logger('SandboxExecutor');
 
@@ -40,8 +40,11 @@ export class SandboxExecutor {
       const jail = vmContext.global;
       await jail.set('global', jail.derefInto());
 
+      // Serialize context to avoid circular references
+      const safeContext = this.serializeContext(context);
+
       // Set up safe API with proper handling of functions and data
-      await this.injectSafeAPI(jail, isolate, vmContext, context);
+      await this.injectSafeAPI(jail, isolate, vmContext, context, safeContext);
 
       // Create response handler using Callbacks
       let pluginResponse = null;
@@ -65,13 +68,25 @@ export class SandboxExecutor {
         // Setup console object with callback functions (can be called directly)
         global.console = {
           log: function(...args) {
-            __consoleLogCb(JSON.stringify(args));
+            try {
+              __consoleLogCb(JSON.stringify(args));
+            } catch (e) {
+              __consoleLogCb(JSON.stringify(['[Serialization Error]', e.message]));
+            }
           },
           warn: function(...args) {
-            __consoleWarnCb(JSON.stringify(args));
+            try {
+              __consoleWarnCb(JSON.stringify(args));
+            } catch (e) {
+              __consoleWarnCb(JSON.stringify(['[Serialization Error]', e.message]));
+            }
           },
           error: function(...args) {
-            __consoleErrorCb(JSON.stringify(args));
+            try {
+              __consoleErrorCb(JSON.stringify(args));
+            } catch (e) {
+              __consoleErrorCb(JSON.stringify(['[Serialization Error]', e.message]));
+            }
           }
         };
         
@@ -133,8 +148,9 @@ export class SandboxExecutor {
    * @param {Object} isolate - Isolated VM instance
    * @param {Object} vmContext - VM context
    * @param {Object} context - Execution context
+   * @param {Object} safeContext - Serialized safe context
    */
-  async injectSafeAPI(jail, isolate, vmContext, context) {
+  async injectSafeAPI(jail, isolate, vmContext, context, safeContext) {
     // Create simple callback functions using Callback instead of Reference
     // These can be called directly from the sandbox
     const consoleLog = new ivm.Callback((argsJson) => {
@@ -203,7 +219,13 @@ export class SandboxExecutor {
     if (context.interaction) {
       const editReplyStart = new ivm.Callback((contentJson) => {
         const id = editReplyId++;
-        const content = JSON.parse(contentJson);
+        let content;
+        try {
+          content = JSON.parse(contentJson);
+        } catch (e) {
+          logger.error(`[EditReply ${id}] Failed to parse content:`, e.message);
+          content = { content: '[Serialization Error]' };
+        }
         
         logger.info(`[EditReply ${id}] Sending reply...`);
         
@@ -217,21 +239,38 @@ export class SandboxExecutor {
               channel: result.channel ? { id: result.channel.id } : null,
               content: result.content
             });
-            editReplyResults.set(id, JSON.stringify({
-              ok: true,
-              id: result.id,
-              channelId: result.channelId || result.channel?.id,
-              content: result.content,
-              channel: result.channel ? {
-                id: result.channel.id
-              } : null
-            }));
+            try {
+              editReplyResults.set(id, JSON.stringify({
+                ok: true,
+                id: result.id,
+                channelId: result.channelId || result.channel?.id,
+                content: result.content,
+                channel: result.channel ? {
+                  id: result.channel.id
+                } : null
+              }));
+            } catch (e) {
+              logger.error(`[EditReply ${id}] Failed to serialize result:`, e.message);
+              editReplyResults.set(id, JSON.stringify({
+                ok: true,
+                id: result.id || 'unknown',
+                channelId: 'unknown',
+                content: '[Serialization Error]'
+              }));
+            }
           } catch (error) {
             logger.error(`[EditReply ${id}] Error:`, error.message);
-            editReplyResults.set(id, JSON.stringify({
-              ok: false,
-              error: error.message
-            }));
+            try {
+              editReplyResults.set(id, JSON.stringify({
+                ok: false,
+                error: error.message
+              }));
+            } catch (e) {
+              editReplyResults.set(id, JSON.stringify({
+                ok: false,
+                error: 'Serialization error'
+              }));
+            }
           }
         })();
         
@@ -258,8 +297,14 @@ export class SandboxExecutor {
       // Inject react method
       const reactStart = new ivm.Callback((messageIdJson, emojiJson) => {
         const id = reactId++;
-        const messageId = JSON.parse(messageIdJson);
-        const emoji = JSON.parse(emojiJson);
+        let messageId, emoji;
+        try {
+          messageId = JSON.parse(messageIdJson);
+          emoji = JSON.parse(emojiJson);
+        } catch (e) {
+          logger.error(`[React ${id}] Failed to parse parameters:`, e.message);
+          return id; // Return ID but don't process
+        }
         
         logger.info(`[React ${id}] Adding reaction ${emoji} to message ${messageId}`);
         
@@ -270,10 +315,19 @@ export class SandboxExecutor {
             const message = await channel.messages.fetch(messageId);
             await message.react(emoji);
             logger.info(`[React ${id}] Reaction added successfully`);
-            reactResults.set(id, JSON.stringify({ ok: true }));
+            try {
+              reactResults.set(id, JSON.stringify({ ok: true }));
+            } catch (e) {
+              logger.error(`[React ${id}] Failed to serialize success result:`, e.message);
+              reactResults.set(id, JSON.stringify({ ok: true }));
+            }
           } catch (error) {
             logger.error(`[React ${id}] Error:`, error.message);
-            reactResults.set(id, JSON.stringify({ ok: false, error: error.message }));
+            try {
+              reactResults.set(id, JSON.stringify({ ok: false, error: error.message }));
+            } catch (e) {
+              reactResults.set(id, JSON.stringify({ ok: false, error: 'Serialization error' }));
+            }
           }
         })();
         
@@ -299,8 +353,14 @@ export class SandboxExecutor {
 
       // Inject reaction collector for single-choice voting
       const setupSingleChoiceCollector = new ivm.Callback((messageIdJson, emojisJson, durationMs) => {
-        const messageId = JSON.parse(messageIdJson);
-        const pollEmojis = JSON.parse(emojisJson);
+        let messageId, pollEmojis;
+        try {
+          messageId = JSON.parse(messageIdJson);
+          pollEmojis = JSON.parse(emojisJson);
+        } catch (e) {
+          logger.error(`[ReactionCollector] Failed to parse parameters:`, e.message);
+          return;
+        }
         const duration = durationMs;
 
         logger.info(`[ReactionCollector] Setting up single-choice collector for message ${messageId}`);
@@ -467,23 +527,13 @@ export class SandboxExecutor {
       await jail.set('__setupSingleChoiceCollector', setupSingleChoiceCollector);
     }
     
-    // Create the interaction object with data
-    const safeInteractionData = {
-      user: {
-        id: context.interaction?.user?.id || null,
-        username: context.interaction?.user?.username || null,
-        tag: context.interaction?.user?.tag || null,
-        avatar: avatarURL
-      },
-      guild: {
-        id: context.interaction?.guild?.id || null,
-        name: context.interaction?.guild?.name || null
-      },
-      channel: {
-        id: context.interaction?.channel?.id || null,
-        name: context.interaction?.channel?.name || null
-      }
-    };
+    // Use the safe interaction data from serialized context
+    const safeInteractionData = safeContext.interaction || {};
+    
+    // Add avatar URL if available
+    if (safeInteractionData.user) {
+      safeInteractionData.user.avatar = avatarURL;
+    }
     
     await jail.set('__interactionData', new ivm.ExternalCopy(safeInteractionData).copyInto());
     
@@ -504,7 +554,13 @@ export class SandboxExecutor {
           }
           
           const resultJson = __editReplyGet(replyId);
-          const result = JSON.parse(resultJson);
+          let result;
+          try {
+            result = JSON.parse(resultJson);
+          } catch (e) {
+            console.error('[VM EditReply] Failed to parse result:', e.message);
+            throw new Error('Failed to parse editReply result');
+          }
           
           console.log('[VM EditReply] Result received, ok:', result.ok);
           
@@ -527,7 +583,13 @@ export class SandboxExecutor {
               }
               
               const resultJson = __reactGet(reactId);
-              const reactResult = JSON.parse(resultJson);
+              let reactResult;
+              try {
+                reactResult = JSON.parse(resultJson);
+              } catch (e) {
+                console.error('[VM React] Failed to parse result:', e.message);
+                throw new Error('Failed to parse react result');
+              }
               
               console.log('[VM React] Result received, ok:', reactResult.ok);
               
@@ -595,8 +657,8 @@ export class SandboxExecutor {
       await jail.set('message', null);
     }
 
-    // Inject plugin state
-    const safeState = context.state || {};
+    // Inject plugin state - safely serialize to avoid Promise cloning issues
+    const safeState = safeContext.state || {};
     await jail.set('state', new ivm.ExternalCopy(safeState).copyInto());
 
     // Inject fetch for HTTP requests using a simpler synchronous approach
@@ -613,27 +675,43 @@ export class SandboxExecutor {
       
       logger.info(`[Fetch ${id}] Calling: ${url}`);
       
-      // Start the fetch and store the result when done
-      (async () => {
-        try {
-          const response = await nodeFetch(url, options);
-          logger.info(`[Fetch ${id}] Response status: ${response.status}`);
-          const data = await response.json();
-          logger.info(`[Fetch ${id}] Data received:`, Object.keys(data));
-          
-          fetchResults.set(id, JSON.stringify({
-            ok: response.ok,
-            status: response.status,
-            data: data
-          }));
-        } catch (error) {
-          logger.error(`[Fetch ${id}] Error:`, error.message);
-          fetchResults.set(id, JSON.stringify({
-            ok: false,
-            error: error.message
-          }));
-        }
-      })();
+          // Start the fetch and store the result when done
+          (async () => {
+            try {
+              const response = await nodeFetch(url, options);
+              logger.info(`[Fetch ${id}] Response status: ${response.status}`);
+              const data = await response.json();
+              logger.info(`[Fetch ${id}] Data received:`, Object.keys(data));
+              
+              try {
+                fetchResults.set(id, JSON.stringify({
+                  ok: response.ok,
+                  status: response.status,
+                  data: data
+                }));
+              } catch (serializeError) {
+                logger.error(`[Fetch ${id}] Failed to serialize response data:`, serializeError.message);
+                fetchResults.set(id, JSON.stringify({
+                  ok: response.ok,
+                  status: response.status,
+                  data: '[Serialization Error]'
+                }));
+              }
+            } catch (error) {
+              logger.error(`[Fetch ${id}] Error:`, error.message);
+              try {
+                fetchResults.set(id, JSON.stringify({
+                  ok: false,
+                  error: error.message
+                }));
+              } catch (serializeError) {
+                fetchResults.set(id, JSON.stringify({
+                  ok: false,
+                  error: 'Serialization error'
+                }));
+              }
+            }
+          })();
       
       return id;
     });
@@ -675,7 +753,13 @@ export class SandboxExecutor {
           
           // Get the result
           const resultJson = __fetchGet(fetchId);
-          const result = JSON.parse(resultJson);
+          let result;
+          try {
+            result = JSON.parse(resultJson);
+          } catch (e) {
+            console.error('[VM Fetch] Failed to parse result:', e.message);
+            throw new Error('Failed to parse fetch result');
+          }
           
           console.log('[VM Fetch] Result received, ok:', result.ok);
           
@@ -752,6 +836,109 @@ export class SandboxExecutor {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * Safely serialize state object to avoid Promise cloning issues and circular references
+   * @param {Object} state - State object to serialize
+   * @returns {Object} Serialized state object
+   */
+  serializeState(state) {
+    try {
+      // Validate the state before serialization
+      const validation = validateSerialization(state, {
+        maxDepth: 10,
+        includeCircularRefs: true
+      });
+
+      // Only log validation issues if not in test mode
+      const isTestMode = process.env.NODE_ENV === 'test' || 
+                        process.argv.some(arg => arg.includes('--test') || arg.includes('test') || arg.includes('vitest')) ||
+                        typeof global !== 'undefined' && global.testConfig;
+
+      if (!validation.valid && !isTestMode) {
+        logger.warn('State validation found issues:', validation.summary);
+        // Log specific issues for debugging
+        validation.issues.forEach(issue => {
+          logger.warn(`Serialization issue at ${issue.path}: ${issue.message}`);
+        });
+      }
+
+      // sharedSerializeState already returns a parsed object, not a JSON string
+      return sharedSerializeState(state, {
+        maxDepth: 10,
+        includeCircularRefs: true,
+        circularRefMarker: '[Circular Reference]'
+      });
+    } catch (error) {
+      logger.error('Failed to serialize state:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Safely serialize Discord.js context objects to avoid circular references
+   * @param {Object} context - Execution context with Discord.js objects
+   * @returns {Object} Safe serialized context
+   */
+  serializeContext(context) {
+    try {
+      const safeContext = {};
+
+      // Safely extract interaction data
+      if (context.interaction) {
+        safeContext.interaction = {
+          id: context.interaction.id || null,
+          commandName: context.interaction.commandName || null,
+          createdTimestamp: context.interaction.createdTimestamp || null,
+          user: context.interaction.user ? {
+            id: context.interaction.user.id || null,
+            username: context.interaction.user.username || null,
+            tag: context.interaction.user.tag || null,
+            bot: context.interaction.user.bot || false
+          } : null,
+          guild: context.interaction.guild ? {
+            id: context.interaction.guild.id || null,
+            name: context.interaction.guild.name || null
+          } : null,
+          channel: context.interaction.channel ? {
+            id: context.interaction.channel.id || null,
+            name: context.interaction.channel.name || null
+          } : null
+        };
+      }
+
+      // Safely extract guild data
+      if (context.guild) {
+        safeContext.guild = {
+          id: context.guild.id || null,
+          name: context.guild.name || null
+        };
+      }
+
+      // Safe primitive values
+      safeContext.guildId = context.guildId || null;
+      safeContext.pluginId = context.pluginId || null;
+      safeContext.pluginName = context.pluginName || null;
+
+      // Serialize state safely
+      if (context.state) {
+        safeContext.state = this.serializeState(context.state);
+      }
+
+      // Don't serialize functions or complex objects
+      // The reply function will be handled separately in injectSafeAPI
+
+      return safeContext;
+    } catch (error) {
+      logger.error('Failed to serialize context:', error);
+      return {
+        guildId: context.guildId || null,
+        pluginId: context.pluginId || null,
+        pluginName: context.pluginName || null,
+        state: {}
+      };
+    }
   }
 }
 

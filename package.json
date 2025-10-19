@@ -1,10 +1,11 @@
 {
   "name": "dismodular.js",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "DisModular.js - A professional modular Discord bot framework with visual node-based plugin creation",
   "author": "fkndean_",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
@@ -17,24 +18,42 @@
     "start:bot": "npm run start --workspace=@dismodular/bot",
     "start:api": "npm run start --workspace=@dismodular/api",
     "setup": "npm install && npm run setup:db",
-    "setup:db": "node packages/api/scripts/setup-db.js",
+    "setup:complete": "node scripts/setup-complete.js",
+    "setup:db": "npx prisma migrate dev && npx prisma generate",
+    "db:migrate": "npx prisma migrate dev",
+    "db:generate": "npx prisma generate",
+    "db:studio": "npx prisma studio",
+    "db:seed": "node scripts/seed.js",
+    "db:ensure-admin": "node scripts/ensure-admin.js",
+    "db:test-admin": "node scripts/test-admin-access.js",
     "kill-ports": "node scripts/kill-ports.js",
     "lint": "npm run lint --workspaces",
-    "test": "npm run test --workspaces",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "release": "node scripts/bump-version.js",
     "release:patch": "node scripts/bump-version.js patch",
     "release:minor": "node scripts/bump-version.js minor",
     "release:major": "node scripts/bump-version.js major"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@vitest/coverage-v8": "^1.0.0",
+    "concurrently": "^8.2.2",
+    "supertest": "^6.3.3",
+    "vitest": "^1.0.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "dependencies": {
     "@aashari/nodejs-geocoding": "^2.7.2",
+    "express-rate-limit": "^8.1.0",
     "node-fetch": "^3.3.2"
   }
 }

@@ -1,84 +1,22 @@
 /**
- * Plugin Model - MVVM Pattern
- * Handles plugin data persistence and retrieval
+ * Plugin Model - MVVM Pattern with Prisma
+ * Handles plugin data persistence and retrieval using Prisma ORM
  * @author fkndean_
- * @date 2025-10-14
+ * @date 2025-01-27
  */
 
-import Database from 'better-sqlite3';
-import { Logger } from '@dismodular/shared';
+import { PrismaClient } from '@prisma/client';
+import { Logger, safeStringify } from '@dismodular/shared';
 
 const logger = new Logger('PluginModel');
 
 export class PluginModel {
   /**
-   * Initialize Plugin Model
-   * @param {string} dbPath - Path to SQLite database
+   * Initialize Plugin Model with Prisma Client
    */
-  constructor(dbPath) {
-    this.db = new Database(dbPath);
-    this.initializeTables();
-  }
-
-  /**
-   * Initialize database tables
-   */
-  initializeTables() {
-    const createPluginsTable = `
-      CREATE TABLE IF NOT EXISTS plugins (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        version TEXT NOT NULL,
-        description TEXT,
-        author TEXT,
-        type TEXT NOT NULL,
-        enabled INTEGER DEFAULT 1,
-        trigger_type TEXT,
-        trigger_command TEXT,
-        trigger_event TEXT,
-        trigger_pattern TEXT,
-        options TEXT DEFAULT '[]',
-        nodes TEXT NOT NULL,
-        edges TEXT NOT NULL,
-        compiled TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    const createPluginStateTable = `
-      CREATE TABLE IF NOT EXISTS plugin_state (
-        plugin_id TEXT NOT NULL,
-        key TEXT NOT NULL,
-        value TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (plugin_id, key),
-        FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
-      )
-    `;
-
-    try {
-      this.db.exec(createPluginsTable);
-      this.db.exec(createPluginStateTable);
-      logger.success('Database tables initialized');
-
-      // Migration: Add options column if it doesn't exist
-      try {
-        const tableInfo = this.db.prepare("PRAGMA table_info(plugins)").all();
-        const hasOptions = tableInfo.some(col => col.name === 'options');
-        
-        if (!hasOptions) {
-          logger.info('Migrating plugins table: adding options column');
-          this.db.exec("ALTER TABLE plugins ADD COLUMN options TEXT DEFAULT '[]'");
-          logger.success('Plugins table migrated successfully');
-        }
-      } catch (migrationError) {
-        logger.warn('Migration check/execution skipped:', migrationError.message);
-      }
-    } catch (error) {
-      logger.error('Failed to initialize database tables:', error);
-      throw error;
-    }
+  constructor() {
+    this.prisma = new PrismaClient();
+    logger.info('PluginModel initialized with Prisma');
   }
 
   /**
@@ -86,20 +24,21 @@ export class PluginModel {
    * @param {boolean} enabledOnly - Return only enabled plugins
    * @returns {Array} Array of plugin objects
    */
-  getAll(enabledOnly = false) {
+  async getAll(enabledOnly = false) {
     try {
-      const query = enabledOnly
-        ? 'SELECT * FROM plugins WHERE enabled = 1'
-        : 'SELECT * FROM plugins';
+      const where = enabledOnly ? { enabled: true } : {};
       
-      const plugins = this.db.prepare(query).all();
+      const plugins = await this.prisma.plugin.findMany({
+        where,
+        orderBy: { created_at: 'desc' }
+      });
       
       return plugins.map(plugin => ({
         ...plugin,
         enabled: Boolean(plugin.enabled),
-        nodes: JSON.parse(plugin.nodes),
-        edges: JSON.parse(plugin.edges),
-        options: plugin.options ? JSON.parse(plugin.options) : [],
+        nodes: plugin.nodes,
+        edges: plugin.edges,
+        options: plugin.options,
         trigger: {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
@@ -119,20 +58,20 @@ export class PluginModel {
    * @param {string} id - Plugin ID
    * @returns {Object|null} Plugin object or null
    */
-  getById(id) {
+  async getById(id) {
     try {
-      const plugin = this.db
-        .prepare('SELECT * FROM plugins WHERE id = ?')
-        .get(id);
+      const plugin = await this.prisma.plugin.findUnique({
+        where: { id }
+      });
       
       if (!plugin) return null;
 
       return {
         ...plugin,
         enabled: Boolean(plugin.enabled),
-        nodes: JSON.parse(plugin.nodes),
-        edges: JSON.parse(plugin.edges),
-        options: plugin.options ? JSON.parse(plugin.options) : [],
+        nodes: plugin.nodes,
+        edges: plugin.edges,
+        options: plugin.options,
         trigger: {
           type: plugin.trigger_type,
           command: plugin.trigger_command,
@@ -152,49 +91,49 @@ export class PluginModel {
    * @param {Object} pluginData - Plugin data
    * @returns {boolean} Success status
    */
-  upsert(pluginData) {
+  async upsert(pluginData) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO plugins (
-          id, name, version, description, author, type, enabled,
-          trigger_type, trigger_command, trigger_event, trigger_pattern,
-          options, nodes, edges, compiled, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(id) DO UPDATE SET
-          name = excluded.name,
-          version = excluded.version,
-          description = excluded.description,
-          author = excluded.author,
-          type = excluded.type,
-          enabled = excluded.enabled,
-          trigger_type = excluded.trigger_type,
-          trigger_command = excluded.trigger_command,
-          trigger_event = excluded.trigger_event,
-          trigger_pattern = excluded.trigger_pattern,
-          options = excluded.options,
-          nodes = excluded.nodes,
-          edges = excluded.edges,
-          compiled = excluded.compiled,
-          updated_at = CURRENT_TIMESTAMP
-      `);
-
-      stmt.run(
-        pluginData.id,
-        pluginData.name,
-        pluginData.version,
-        pluginData.description || '',
-        pluginData.author || '',
-        pluginData.type,
-        pluginData.enabled ? 1 : 0,
-        pluginData.trigger?.type || null,
-        pluginData.trigger?.command || null,
-        pluginData.trigger?.event || null,
-        pluginData.trigger?.pattern || null,
-        JSON.stringify(pluginData.options || []),
-        JSON.stringify(pluginData.nodes || []),
-        JSON.stringify(pluginData.edges || []),
-        pluginData.compiled || ''
-      );
+      await this.prisma.plugin.upsert({
+        where: { id: pluginData.id },
+        update: {
+          name: pluginData.name,
+          version: pluginData.version,
+          description: pluginData.description || '',
+          author: pluginData.author || '',
+          type: pluginData.type,
+          enabled: pluginData.enabled ? true : false,
+          trigger_type: pluginData.trigger?.type || null,
+          trigger_command: pluginData.trigger?.command || null,
+          trigger_event: pluginData.trigger?.event || null,
+          trigger_pattern: pluginData.trigger?.pattern || null,
+          options: pluginData.options || [],
+          nodes: pluginData.nodes || [],
+          edges: pluginData.edges || [],
+          compiled: pluginData.compiled || '',
+          is_template: pluginData.is_template || false,
+          template_category: pluginData.template_category || null
+        },
+        create: {
+          id: pluginData.id,
+          name: pluginData.name,
+          version: pluginData.version,
+          description: pluginData.description || '',
+          author: pluginData.author || '',
+          type: pluginData.type,
+          enabled: pluginData.enabled ? true : false,
+          trigger_type: pluginData.trigger?.type || null,
+          trigger_command: pluginData.trigger?.command || null,
+          trigger_event: pluginData.trigger?.event || null,
+          trigger_pattern: pluginData.trigger?.pattern || null,
+          options: pluginData.options || [],
+          nodes: pluginData.nodes || [],
+          edges: pluginData.edges || [],
+          compiled: pluginData.compiled || '',
+          created_by: null, // System-created plugins don't have a specific creator
+          is_template: pluginData.is_template || false,
+          template_category: pluginData.template_category || null
+        }
+      });
 
       logger.success(`Plugin ${pluginData.name} saved successfully`);
       return true;
@@ -209,10 +148,11 @@ export class PluginModel {
    * @param {string} id - Plugin ID
    * @returns {boolean} Success status
    */
-  delete(id) {
+  async delete(id) {
     try {
-      const stmt = this.db.prepare('DELETE FROM plugins WHERE id = ?');
-      stmt.run(id);
+      await this.prisma.plugin.delete({
+        where: { id }
+      });
       logger.success(`Plugin ${id} deleted successfully`);
       return true;
     } catch (error) {
@@ -227,17 +167,32 @@ export class PluginModel {
    * @param {string} key - State key
    * @param {any} value - State value
    */
-  setState(pluginId, key, value) {
+  async setState(pluginId, key, value) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO plugin_state (plugin_id, key, value, updated_at)
-        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(plugin_id, key) DO UPDATE SET
-          value = excluded.value,
-          updated_at = CURRENT_TIMESTAMP
-      `);
-      
-      stmt.run(pluginId, key, JSON.stringify(value));
+      await this.prisma.pluginState.upsert({
+        where: {
+          plugin_id_key: {
+            plugin_id: pluginId,
+            key: key
+          }
+        },
+        update: {
+          value: safeStringify(value, {
+            maxDepth: 10,
+            includeCircularRefs: true,
+            circularRefMarker: '[Circular Reference]'
+          })
+        },
+        create: {
+          plugin_id: pluginId,
+          key: key,
+          value: safeStringify(value, {
+            maxDepth: 10,
+            includeCircularRefs: true,
+            circularRefMarker: '[Circular Reference]'
+          })
+        }
+      });
       return true;
     } catch (error) {
       logger.error(`Failed to set state for plugin ${pluginId}:`, error);
@@ -251,11 +206,16 @@ export class PluginModel {
    * @param {string} key - State key
    * @returns {any} State value
    */
-  getState(pluginId, key) {
+  async getState(pluginId, key) {
     try {
-      const result = this.db
-        .prepare('SELECT value FROM plugin_state WHERE plugin_id = ? AND key = ?')
-        .get(pluginId, key);
+      const result = await this.prisma.pluginState.findUnique({
+        where: {
+          plugin_id_key: {
+            plugin_id: pluginId,
+            key: key
+          }
+        }
+      });
       
       return result ? JSON.parse(result.value) : null;
     } catch (error) {
@@ -268,35 +228,57 @@ export class PluginModel {
    * Log command execution for analytics
    * @param {Object} execution - Execution data
    */
-  logCommandExecution(execution) {
+  async logCommandExecution(execution) {
     try {
-      const stmt = this.db.prepare(`
-        INSERT INTO command_executions (
-          plugin_id, user_id, command_name, success, execution_time_ms, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      // Use null for user_id if plugin doesn't exist (avoids foreign key constraint)
-      // This is for analytics and shouldn't prevent execution
-      stmt.run(
-        execution.plugin_id || null,
-        execution.user_id || null,
-        execution.command_name,
-        execution.success ? 1 : 0,
-        execution.execution_time_ms,
-        execution.error_message || null
-      );
+      // Note: This would require adding a command_executions table to the schema
+      // For now, we'll skip this functionality or implement it later
+      logger.debug('Command execution logging not implemented with Prisma yet');
     } catch (error) {
-      // Log warning but don't throw - analytics shouldn't break execution
       logger.warn('Failed to log command execution:', error.message);
+    }
+  }
+
+  /**
+   * Get guild plugin relationship
+   * @param {string} guildId - Discord guild ID
+   * @param {string} pluginId - Plugin ID
+   * @returns {Object|null} Guild plugin relationship or null
+   */
+  async getGuildPlugin(guildId, pluginId) {
+    try {
+      const guildPlugin = await this.prisma.guildPlugin.findUnique({
+        where: {
+          guild_id_plugin_id: {
+            guild_id: guildId,
+            plugin_id: pluginId
+          }
+        }
+      });
+
+      // If no guild-specific record exists, return a default enabled state
+      // This allows plugins to inherit the global enabled status
+      if (!guildPlugin) {
+        const plugin = await this.prisma.plugin.findUnique({
+          where: { id: pluginId },
+          select: { enabled: true }
+        });
+        
+        return plugin ? { enabled: plugin.enabled } : { enabled: false };
+      }
+
+      return guildPlugin;
+    } catch (error) {
+      logger.error('Failed to get guild plugin:', error);
+      return null;
     }
   }
 
   /**
    * Close database connection
    */
-  close() {
-    this.db.close();
+  async close() {
+    await this.prisma.$disconnect();
+    logger.info('PluginModel database connection closed');
   }
 }
 

@@ -7,6 +7,7 @@
 
 import { Handle, Position } from 'reactflow';
 import { useNodeHover } from '../../utils/nodeHover';
+import { useTheme } from '../../hooks/useTheme';
 
 /**
  * Response Node
@@ -15,13 +16,31 @@ export function ResponseNode({ data, id }) {
   const message = data.config?.message || 'Hello!';
   const truncated = message.length > 50 ? message.substring(0, 50) + '...' : message;
   const hoverHandlers = useNodeHover(id);
+  const { theme } = useTheme();
+
+  const getNodeStyles = () => {
+    if (theme === 'space') {
+      return {
+        container: 'holographic cosmic-border animate-cosmic-glow rounded-lg shadow-lg p-4 min-w-[200px]',
+        handle: '!w-3 !h-3 !bg-hologram-500 !border-2 !border-white',
+        message: 'text-hologram-300 text-xs mt-2 px-2 py-1 bg-hologram-500/20 rounded border border-hologram-500/30'
+      };
+    }
+    return {
+      container: 'bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-lg p-4 min-w-[200px] border-2 border-blue-700',
+      handle: '!w-3 !h-3 !bg-blue-400 !border-2 !border-white',
+      message: 'text-blue-100 text-xs mt-2 px-2 py-1 bg-blue-700 bg-opacity-30 rounded'
+    };
+  };
+
+  const styles = getNodeStyles();
 
   return (
-    <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-lg p-4 min-w-[200px] border-2 border-blue-700">
+    <div className={styles.container}>
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-blue-400 !border-2 !border-white"
+        className={styles.handle}
         style={{ left: -6 }}
         {...hoverHandlers}
       />
@@ -35,7 +54,7 @@ export function ResponseNode({ data, id }) {
       
       <div className="text-white font-medium mb-1">{data.label || 'Send Message'}</div>
       
-      <div className="text-blue-100 text-xs mt-2 px-2 py-1 bg-blue-700 bg-opacity-30 rounded">
+      <div className={styles.message}>
         {truncated}
       </div>
     </div>

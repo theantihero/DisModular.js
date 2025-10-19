@@ -11,14 +11,21 @@ import session from 'express-session';
 import passport from 'passport';
 import helmet from 'helmet';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { Logger } from '@dismodular/shared';
 import DatabaseModel from './models/Database.js';
-import { initializePassport } from './middleware/auth.js';
+import { initializePassport, requireApprovedAccess, requireAdmin } from './middleware/auth.js';
+import { authLimiter, apiLimiter, pluginLimiter, adminLimiter, guildLimiter, templateLimiter } from './middleware/rateLimiter.js';
 import PluginController from './controllers/PluginController.js';
 import { createPluginRoutes } from './routes/plugins.js';
 import { createBotRoutes } from './routes/bot.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createAdminRoutes } from './routes/admin.js';
+import { createGuildRoutes } from './routes/guild.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const logger = new Logger('API');
 
@@ -37,12 +44,12 @@ if (missingVars.length > 0) {
 const workspaceRoot = join(process.cwd(), '..', '..');
 const config = {
   port: process.env.API_PORT || 3002,
-  databasePath: process.env.DATABASE_PATH ? join(workspaceRoot, process.env.DATABASE_PATH) : join(workspaceRoot, 'data', 'bot.db'),
   pluginsDir: process.env.PLUGINS_DIR ? join(workspaceRoot, process.env.PLUGINS_DIR) : join(workspaceRoot, 'plugins'),
+  dashboardDir: join(workspaceRoot, 'packages', 'dashboard', 'dist'),
   discord: {
     clientId: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    callbackUrl: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3002/api/auth/discord/callback'
+    callbackUrl: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3002/auth/discord/callback'
   },
   session: {
     secret: process.env.SESSION_SECRET,
@@ -51,11 +58,12 @@ const config = {
 };
 
 logger.info('Starting API Server...');
-logger.info(`Database: ${config.databasePath}`);
+logger.info(`Database: PostgreSQL with Prisma`);
 logger.info(`Plugins Directory: ${config.pluginsDir}`);
+logger.info(`Dashboard Directory: ${config.dashboardDir}`);
 
 // Initialize database
-const database = new DatabaseModel(config.databasePath);
+const database = new DatabaseModel();
 const db = database.getInstance();
 
 // Initialize Express app
@@ -90,21 +98,12 @@ app.use(session({
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
-initializePassport(db, config.discord);
+initializePassport(config.discord);
 
 // Initialize controllers
 const pluginController = new PluginController(db, config.pluginsDir);
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Discord Bot Modular API',
-    version: '0.0.1',
-    author: 'fkndean_'
-  });
-});
-
+// Health check route
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -113,11 +112,43 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', createAuthRoutes());
-app.use('/api/plugins', createPluginRoutes(pluginController));
-app.use('/api/bot', createBotRoutes(db));
-app.use('/api/admin', createAdminRoutes(db));
+// Handle both /api prefix and direct routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    req.url = req.url.replace('/api', '');
+  }
+  next();
+});
+
+// API routes (no /api prefix since Traefik handles routing)
+// Registering routes...
+app.use('/auth', authLimiter, createAuthRoutes());
+app.use('/plugins', requireApprovedAccess, pluginLimiter, createPluginRoutes(pluginController));
+app.use('/bot', apiLimiter, createBotRoutes(db));
+app.use('/admin', requireAdmin, adminLimiter, createAdminRoutes());
+app.use('/guilds', requireAdmin, guildLimiter, createGuildRoutes());
+// Routes registered successfully
+
+// Serve static dashboard files
+app.use(express.static(config.dashboardDir));
+
+// Serve assets (wallet images, etc.)
+app.use('/assets', express.static(join(workspaceRoot, 'assets')));
+
+// API info route (after static files)
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Discord Bot Modular API',
+    version: '0.0.1',
+    author: 'fkndean_'
+  });
+});
+
+// Catch-all handler: send back React's index.html file for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(join(config.dashboardDir, 'index.html'));
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -157,19 +188,19 @@ server.on('error', (error) => {
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully...');
-  server.close(() => {
-    database.close();
+  server.close(async () => {
+    await database.close();
     logger.success('API Server stopped');
     process.exit(0);
   });
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully...');
-  server.close(() => {
-    database.close();
+  server.close(async () => {
+    await database.close();
     logger.success('API Server stopped');
     process.exit(0);
   });

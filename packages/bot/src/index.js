@@ -31,7 +31,7 @@ const workspaceRoot = join(__dirname, '..', '..', '..');
 const config = {
   token: process.env.DISCORD_BOT_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,
-  guildId: process.env.DISCORD_GUILD_ID, // Optional: for guild-specific commands
+  // Multi-guild support - no specific guild ID needed
   prefix: process.env.BOT_PREFIX || '!',
   databasePath: process.env.DATABASE_PATH ? join(workspaceRoot, process.env.DATABASE_PATH) : join(workspaceRoot, 'data', 'bot.db'),
   pluginsDirectory: process.env.PLUGINS_DIR ? join(workspaceRoot, process.env.PLUGINS_DIR) : join(workspaceRoot, 'plugins'),
@@ -41,7 +41,7 @@ const config = {
 };
 
 logger.info('Starting Discord Bot Modular Platform...');
-logger.info(`Database: ${config.databasePath}`);
+logger.info(`Database: PostgreSQL with Prisma`);
 logger.info(`Plugins Directory: ${config.pluginsDirectory}`);
 logger.info(`Command Prefix: ${config.prefix}`);
 

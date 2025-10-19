@@ -5,8 +5,7 @@
  * @date 2025-10-14
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { getAvailableVariables, formatVariableDisplay, getVariableNames } from '../src/utils/nodeAnalyzer.js';
 
 describe('nodeAnalyzer', () => {
@@ -18,7 +17,7 @@ describe('nodeAnalyzer', () => {
       const edges = [];
       
       const result = getAvailableVariables('trigger_1', nodes, edges);
-      assert.strictEqual(result.length, 0);
+      expect(result.length).toBe(0);
     });
 
     it('should extract variables from connected variable nodes', () => {
@@ -31,10 +30,10 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('response_1', nodes, edges);
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].name, 'username');
-      assert.strictEqual(result[0].type, 'user_name');
-      assert.strictEqual(result[0].source, 'Variable Node');
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('username');
+      expect(result[0].type).toBe('user_name');
+      expect(result[0].source).toBe('Variable Node');
     });
 
     it('should extract variables from HTTP request nodes', () => {
@@ -47,10 +46,10 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('json_1', nodes, edges);
-      assert.strictEqual(result.length, 3); // responseVar, responseVar_status, responseVar_error
-      assert.ok(result.some(v => v.name === 'weatherData'));
-      assert.ok(result.some(v => v.name === 'weatherData_status'));
-      assert.ok(result.some(v => v.name === 'weatherData_error'));
+      expect(result.length).toBe(3); // responseVar, responseVar_status, responseVar_error
+      expect(result.some(v => v.name === 'weatherData')).toBe(true);
+      expect(result.some(v => v.name === 'weatherData_status')).toBe(true);
+      expect(result.some(v => v.name === 'weatherData_error')).toBe(true);
     });
 
     it('should extract variables from math operation nodes', () => {
@@ -63,9 +62,9 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('response_1', nodes, edges);
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].name, 'sum');
-      assert.strictEqual(result[0].type, 'number');
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('sum');
+      expect(result[0].type).toBe('number');
     });
 
     it('should extract variables from JSON nodes', () => {
@@ -78,9 +77,9 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('var_1', nodes, edges);
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].name, 'parsed');
-      assert.strictEqual(result[0].type, 'object');
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('parsed');
+      expect(result[0].type).toBe('object');
     });
 
     it('should traverse multiple connected nodes', () => {
@@ -97,9 +96,9 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('response_1', nodes, edges);
-      assert.strictEqual(result.length, 2);
-      assert.ok(result.some(v => v.name === 'user'));
-      assert.ok(result.some(v => v.name === 'count'));
+      expect(result.length).toBe(2);
+      expect(result.some(v => v.name === 'user')).toBe(true);
+      expect(result.some(v => v.name === 'count')).toBe(true);
     });
 
     it('should handle circular dependencies gracefully', () => {
@@ -113,7 +112,7 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('var_2', nodes, edges);
-      assert.ok(result.length > 0); // Should not crash
+      expect(result.length).toBeGreaterThan(0); // Should not crash
     });
 
     it('should extract variables from embed builder nodes', () => {
@@ -126,9 +125,9 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getAvailableVariables('embed_response_1', nodes, edges);
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].name, 'myEmbed');
-      assert.strictEqual(result[0].type, 'embed');
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('myEmbed');
+      expect(result[0].type).toBe('embed');
     });
   });
 
@@ -141,7 +140,7 @@ describe('nodeAnalyzer', () => {
       };
       
       const result = formatVariableDisplay(variable);
-      assert.strictEqual(result, 'username (user_name from Variable Node)');
+      expect(result).toBe('username (user_name from Variable Node)');
     });
 
     it('should handle all fields correctly', () => {
@@ -152,9 +151,9 @@ describe('nodeAnalyzer', () => {
       };
       
       const result = formatVariableDisplay(variable);
-      assert.ok(result.includes('temp'));
-      assert.ok(result.includes('number'));
-      assert.ok(result.includes('JSON'));
+      expect(result.includes('temp')).toBe(true);
+      expect(result.includes('number')).toBe(true);
+      expect(result.includes('JSON')).toBe(true);
     });
   });
 
@@ -171,10 +170,10 @@ describe('nodeAnalyzer', () => {
       ];
       
       const result = getVariableNames('response_1', nodes, edges);
-      assert.ok(Array.isArray(result));
-      assert.strictEqual(result.length, 2);
-      assert.ok(result.includes('a'));
-      assert.ok(result.includes('b'));
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(2);
+      expect(result.includes('a')).toBe(true);
+      expect(result.includes('b')).toBe(true);
     });
   });
 });
