@@ -273,77 +273,6 @@ export function Dashboard() {
     }
   };
 
-  const handleDebugPlugins = async () => {
-    if (!selectedGuild) {
-      toast.error('❌ No guild selected');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/guilds/${selectedGuild.id}/debug-plugins`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to debug plugins');
-      }
-
-      const result = await response.json();
-      
-      // Show debug info in console and toast
-      console.log('🔍 Plugin Debug Info:', result.data);
-      toast.success(`🔍 Debug info logged to console for ${selectedGuild.name}`);
-      
-      // Also show a summary in the toast
-      const summary = result.data.summary;
-      toast.info(`📊 Summary: ${summary.effectivelyEnabled}/${result.data.totalPlugins} plugins effectively enabled`);
-      
-    } catch (error) {
-      console.error('Failed to debug plugins:', error);
-      toast.error(`❌ Failed to debug plugins: ${error.message}`);
-    }
-  };
-
-  const handleCheckPluginStatus = async () => {
-    if (!selectedGuild) {
-      toast.error('❌ No guild selected');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/guilds/${selectedGuild.id}/plugins-status`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to check plugin status');
-      }
-
-      const result = await response.json();
-      
-      // Show plugin status in console and toast
-      console.log('📊 Plugin Status:', result.data);
-      toast.success(`📊 Plugin status logged to console for ${selectedGuild.name}`);
-      
-      // Show a summary
-      const guildPlugins = result.data.guildPlugins;
-      const enabledCount = guildPlugins.filter(gp => gp.guildEnabled).length;
-      toast.info(`📊 ${enabledCount}/${guildPlugins.length} plugins enabled in this guild`);
-      
-    } catch (error) {
-      console.error('Failed to check plugin status:', error);
-      toast.error(`❌ Failed to check plugin status: ${error.message}`);
-    }
-  };
-
   const getPluginIcon = (type) => {
     switch (type) {
       case 'slash': return '⚡';
@@ -674,42 +603,6 @@ export function Dashboard() {
                       )}
                     </button>
 
-                    <button
-                      onClick={handleDebugPlugins}
-                      disabled={!selectedGuild.bot_present || arePluginButtonsDisabled()}
-                      className={`macos-button px-4 py-2 transition-all duration-200 ${
-                        !selectedGuild.bot_present || arePluginButtonsDisabled()
-                          ? 'text-gray-500 cursor-not-allowed opacity-50'
-                          : 'text-yellow-300 hover:scale-105'
-                      }`}
-                      title={
-                        arePluginButtonsDisabled() 
-                          ? 'Please wait for data to load...' 
-                          : !selectedGuild.bot_present 
-                            ? 'Bot must be present in server to debug plugins' 
-                            : 'Debug plugin enabling status for this guild'
-                      }
-                    >
-                      🔍 Debug Plugins
-                    </button>
-                    <button
-                      onClick={handleCheckPluginStatus}
-                      disabled={arePluginButtonsDisabled() || !selectedGuild?.bot_present}
-                      className={`macos-button px-4 py-2 text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
-                        arePluginButtonsDisabled() || !selectedGuild?.bot_present
-                          ? 'text-gray-500 cursor-not-allowed opacity-50'
-                          : 'text-white hover:scale-105'
-                      }`}
-                      title={
-                        arePluginButtonsDisabled() 
-                          ? 'Please wait for data to load...' 
-                          : !selectedGuild.bot_present 
-                            ? 'Bot must be present in server to check plugin status' 
-                            : 'Check current plugin status in database'
-                      }
-                    >
-                      📊 Check Status
-                    </button>
                   </>
                 )}
                 <button

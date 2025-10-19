@@ -116,11 +116,33 @@ export class BotClient {
       return;
     }
 
+    // Add interaction tracking to detect duplicates
+    const interactionKey = `${interaction.id}-${interaction.commandName}`;
+    if (this.processingInteractions && this.processingInteractions.has(interactionKey)) {
+      logger.warn(`Duplicate interaction detected: ${interactionKey}, ignoring`);
+      return;
+    }
+    
+    if (!this.processingInteractions) {
+      this.processingInteractions = new Set();
+    }
+    this.processingInteractions.add(interactionKey);
+    
+    // Clean up old interactions after 5 seconds
+    setTimeout(() => {
+      this.processingInteractions.delete(interactionKey);
+    }, 5000);
+
     // Check if interaction is too old (Discord has a 3-second limit)
     const interactionAge = Date.now() - interaction.createdTimestamp;
-    if (interactionAge > 2500) { // 2.5 seconds safety margin
+    if (interactionAge > 3000) { // 3 seconds - Discord's actual limit
       logger.error(`Interaction too old: ${interactionAge}ms, ignoring`);
       return;
+    }
+    
+    // Handle negative age (clock sync issues) - just log and continue
+    if (interactionAge < 0) {
+      logger.warn(`Negative interaction age detected: ${interactionAge}ms (clock sync issue)`);
     }
 
     // Log interaction details before attempting to defer
@@ -134,6 +156,15 @@ export class BotClient {
     } catch (deferError) {
       const errorTime = Date.now() - startTime;
       logger.error(`Failed to defer reply after ${errorTime}ms:`, deferError);
+      
+      // If it's an "Unknown interaction" error, the interaction might have been handled elsewhere
+      if (deferError.code === 10062) {
+        logger.warn(`Unknown interaction error - interaction may have been handled by another instance or expired`);
+        // Clean up interaction tracking
+        this.processingInteractions.delete(interactionKey);
+        return; // Don't try to process further
+      }
+      
       logger.warn(`Interaction created at: ${new Date(interaction.createdTimestamp).toISOString()}`);
       logger.warn(`Current time: ${new Date().toISOString()}`);
       logger.warn(`Age: ${interactionAge}ms`);
@@ -150,6 +181,8 @@ export class BotClient {
       } catch (followUpError) {
         logger.error('Failed to send follow-up message:', followUpError);
       }
+      // Clean up interaction tracking
+      this.processingInteractions.delete(interactionKey);
       return;
     }
 
@@ -203,8 +236,14 @@ export class BotClient {
       };
 
       await this.pluginManager.execute(plugin.id, context);
+      
+      // Clean up interaction tracking on success
+      this.processingInteractions.delete(interactionKey);
     } catch (error) {
       logger.error('Interaction error:', error);
+      
+      // Clean up interaction tracking on error
+      this.processingInteractions.delete(interactionKey);
       
       try {
         await interaction.editReply({

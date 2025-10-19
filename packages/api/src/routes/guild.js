@@ -451,6 +451,13 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
   } catch (error) {
     console.error('Error updating guild plugin:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      guildId: req.params.guildId,
+      pluginId: req.params.pluginId,
+      enabled: req.body.enabled
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to update guild plugin',
