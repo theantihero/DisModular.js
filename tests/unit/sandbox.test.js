@@ -5,7 +5,7 @@
  * @date 2025-10-18
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SandboxExecutor } from '../../packages/bot/src/sandbox/SandboxExecutor.js';
 
 describe('SandboxExecutor State Serialization', () => {

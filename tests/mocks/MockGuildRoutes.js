@@ -68,7 +68,7 @@ export function createMockGuildRoutes() {
 
       const guild = {
         id: guildId,
-        name: `Test Guild ${guildId}`,
+        name: guildId === '123456789' ? 'Test Guild 1' : guildId === '987654321' ? 'Test Guild 2' : `Test Guild ${guildId}`,
         enabled: true,
         settings: {},
         created_at: new Date(),
