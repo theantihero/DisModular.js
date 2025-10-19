@@ -17,9 +17,8 @@ import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
 import { TestDatabase } from '../setup.js';
 
 // Setup test environment variables - use environment variables from vitest config
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
-}
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 if (!process.env.DISCORD_CLIENT_ID) {
   process.env.DISCORD_CLIENT_ID = 'test_client_id';
 }
@@ -488,6 +487,18 @@ describe('Access Request Flow', () => {
           }
         });
       }
+      
+      // Clean up any existing access requests to prevent test conflicts
+      await prisma.user.updateMany({
+        where: {
+          access_status: 'pending'
+        },
+        data: {
+          access_status: 'denied',
+          access_requested_at: null,
+          access_request_message: null
+        }
+      });
     }
   });
 
@@ -616,11 +627,33 @@ describe('Access Request Flow', () => {
         }
       });
 
-      // Mock the user for this specific test
-      const originalUser = app.locals.testUser;
-      app.locals.testUser = { id: statusTestUserId };
+      // Create a separate app instance for this test to avoid middleware interference
+      const statusApp = express();
+      statusApp.use(express.json());
+      statusApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      statusApp.use(mockPassport.initialize());
+      statusApp.use(mockPassport.session());
+      
+      // Set up authentication middleware for this specific test
+      statusApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: statusTestUserId,
+          username: 'statustestuser',
+          is_admin: false,
+          access_status: 'pending'
+        };
+        next();
+      });
+      
+      statusApp.use('/auth', createAuthRoutes());
 
-      const response = await request(app)
+      const response = await request(statusApp)
         .get('/auth/access-status')
         .expect(200);
 
@@ -628,9 +661,6 @@ describe('Access Request Flow', () => {
       expect(response.body.data.access_status).toBe('pending');
       expect(response.body.data.access_request_message).toBe('Test request message');
       expect(response.body.data.access_requested_at).toBeTruthy();
-      
-      // Restore original user
-      app.locals.testUser = originalUser;
     });
   });
 
