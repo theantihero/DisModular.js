@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useTheme } from '../hooks/useTheme';
-import _CryptoSupport from '../components/CryptoSupport';
+import CryptoSupport from '../components/CryptoSupport';
 import SpaceBackground from '../components/SpaceBackground';
 
 export function Login() {

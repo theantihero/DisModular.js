@@ -13,12 +13,12 @@ import { useAppStore } from '../viewmodels/AppViewModel';
 import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
-import _AdminPanel from '../components/AdminPanel';
-import _CryptoSupport from '../components/CryptoSupport';
-import _GuildSelector from '../components/GuildSelector';
-import _FloatingGuildSelector from '../components/FloatingGuildSelector';
-import _PaginatedPluginManager from '../components/PaginatedPluginManager';
-import _HeartbeatIcon from '../components/HeartbeatIcon';
+import AdminPanel from '../components/AdminPanel';
+import CryptoSupport from '../components/CryptoSupport';
+import GuildSelector from '../components/GuildSelector';
+import FloatingGuildSelector from '../components/FloatingGuildSelector';
+import PaginatedPluginManager from '../components/PaginatedPluginManager';
+import HeartbeatIcon from '../components/HeartbeatIcon';
 
 /**
  * Dashboard Component
