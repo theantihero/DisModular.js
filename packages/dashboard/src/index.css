@@ -413,11 +413,6 @@ body {
     padding-right: 1rem;
   }
   
-  /* Fix login page mobile layout */
-  .max-w-md {
-    margin-top: 5rem !important;
-    padding: 0 1rem;
-  }
   
   /* Ensure login content is visible on mobile */
   .relative.z-10 {
@@ -451,7 +446,8 @@ body {
   }
   
   /* Better mobile spacing for plugin management */
-  .p-6 {
+  .macos-card .p-6,
+  .rounded-xl .p-6 {
     padding: 1rem !important;
   }
   
@@ -494,13 +490,6 @@ body {
     min-width: 2.5rem;
   }
   
-  /* Fix mobile text overflow */
-  .text-white {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100px;
-  }
   
   /* Better mobile grid for stats */
   .grid.grid-cols-1 {
@@ -545,12 +534,6 @@ body {
     line-height: 1.25rem;
   }
   
-  /* Better mobile card content */
-  .macos-card .flex.items-center.justify-between {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
   
   /* Fix mobile plugin grid */
   .grid.grid-cols-1.gap-3 {
@@ -582,17 +565,11 @@ body {
   @media (max-width: 480px) {
     .min-h-screen {
       min-height: 100vh;
-      padding-top: 4rem !important;
     }
     
     .absolute.top-4.right-4 {
       top: 1rem !important;
       right: 1rem !important;
-    }
-    
-    .max-w-md {
-      margin-top: 0 !important;
-      padding: 0 0.5rem;
     }
     
     /* Ensure buttons are visible on very small screens */
@@ -614,17 +591,9 @@ body {
   
   /* Extra small screens (320px and below) */
   @media (max-width: 320px) {
-    .min-h-screen {
-      padding-top: 3rem !important;
-    }
-    
     .absolute.top-4.right-4 {
       top: 0.5rem !important;
       right: 0.5rem !important;
-    }
-    
-    .max-w-md {
-      padding: 0 0.25rem;
     }
     
     /* Make everything even more compact */
@@ -639,6 +608,21 @@ body {
     
     .text-sm {
       font-size: 0.75rem !important;
+    }
+  }
+  
+  /* Login page specific mobile fixes */
+  @media (max-width: 768px) {
+    /* Ensure login container is visible */
+    .min-h-screen > .max-w-md {
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+    
+    /* Ensure login card is visible */
+    .max-w-md > .rounded-3xl {
+      display: block !important;
+      visibility: visible !important;
     }
   }
 }
