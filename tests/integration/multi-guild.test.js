@@ -146,7 +146,7 @@ describe('Multi-Guild Plugin System', () => {
           },
           create: {
             id: 'test-admin',
-            discord_id: '123456789',
+            discord_id: '333333333',
             username: 'test-admin',
             discriminator: '1234',
             access_status: 'approved',

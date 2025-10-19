@@ -85,6 +85,33 @@ describe('Access Request Flow', () => {
     await testDb.setup();
     prisma = testDb.getClient();
 
+    // Create admin user in database
+    if (prisma) {
+      try {
+        await prisma.user.upsert({
+          where: { discord_id: '222222222' },
+          update: {
+            id: adminUserId,
+            username: 'adminuser',
+            access_status: 'approved',
+            is_admin: true
+          },
+          create: {
+            id: adminUserId,
+            discord_id: '222222222',
+            username: 'adminuser',
+            discriminator: '5678',
+            access_status: 'approved',
+            is_admin: true
+          }
+        });
+        console.log('Admin user created/updated successfully');
+      } catch (error) {
+        console.error('Failed to create admin user:', error);
+        throw error;
+      }
+    }
+
     // Create test app
     app = express();
     app.use(express.json());
@@ -566,15 +593,32 @@ describe('Access Request Flow', () => {
     it('should get user access status', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Simply update the existing user to pending status
-      await prisma.user.update({
-        where: { id: testUserId },
-        data: {
+      // Use a different user ID to avoid beforeEach interference
+      const statusTestUserId = 'status-test-user-123';
+      
+      // Create user with pending status
+      await prisma.user.upsert({
+        where: { id: statusTestUserId },
+        update: {
           access_status: 'pending',
           access_requested_at: new Date(),
           access_request_message: 'Test request message'
+        },
+        create: {
+          id: statusTestUserId,
+          discord_id: '444444444',
+          username: 'statustestuser',
+          discriminator: '4444',
+          access_status: 'pending',
+          access_requested_at: new Date(),
+          access_request_message: 'Test request message',
+          is_admin: false
         }
       });
+
+      // Mock the user for this specific test
+      const originalUser = app.locals.testUser;
+      app.locals.testUser = { id: statusTestUserId };
 
       const response = await request(app)
         .get('/auth/access-status')
@@ -584,6 +628,9 @@ describe('Access Request Flow', () => {
       expect(response.body.data.access_status).toBe('pending');
       expect(response.body.data.access_request_message).toBe('Test request message');
       expect(response.body.data.access_requested_at).toBeTruthy();
+      
+      // Restore original user
+      app.locals.testUser = originalUser;
     });
   });
 
@@ -860,7 +907,7 @@ describe('Access Request Flow', () => {
         },
         create: {
           id: testUserId,
-          discord_id: '123456789',
+          discord_id: '111111111',
           username: 'testuser',
           discriminator: '1234',
           access_status: 'denied',
