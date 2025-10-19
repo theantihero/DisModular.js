@@ -26,6 +26,11 @@ RUN npx prisma generate
 FROM base AS dashboard-builder
 COPY packages/dashboard ./packages/dashboard/
 COPY packages/shared ./packages/shared/
+# Pass environment variables for Vite build
+ARG VITE_API_URL
+ARG VITE_DISCORD_CLIENT_ID
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_DISCORD_CLIENT_ID=$VITE_DISCORD_CLIENT_ID
 RUN npm run build --workspace=@dismodular/dashboard
 
 # Stage 4: Production
