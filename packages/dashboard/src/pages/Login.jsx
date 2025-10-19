@@ -32,11 +32,11 @@ export function Login() {
   const getBackgroundClass = () => {
     switch (theme) {
       case 'space':
-        return 'min-h-screen bg-transparent flex items-center justify-center p-4 relative overflow-hidden';
+        return 'min-h-screen bg-transparent flex flex-col items-center justify-start pt-16 px-4 relative overflow-hidden';
       case 'light':
-        return 'min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 flex items-center justify-center p-4';
+        return 'min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 flex flex-col items-center justify-start pt-16 px-4';
       default:
-        return 'min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4';
+        return 'min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col items-center justify-start pt-16 px-4';
     }
   };
 
@@ -95,7 +95,7 @@ export function Login() {
         </a>
       </div>
 
-      <div className="max-w-md w-full relative z-20 mt-20 sm:mt-16 md:mt-0 px-4">
+      <div className="max-w-md w-full relative z-20 mt-4">
         {/* Background Elements */}
         {theme === 'space' && (
           <>
