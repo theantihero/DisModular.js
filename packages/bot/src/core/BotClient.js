@@ -11,6 +11,7 @@ import { getPrismaClient } from '../services/PrismaService.js';
 import PluginModel from '../models/PluginModel.js';
 import PluginManager from '../plugins/PluginManager.js';
 import PluginLoader from '../plugins/PluginLoader.js';
+import crypto from 'crypto';
 
 const logger = new Logger('BotClient');
 
@@ -273,7 +274,6 @@ export class BotClient {
    * @returns {string} Hash string
    */
   generateCommandHash(commands) {
-    const crypto = require('crypto');
     const commandString = JSON.stringify(commands.map(cmd => ({
       name: cmd.name,
       description: cmd.description,
