@@ -10,6 +10,10 @@ import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
+
+// Set test database URL
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 import { createPluginRoutes } from '../../packages/api/src/routes/plugins.js';
 import { PluginController } from '../../packages/api/src/controllers/PluginController.js';
 import { requireAdmin } from '../../packages/api/src/middleware/auth.js';

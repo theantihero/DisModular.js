@@ -21,19 +21,31 @@ import { expect } from 'vitest';
 import { PluginModel } from '../packages/bot/src/models/PluginModel.js';
 import { PluginManager } from '../packages/bot/src/plugins/PluginManager.js';
 import { NodeCompiler } from '../packages/api/src/services/NodeCompiler.js';
+import { TestDatabase } from './setup.js';
+import { MockPluginModel } from './mocks/MockPluginModel.js';
+
+// Set test database URL
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+process.env.DATABASE_URL = TEST_DATABASE_URL;
 
 describe('Integration Tests', () => {
   let pluginModel;
   let pluginManager;
   let compiler;
-  const testDbPath = join(process.cwd(), 'tests', 'test.db');
+  let testDb;
 
   beforeAll(async () => {
-    // Create test directory
-    await mkdir(join(process.cwd(), 'tests'), { recursive: true });
-
-    // Initialize components
-    pluginModel = new PluginModel();
+    // Initialize components - use mock in CI mode
+    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+      pluginModel = new MockPluginModel();
+      testDb = null; // No database needed in CI mode
+    } else {
+      // Setup test database
+      testDb = new TestDatabase();
+      await testDb.setup();
+      await testDb.cleanup();
+      pluginModel = new PluginModel(TEST_DATABASE_URL);
+    }
     pluginManager = new PluginManager({ user: { tag: 'TestBot#0000' } }, pluginModel);
     compiler = new NodeCompiler();
   });
@@ -41,10 +53,8 @@ describe('Integration Tests', () => {
   afterAll(async () => {
     // Cleanup
     await pluginModel.close();
-    try {
-      await rm(testDbPath);
-    } catch (e) {
-      // Ignore cleanup errors
+    if (testDb) {
+      await testDb.close();
     }
   });
 

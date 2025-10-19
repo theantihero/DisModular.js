@@ -13,9 +13,14 @@ const logger = new Logger('PluginModel');
 export class PluginModel {
   /**
    * Initialize Plugin Model with Prisma Client
+   * @param {string} databaseUrl - Optional database URL override
    */
-  constructor() {
-    this.prisma = new PrismaClient();
+  constructor(databaseUrl = null) {
+    this.prisma = new PrismaClient({
+      datasources: databaseUrl ? {
+        db: { url: databaseUrl }
+      } : undefined
+    });
     logger.info('PluginModel initialized with Prisma');
   }
 
