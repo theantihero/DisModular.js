@@ -180,173 +180,9 @@ describe('Access Request Flow', () => {
         throw error;
       }
     }
-  });
 
-  afterAll(async () => {
-    // Clean up test data
-    if (testDb) {
-      await testDb.close();
-    }
-  });
-
-  beforeEach(async () => {
-    // Reset user access status before each test
-    if (prisma) {
-      try {
-        await prisma.user.update({
-          where: { id: testUserId },
-          data: {
-            access_status: 'denied', // Reset to denied so user can request access
-            access_requested_at: null,
-            access_request_message: null,
-            access_message: null
-          }
-        });
-      } catch (error) {
-        // User might not exist, create it
-        await prisma.user.create({
-          data: {
-            id: testUserId,
-            discord_id: '111111111',
-            username: 'testuser',
-            discriminator: '1234',
-            access_status: 'denied', // Start with denied status
-            is_admin: false
-          }
-        });
-      }
-    }
-  });
-
-  describe('User Access Request', () => {
-    it('should allow user to request access with message', async () => {
-      if (skipIfNoDatabase()) return;
-      
-      const requestMessage = 'I want to use this platform for my community server';
-
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({ message: requestMessage })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.message).toContain('submitted successfully');
-
-      // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { id: testUserId }
-      });
-
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBe(requestMessage);
-    });
-
-    it('should allow user to request access without message', async () => {
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({})
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-
-      // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { id: testUserId }
-      });
-
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBeNull();
-    });
-
-    it('should reject request with message too long', async () => {
-      const longMessage = 'a'.repeat(501); // 501 characters
-
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({ message: longMessage })
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('500 characters');
-    });
-
-    it('should require authentication to request access', async () => {
-      // Mock unauthenticated request
-      const appUnauth = express();
-      appUnauth.use(express.json());
-      appUnauth.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { 
-          secure: process.env.NODE_ENV === 'production',
-          httpOnly: true,
-          sameSite: 'lax'
-        }
-      }));
-      // appUnauth.use(lusca.csrf()); // Disabled for testing
-      appUnauth.use(mockPassport.initialize());
-      appUnauth.use(mockPassport.session());
-      
-      // Add authentication helper methods (but don't auto-authenticate)
-      appUnauth.use((req, res, next) => {
-        req.isAuthenticated = () => !!req.user;
-        req.login = (user, callback) => {
-          req.user = user;
-          if (callback) callback();
-        };
-        req.logout = (callback) => {
-          req.user = null;
-          if (callback) callback();
-        };
-        next();
-      });
-      
-      appUnauth.use('/auth', createAuthRoutes());
-
-      const response = await request(appUnauth)
-        .post('/auth/request-access')
-        .send({ message: 'test message' })
-        .expect(401);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Authentication required');
-    });
-
-    it('should get user access status', async () => {
-      // Set up user with access request
-      await prisma.user.upsert({
-        where: { id: testUserId },
-        update: {
-          access_status: 'pending',
-          access_requested_at: new Date(),
-          access_request_message: 'Test request message'
-        },
-        create: {
-          id: testUserId,
-          discord_id: '111111111',
-          username: 'testuser',
-          discriminator: '1234',
-          access_status: 'pending',
-          access_requested_at: new Date(),
-          access_request_message: 'Test request message',
-          is_admin: false
-        }
-      });
-
-      const response = await request(app)
-        .get('/auth/access-status')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.access_status).toBe('pending');
-      expect(response.body.data.access_request_message).toBe('Test request message');
-      expect(response.body.data.access_requested_at).toBeTruthy();
-    });
-  });
-
-  // Helper function to create admin app instance
-  const createAdminApp = () => {
+    // Define createAdminApp function with access to prisma
+    createAdminApp = () => {
       const adminApp = express();
       adminApp.use(express.json());
       adminApp.use(session({
@@ -590,6 +426,177 @@ describe('Access Request Flow', () => {
       adminApp.use('/admin', adminRouter);
       return adminApp;
     };
+  });
+
+  afterAll(async () => {
+    // Clean up test data
+    if (testDb) {
+      await testDb.close();
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset user access status before each test
+    if (prisma) {
+      try {
+        await prisma.user.update({
+          where: { id: testUserId },
+          data: {
+            access_status: 'denied', // Reset to denied so user can request access
+            access_requested_at: null,
+            access_request_message: null,
+            access_message: null
+          }
+        });
+      } catch (error) {
+        // User might not exist, create it
+        await prisma.user.create({
+          data: {
+            id: testUserId,
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied', // Start with denied status
+            is_admin: false
+          }
+        });
+      }
+    }
+  });
+
+  describe('User Access Request', () => {
+    it('should allow user to request access with message', async () => {
+      if (skipIfNoDatabase()) return;
+      
+      const requestMessage = 'I want to use this platform for my community server';
+
+      const response = await request(app)
+        .post('/auth/request-access')
+        .send({ message: requestMessage })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('submitted successfully');
+
+      // Verify the request was stored
+      const user = await prisma.user.findUnique({
+        where: { id: testUserId }
+      });
+
+      expect(user.access_requested_at).toBeTruthy();
+      expect(user.access_request_message).toBe(requestMessage);
+    });
+
+    it('should allow user to request access without message', async () => {
+      const response = await request(app)
+        .post('/auth/request-access')
+        .send({})
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+
+      // Verify the request was stored
+      const user = await prisma.user.findUnique({
+        where: { id: testUserId }
+      });
+
+      expect(user.access_requested_at).toBeTruthy();
+      expect(user.access_request_message).toBeNull();
+    });
+
+    it('should reject request with message too long', async () => {
+      const longMessage = 'a'.repeat(501); // 501 characters
+
+      const response = await request(app)
+        .post('/auth/request-access')
+        .send({ message: longMessage })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('500 characters');
+    });
+
+    it('should require authentication to request access', async () => {
+      // Mock unauthenticated request
+      const appUnauth = express();
+      appUnauth.use(express.json());
+      appUnauth.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          sameSite: 'lax'
+        }
+      }));
+      // appUnauth.use(lusca.csrf()); // Disabled for testing
+      appUnauth.use(mockPassport.initialize());
+      appUnauth.use(mockPassport.session());
+      
+      // Add authentication helper methods (but don't auto-authenticate)
+      appUnauth.use((req, res, next) => {
+        req.isAuthenticated = () => !!req.user;
+        req.login = (user, callback) => {
+          req.user = user;
+          if (callback) callback();
+        };
+        req.logout = (callback) => {
+          req.user = null;
+          if (callback) callback();
+        };
+        next();
+      });
+      
+      appUnauth.use('/auth', createAuthRoutes());
+
+      const response = await request(appUnauth)
+        .post('/auth/request-access')
+        .send({ message: 'test message' })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('Authentication required');
+    });
+
+    it('should get user access status', async () => {
+      // First ensure user exists, then update to pending status
+      await prisma.user.upsert({
+        where: { id: testUserId },
+        update: {},
+        create: {
+          id: testUserId,
+          discord_id: '111111111',
+          username: 'testuser',
+          discriminator: '1234',
+          access_status: 'denied',
+          is_admin: false
+        }
+      });
+      
+      // Now update to pending status (this will override the beforeEach reset)
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: {
+          access_status: 'pending',
+          access_requested_at: new Date(),
+          access_request_message: 'Test request message'
+        }
+      });
+
+      const response = await request(app)
+        .get('/auth/access-status')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.access_status).toBe('pending');
+      expect(response.body.data.access_request_message).toBe('Test request message');
+      expect(response.body.data.access_requested_at).toBeTruthy();
+    });
+  });
+
+  // Helper function to create admin app instance (will be defined in beforeAll)
+  let createAdminApp;
 
   describe('Admin Access Management', () => {
     it('should list pending access requests', async () => {

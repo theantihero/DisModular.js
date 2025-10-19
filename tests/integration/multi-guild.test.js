@@ -35,6 +35,7 @@ if (!process.env.SESSION_SECRET) {
 
 // Use test database from setup
 let prisma = null;
+let pluginController = null;
 
 // Helper function to skip database operations in CI mode
 function skipIfNoDatabase() {
@@ -85,7 +86,7 @@ describe('Multi-Guild Plugin System', () => {
     app.use(express.json());
 
     // Create plugin controller (only if database is available)
-    const pluginController = prisma ? new PluginController(prisma, './test-plugins') : null;
+    pluginController = prisma ? new PluginController(prisma, './test-plugins') : null;
 
     // Add routes - use mock in CI mode
     if (process.env.CI || process.env.GITHUB_ACTIONS) {
@@ -131,23 +132,7 @@ describe('Multi-Guild Plugin System', () => {
         ]
       });
 
-      // Create test plugin
-      await prisma.plugin.create({
-        data: {
-          id: testPluginId,
-          name: 'Test Plugin',
-          version: '1.0.0',
-          description: 'A test plugin',
-          author: 'Test Author',
-          type: 'slash',
-          enabled: true,
-          trigger_command: 'test',
-          compiled: 'console.log("test");',
-          is_template: false,
-          nodes: [],
-          edges: []
-        }
-      });
+      // Test plugin will be created in individual tests as needed
 
       // Create test user
       try {
@@ -209,11 +194,18 @@ describe('Multi-Guild Plugin System', () => {
   });
 
   beforeEach(async () => {
-    // Clean up guild plugins before each test
+    // Clean up guild plugins and test plugin before each test
     if (prisma) {
       await prisma.guildPlugin.deleteMany({
         where: {
           guild_id: { in: [testGuildId1, testGuildId2] }
+        }
+      });
+      
+      // Clean up test plugin
+      await prisma.plugin.deleteMany({
+        where: {
+          id: testPluginId
         }
       });
     }
@@ -256,6 +248,24 @@ describe('Multi-Guild Plugin System', () => {
   describe('Guild Plugin Management', () => {
     it('should enable a plugin for a guild', async () => {
       if (skipIfNoDatabase()) return;
+
+      // Create test plugin
+      await prisma.plugin.create({
+        data: {
+          id: testPluginId,
+          name: 'Test Plugin',
+          version: '1.0.0',
+          description: 'A test plugin',
+          author: 'Test Author',
+          type: 'slash',
+          enabled: true,
+          trigger_command: 'test',
+          compiled: 'console.log("test");',
+          is_template: false,
+          nodes: [],
+          edges: []
+        }
+      });
 
       const response = await request(app)
         .put(`/guilds/${testGuildId1}/plugins/${testPluginId}`)

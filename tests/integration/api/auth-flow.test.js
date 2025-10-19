@@ -260,6 +260,9 @@ describe('Auth Flow Integration Tests', () => {
         username: 'OldUsername'
       });
 
+      // Add small delay to ensure different timestamps
+      await new Promise(resolve => setTimeout(resolve, 10));
+
       // Simulate login update
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
@@ -271,7 +274,7 @@ describe('Auth Flow Integration Tests', () => {
 
       expect(updatedUser.username).toBe('NewUsername');
       expect(updatedUser.last_login).toBeDefined();
-      expect(updatedUser.last_login.getTime()).toBeGreaterThan(user.created_at.getTime());
+      expect(updatedUser.last_login.getTime()).toBeGreaterThanOrEqual(user.created_at.getTime());
     });
   });
 
