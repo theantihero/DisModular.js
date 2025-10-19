@@ -104,19 +104,39 @@ export class BotClient {
   async onInteraction(interaction) {
     const startTime = Date.now();
     
-    if (!interaction.isChatInputCommand()) {return;}
+    if (!interaction.isChatInputCommand()) {
+      return;
+    }
+
+    // Check if interaction is too old (Discord has a 3-second limit)
+    const interactionAge = Date.now() - interaction.createdTimestamp;
+    if (interactionAge > 2500) { // 2.5 seconds safety margin
+      logger.error(`Interaction too old: ${interactionAge}ms, ignoring`);
+      return;
+    }
 
     // Defer reply IMMEDIATELY - no logging or processing before this
     try {
       await interaction.deferReply();
       const deferTime = Date.now() - startTime;
-      logger.debug(`Slash command received: /${interaction.commandName} (deferred in ${deferTime}ms)`);
+      logger.debug(`Slash command received: /${interaction.commandName} (deferred in ${deferTime}ms, age: ${interactionAge}ms)`);
     } catch (deferError) {
       const errorTime = Date.now() - startTime;
       logger.error(`Failed to defer reply after ${errorTime}ms:`, deferError);
       logger.warn(`Interaction created at: ${new Date(interaction.createdTimestamp).toISOString()}`);
       logger.warn(`Current time: ${new Date().toISOString()}`);
-      logger.warn(`Age: ${Date.now() - interaction.createdTimestamp}ms`);
+      logger.warn(`Age: ${interactionAge}ms`);
+      logger.warn(`Command: /${interaction.commandName}, Guild: ${interaction.guild?.name || 'DM'}`);
+      
+      // Try to send a follow-up message if defer failed
+      try {
+        await interaction.followUp({ 
+          content: '⚠️ Command timed out. Please try again.',
+          ephemeral: true 
+        });
+      } catch (followUpError) {
+        logger.error('Failed to send follow-up message:', followUpError);
+      }
       return;
     }
 
@@ -128,10 +148,26 @@ export class BotClient {
       );
 
       if (!plugin) {
+        logger.warn(`Command /${interaction.commandName} not found in plugin manager`);
+        logger.debug(`Available commands: ${Array.from(this.pluginManager.plugins.keys()).join(', ')}`);
         await interaction.editReply({
-          content: 'Command not found.',
+          content: '⚠️ Command not found. Please contact an administrator.',
         });
         return;
+      }
+
+      // Check if plugin is enabled for this guild
+      if (interaction.guild) {
+        const guildPlugins = await this.getEnabledPluginsForGuild(interaction.guild.id);
+        const isEnabledForGuild = guildPlugins.some(gp => gp.id === plugin.id);
+        
+        if (!isEnabledForGuild) {
+          logger.warn(`Plugin ${plugin.name} not enabled for guild ${interaction.guild.name}`);
+          await interaction.editReply({
+            content: '⚠️ This command is not enabled in this server.',
+          });
+          return;
+        }
       }
 
       // Execute plugin
@@ -223,11 +259,17 @@ export class BotClient {
       const guilds = this.client.guilds.cache;
       logger.info(`Registering commands for ${guilds.size} guilds...`);
 
-      for (const [guildId] of guilds) {
-        await this.registerGuildCommands(guildId);
+      const registrationPromises = [];
+      for (const [guildId, guild] of guilds) {
+        registrationPromises.push(
+          this.registerGuildCommands(guildId).catch(error => {
+            logger.error(`Failed to register commands for guild ${guild.name} (${guildId}):`, error);
+          })
+        );
       }
 
-      logger.success('All guild commands registered');
+      await Promise.allSettled(registrationPromises);
+      logger.success('All guild commands registration attempted');
     } catch (error) {
       logger.error('Failed to register slash commands:', error);
     }
@@ -239,6 +281,12 @@ export class BotClient {
    */
   async registerGuildCommands(guildId) {
     try {
+      const guild = this.client.guilds.cache.get(guildId);
+      if (!guild) {
+        logger.warn(`Guild ${guildId} not found in cache, skipping command registration`);
+        return;
+      }
+
       // Ensure guild exists in database
       await this.ensureGuildExists(guildId);
 
@@ -249,7 +297,13 @@ export class BotClient {
       );
 
       if (slashPlugins.length === 0) {
-        logger.debug(`No slash commands to register for guild ${guildId}`);
+        logger.debug(`No slash commands to register for guild ${guild.name} (${guildId})`);
+        // Clear existing commands if no plugins are enabled
+        const rest = new REST({ version: '10' }).setToken(this.config.token);
+        await rest.put(
+          Routes.applicationGuildCommands(this.config.clientId, guildId),
+          { body: [] },
+        );
         return;
       }
 
@@ -261,12 +315,23 @@ export class BotClient {
           return null;
         }
 
+        // Validate command name (Discord requirements)
+        const cleanCommandName = commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (cleanCommandName !== commandName.toLowerCase()) {
+          logger.warn(`Command name '${commandName}' cleaned to '${cleanCommandName}' for Discord compatibility`);
+        }
+
         return {
-          name: commandName.toLowerCase(),
-          description: plugin.description || `Execute ${plugin.name}`,
+          name: cleanCommandName,
+          description: (plugin.description || `Execute ${plugin.name}`).substring(0, 100), // Discord limit
           options: plugin.options || [],
         };
       }).filter(Boolean);
+
+      if (commands.length === 0) {
+        logger.warn(`No valid commands to register for guild ${guild.name} (${guildId})`);
+        return;
+      }
 
       const rest = new REST({ version: '10' }).setToken(this.config.token);
 
@@ -275,9 +340,15 @@ export class BotClient {
         { body: commands },
       );
 
-      logger.debug(`Registered ${commands.length} commands for guild ${guildId}`);
+      logger.success(`Registered ${commands.length} commands for guild ${guild.name} (${guildId})`);
+      logger.debug(`Commands: ${commands.map(c => c.name).join(', ')}`);
     } catch (error) {
       logger.error(`Failed to register commands for guild ${guildId}:`, error);
+      
+      // If it's a rate limit error, log it specifically
+      if (error.code === 429) {
+        logger.warn('Rate limited while registering commands, Discord will retry automatically');
+      }
     }
   }
 
