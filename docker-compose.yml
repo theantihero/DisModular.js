@@ -45,14 +45,30 @@ services:
       # Prisma configuration
       PRISMA_MIGRATE_SKIP_GENERATE: "true"
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dismodular.rule=Host(`dismodular.pulsecord.app`)"
-      - "traefik.http.routers.dismodular.entrypoints=websecure"
-      - "traefik.http.routers.dismodular.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.dismodular-api.rule=Host(`dismodular.pulsecord.app`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.dismodular-api.entrypoints=websecure"
-      - "traefik.http.routers.dismodular-api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.dismodular.loadbalancer.server.port=3002"
+      traefik.enable: true
+
+      # HTTP Routers
+      traefik.http.routers.dismodular-http.entrypoints: http
+      traefik.http.routers.dismodular-http.rule: Host(`dismodular.pulsecord.app`)
+      traefik.http.routers.dismodular-http.service: dismodular
+
+      traefik.http.routers.dismodular-api-http.entrypoints: http
+      traefik.http.routers.dismodular-api-http.rule: Host(`dismodular.pulsecord.app`) && PathPrefix(`/api`)
+      traefik.http.routers.dismodular-api-http.service: dismodular
+
+      # HTTPS Routers
+      traefik.http.routers.dismodular.entrypoints: https
+      traefik.http.routers.dismodular.rule: Host(`dismodular.pulsecord.app`)
+      traefik.http.routers.dismodular.service: dismodular
+      traefik.http.routers.dismodular.tls.certresolver: cloudflare
+
+      traefik.http.routers.dismodular-api.entrypoints: https
+      traefik.http.routers.dismodular-api.rule: Host(`dismodular.pulsecord.app`) && PathPrefix(`/api`)
+      traefik.http.routers.dismodular-api.service: dismodular
+      traefik.http.routers.dismodular-api.tls.certresolver: cloudflare
+
+      # Service
+      traefik.http.services.dismodular.loadbalancer.server.port: 3002
     volumes:
       - ./plugins:/app/plugins
       - ./data:/app/data
