@@ -46,13 +46,13 @@ export function Login() {
       {theme === 'space' && <SpaceBackground />}
       
       {/* Theme Toggle and Support Button */}
-      <div className="absolute top-4 right-4 flex space-x-2 z-10">
+      <div className="absolute top-4 right-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 z-10">
         {/* GitHub Link */}
         <a
           href="https://github.com/theantihero/DisModular.js"
           target="_blank"
           rel="noopener noreferrer"
-          className={`px-3 py-2 rounded-lg flex items-center space-x-2 transition-all hover:scale-105 ${
+          className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-all hover:scale-105 text-xs sm:text-sm ${
             theme === 'space'
               ? 'macos-button bg-gradient-to-r from-gray-600/20 to-gray-700/20 hover:from-gray-600/30 hover:to-gray-700/30'
               : 'bg-gray-800/80 backdrop-blur-lg border border-gray-700/50 hover:bg-gray-700/80'
@@ -68,7 +68,7 @@ export function Login() {
         {/* Support Button */}
         <button
           onClick={() => setShowCryptoSupport(true)}
-          className={`px-3 py-2 rounded-lg flex items-center space-x-2 transition-all hover:scale-105 ${
+          className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg flex items-center space-x-1 sm:space-x-2 transition-all hover:scale-105 text-xs sm:text-sm ${
             theme === 'space'
               ? 'macos-button bg-gradient-to-r from-energy-green/20 to-hologram-500/20 hover:from-energy-green/30 hover:to-hologram-500/30'
               : 'bg-gray-800/80 backdrop-blur-lg border border-gray-700/50 hover:bg-gray-700/80'
@@ -84,18 +84,18 @@ export function Login() {
           href="https://discord.gg/exqNpFWjJP"
           target="_blank"
           rel="noopener noreferrer"
-          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
             theme === 'space'
               ? 'holographic-glow bg-gradient-to-r from-hologram-500 to-nebula-purple'
               : 'bg-gray-800/80 backdrop-blur-lg border border-gray-700/50'
           }`}
           title="Join our Discord server"
         >
-          <span className="text-white text-base">🚀</span>
+          <span className="text-white text-sm sm:text-base">🚀</span>
         </a>
       </div>
 
-      <div className="max-w-md w-full relative z-10">
+      <div className="max-w-md w-full relative z-10 mt-16 md:mt-0">
         {/* Background Elements */}
         {theme === 'space' && (
           <>

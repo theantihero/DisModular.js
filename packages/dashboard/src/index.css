@@ -412,6 +412,21 @@ body {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+  
+  /* Fix login page mobile layout */
+  .max-w-md {
+    margin-top: 4rem !important;
+  }
+  
+  /* Ensure login content is visible on mobile */
+  .relative.z-10 {
+    z-index: 10 !important;
+  }
+  
+  /* Better mobile button positioning */
+  .absolute.top-4.right-4 {
+    max-width: calc(100vw - 2rem);
+  }
 }
 
 /* Reduced Motion Support */
