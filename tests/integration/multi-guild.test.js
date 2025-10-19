@@ -475,8 +475,28 @@ describe('Multi-Guild Plugin System', () => {
 
   describe('Guild Plugin Execution Context', () => {
     it('should check guild plugin status before execution', async () => {
-      // Create a guild plugin relationship
+      if (skipIfNoDatabase()) return;
+      
+      // Create test plugin first
       if (prisma) {
+        await prisma.plugin.create({
+          data: {
+            id: testPluginId,
+            name: 'Test Plugin',
+            version: '1.0.0',
+            description: 'A test plugin',
+            author: 'Test Author',
+            type: 'slash',
+            enabled: true,
+            trigger_command: 'test',
+            compiled: 'console.log("test");',
+            is_template: false,
+            nodes: [],
+            edges: []
+          }
+        });
+        
+        // Create a guild plugin relationship
         await prisma.guildPlugin.create({
           data: {
             guild_id: testGuildId1,
@@ -515,8 +535,28 @@ describe('Multi-Guild Plugin System', () => {
     });
 
     it('should prevent execution when plugin is disabled for guild', async () => {
-      // Create a disabled guild plugin relationship
+      if (skipIfNoDatabase()) return;
+      
+      // Create test plugin first
       if (prisma) {
+        await prisma.plugin.create({
+          data: {
+            id: testPluginId,
+            name: 'Test Plugin',
+            version: '1.0.0',
+            description: 'A test plugin',
+            author: 'Test Author',
+            type: 'slash',
+            enabled: true,
+            trigger_command: 'test',
+            compiled: 'console.log("test");',
+            is_template: false,
+            nodes: [],
+            edges: []
+          }
+        });
+        
+        // Create a disabled guild plugin relationship
         await prisma.guildPlugin.create({
           data: {
             guild_id: testGuildId1,

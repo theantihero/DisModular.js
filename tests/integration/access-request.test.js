@@ -574,6 +574,9 @@ describe('Access Request Flow', () => {
         }
       });
       
+      // Add small delay to ensure this runs after beforeEach
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // Now update to pending status (this will override the beforeEach reset)
       await prisma.user.update({
         where: { id: testUserId },
