@@ -1149,9 +1149,13 @@ export class NodeCompiler {
         const pathParts = this.parseJSONPath(path);
         for (const part of pathParts) {
           if (part.type === 'property') {
-            codeLines.push(`${indent}  jsonExtractResult = jsonExtractResult?.['${part.value}'];`);
+            // Sanitize property name to prevent code injection
+            const sanitizedProperty = this.sanitizePropertyName(part.value);
+            codeLines.push(`${indent}  jsonExtractResult = jsonExtractResult?.['${sanitizedProperty}'];`);
           } else if (part.type === 'index') {
-            codeLines.push(`${indent}  jsonExtractResult = jsonExtractResult?.[${part.value}];`);
+            // Validate index is numeric
+            const sanitizedIndex = this.sanitizeIndex(part.value);
+            codeLines.push(`${indent}  jsonExtractResult = jsonExtractResult?.[${sanitizedIndex}];`);
           }
         }
       }
@@ -1279,6 +1283,49 @@ export class NodeCompiler {
       valid: errors.length === 0,
       errors,
     };
+  }
+
+  /**
+   * Sanitize property name to prevent code injection
+   * @param {string} propertyName - Property name to sanitize
+   * @returns {string} Sanitized property name
+   */
+  sanitizePropertyName(propertyName) {
+    if (!propertyName || typeof propertyName !== 'string') {
+      return 'invalid';
+    }
+    
+    // Only allow alphanumeric characters, underscore, and dollar sign
+    const sanitized = propertyName.replace(/[^a-zA-Z0-9_$]/g, '');
+    
+    // Ensure it's not empty and starts with valid character
+    if (!sanitized || !/[a-zA-Z_$]/.test(sanitized[0])) {
+      return 'invalid';
+    }
+    
+    return sanitized;
+  }
+
+  /**
+   * Sanitize array index to prevent code injection
+   * @param {string} index - Index to sanitize
+   * @returns {string} Sanitized index
+   */
+  sanitizeIndex(index) {
+    if (!index || typeof index !== 'string') {
+      return '0';
+    }
+    
+    // Only allow numeric characters
+    const sanitized = index.replace(/[^0-9]/g, '');
+    
+    // Ensure it's a valid number
+    const num = parseInt(sanitized, 10);
+    if (isNaN(num) || num < 0) {
+      return '0';
+    }
+    
+    return sanitized;
   }
 }
 

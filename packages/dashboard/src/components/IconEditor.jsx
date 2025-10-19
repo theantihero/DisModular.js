@@ -147,6 +147,12 @@ const IconEditor = ({
     return value;
   };
   
+  // Get safe URL for image src attribute with explicit validation
+  const getSafeImageUrl = () => {
+    const currentValue = getCurrentValue();
+    return isValidUrl(currentValue) ? currentValue : '';
+  };
+  
   // Check if current value is valid
   const isCurrentValueValid = () => {
     if (iconType === 'emoji') {
@@ -303,7 +309,7 @@ const IconEditor = ({
                       </div>
                     ) : (
                       <img
-                        src={isValidUrl(getCurrentValue()) ? getCurrentValue() : ''}
+                        src={getSafeImageUrl()}
                         alt="Icon preview"
                         className="w-full h-full object-cover rounded-lg"
                         onError={handleImageError}

@@ -17,7 +17,7 @@ import { join } from 'path';
 import { Logger } from '@dismodular/shared';
 import DatabaseModel from './models/Database.js';
 import { initializePassport, requireApprovedAccess, requireAdmin } from './middleware/auth.js';
-import { authLimiter, apiLimiter, pluginLimiter, adminLimiter, guildLimiter } from './middleware/rateLimiter.js';
+import { authLimiter, apiLimiter, pluginLimiter, adminLimiter, guildLimiter, expensiveOperationLimiter } from './middleware/rateLimiter.js';
 import PluginController from './controllers/PluginController.js';
 import { createPluginRoutes } from './routes/plugins.js';
 import { createBotRoutes } from './routes/bot.js';
@@ -155,17 +155,17 @@ app.use((req, res, next) => {
 // API routes (no /api prefix since Traefik handles routing)
 // Registering routes...
 app.use('/auth', authLimiter, createAuthRoutes());
-app.use('/plugins', requireApprovedAccess, pluginLimiter, createPluginRoutes(pluginController));
+app.use('/plugins', requireApprovedAccess, expensiveOperationLimiter, createPluginRoutes(pluginController));
 app.use('/bot', apiLimiter, createBotRoutes(db));
-app.use('/admin', requireAdmin, adminLimiter, createAdminRoutes());
-app.use('/guilds', requireAdmin, guildLimiter, createGuildRoutes());
+app.use('/admin', requireAdmin, expensiveOperationLimiter, createAdminRoutes());
+app.use('/guilds', requireAdmin, expensiveOperationLimiter, createGuildRoutes());
 // Routes registered successfully
 
-// Serve static dashboard files
-app.use(express.static(config.dashboardDir));
+// Serve static dashboard files with rate limiting
+app.use('/', apiLimiter, express.static(config.dashboardDir));
 
-// Serve assets (wallet images, etc.)
-app.use('/assets', express.static(join(workspaceRoot, 'assets')));
+// Serve assets (wallet images, etc.) with rate limiting
+app.use('/assets', apiLimiter, express.static(join(workspaceRoot, 'assets')));
 
 // API info route (after static files)
 app.get('/api', (req, res) => {
