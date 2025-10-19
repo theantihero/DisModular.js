@@ -26,6 +26,61 @@ function validatePluginId(id) {
   return /^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(id) && id.length <= 100;
 }
 
+/**
+ * Validate plugin node graph complexity to prevent resource exhaustion
+ * @param {Array} nodes
+ * @param {Array} edges
+ * @returns {{valid: boolean, error?: string}}
+ */
+function validateNodeGraphComplexity(nodes, edges) {
+  const MAX_NODES = 100;
+  const MAX_EDGES = 200;
+  const MAX_DEPTH = 20;
+
+  if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+    return { valid: false, error: 'Malformed nodes or edges' };
+  }
+  if (nodes.length > MAX_NODES) {
+    return { valid: false, error: `Too many nodes (limit is ${MAX_NODES})` };
+  }
+  if (edges.length > MAX_EDGES) {
+    return { valid: false, error: `Too many edges (limit is ${MAX_EDGES})` };
+  }
+
+  // Compute node graph depth by BFS from triggers
+  // Find trigger nodes as entry points
+  const nodeById = Object.create(null);
+  nodes.forEach(n => { if (n && n.id) nodeById[n.id] = n; });
+  const outgoing = Object.create(null);
+  edges.forEach(e => {
+    if (e && e.source && e.target) {
+      if (!outgoing[e.source]) outgoing[e.source] = [];
+      outgoing[e.source].push(e.target);
+    }
+  });
+  const triggerNodes = nodes.filter(n => n.type === 'trigger' && n.id);
+
+  let maxFoundDepth = 0;
+  for (const triggerNode of triggerNodes) {
+    const visited = new Set();
+    const queue = [{id: triggerNode.id, depth: 1}];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (visited.has(cur.id)) continue;
+      visited.add(cur.id);
+      if (cur.depth > maxFoundDepth) maxFoundDepth = cur.depth;
+      if (cur.depth > MAX_DEPTH) {
+        return { valid: false, error: `Graph too deep (limit is ${MAX_DEPTH})` };
+      }
+      const nextNodes = outgoing[cur.id] || [];
+      for (const nextId of nextNodes) {
+        queue.push({id: nextId, depth: cur.depth + 1});
+      }
+    }
+  }
+  return { valid: true };
+}
+
 export class PluginController {
   /**
    * Initialize Plugin Controller
@@ -164,13 +219,22 @@ export class PluginController {
         });
       }
 
-      // Validate node graph
+      // Validate node graph structure
       const validation = this.compiler.validate(nodes, edges);
       if (!validation.valid) {
         return res.status(400).json({
           success: false,
           error: 'Invalid node graph',
           details: validation.errors
+        });
+      }
+
+      // Prevent resource exhaustion by limiting graph complexity
+      const graphComplexity = validateNodeGraphComplexity(nodes, edges);
+      if (!graphComplexity.valid) {
+        return res.status(400).json({
+          success: false,
+          error: graphComplexity.error
         });
       }
 
