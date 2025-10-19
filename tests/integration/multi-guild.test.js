@@ -86,7 +86,9 @@ describe('Multi-Guild Plugin System', () => {
         enabled: true,
         trigger_command: 'test',
         compiled: 'console.log("test");',
-        is_template: false
+        is_template: false,
+        nodes: [],
+        edges: []
       }
     });
   });

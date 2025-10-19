@@ -76,7 +76,7 @@ describe('Smoke Tests', () => {
       expect(config.clientId).toBeTruthy();
       expect(config.clientSecret).toBeTruthy();
       expect(config.callbackUrl).toBeTruthy();
-      expect(config.callbackUrl).toContain('/auth/callback');
+      expect(config.callbackUrl).toContain('/auth/discord/callback');
     });
 
     it('should validate database URL format', () => {

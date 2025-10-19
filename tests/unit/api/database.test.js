@@ -191,17 +191,17 @@ describe('Database Model', () => {
       
       const auditLog = await prisma.auditLog.create({
         data: {
-          userId: user.id,
+          user_id: user.id,
           action: 'TEST_ACTION',
-          resourceType: 'TEST_RESOURCE',
-          resourceId: 'test-resource-id',
+          resource_type: 'TEST_RESOURCE',
+          resource_id: 'test-resource-id',
           details: { test: 'data' }
         }
       });
 
       expect(auditLog).toBeDefined();
       expect(auditLog.action).toBe('TEST_ACTION');
-      expect(auditLog.userId).toBe(user.id);
+      expect(auditLog.user_id).toBe(user.id);
     });
 
     it('should find audit logs by user', async () => {
@@ -209,19 +209,19 @@ describe('Database Model', () => {
       
       await prisma.auditLog.create({
         data: {
-          userId: user.id,
+          user_id: user.id,
           action: 'TEST_ACTION',
-          resourceType: 'TEST_RESOURCE',
-          resourceId: 'test-resource-id'
+          resource_type: 'TEST_RESOURCE',
+          resource_id: 'test-resource-id'
         }
       });
 
       const logs = await prisma.auditLog.findMany({
-        where: { userId: user.id }
+        where: { user_id: user.id }
       });
 
       expect(logs).toHaveLength(1);
-      expect(logs[0].userId).toBe(user.id);
+      expect(logs[0].user_id).toBe(user.id);
     });
   });
 
@@ -233,7 +233,7 @@ describe('Database Model', () => {
         data: {
           plugin_id: plugin.id,
           key: 'test_key',
-          value: { test: 'data' }
+          value: JSON.stringify({ test: 'data' })
         }
       });
 
@@ -249,7 +249,7 @@ describe('Database Model', () => {
         data: {
           plugin_id: plugin.id,
           key: 'test_key',
-          value: { test: 'data' }
+          value: JSON.stringify({ test: 'data' })
         }
       });
 
