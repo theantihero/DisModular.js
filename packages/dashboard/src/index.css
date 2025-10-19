@@ -368,6 +368,52 @@ body {
   }
 }
 
+/* Mobile Responsive Improvements */
+@media (max-width: 768px) {
+  /* Ensure proper z-index stacking for mobile */
+  .fixed {
+    z-index: 40 !important;
+  }
+  
+  /* Improve touch targets for mobile */
+  .macos-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing for mobile buttons */
+  .macos-button {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Improve mobile navigation */
+  .md\\:hidden {
+    z-index: 50 !important;
+  }
+  
+  /* Better mobile text sizing */
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  /* Improve mobile floating elements */
+  .fixed.z-50 {
+    z-index: 50 !important;
+  }
+  
+  /* Better mobile spacing */
+  .space-x-2 > * + * {
+    margin-left: 0.375rem;
+  }
+  
+  /* Improve mobile header */
+  header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   *,

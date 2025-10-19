@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import _React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useToast } from '../hooks/useToast';
@@ -49,18 +49,40 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
 
   useEffect(() => {
     fetchGuilds();
-    // Initialize position to bottom right
-    setPosition({ x: window.innerWidth - 320, y: window.innerHeight - 200 });
+    // Initialize position - responsive for mobile
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      // On mobile, position at bottom center with proper spacing
+      setPosition({ 
+        x: Math.max(16, (window.innerWidth - 280) / 2), 
+        y: window.innerHeight - 120 
+      });
+    } else {
+      // On desktop, position at bottom right
+      setPosition({ x: window.innerWidth - 320, y: window.innerHeight - 200 });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle window resize to keep widget in bounds and close dropdown
   useEffect(() => {
     const handleResize = () => {
-      setPosition(prev => ({
-        x: Math.min(prev.x, window.innerWidth - 320),
-        y: Math.min(prev.y, window.innerHeight - 200)
-      }));
+      const isMobile = window.innerWidth < 768;
+      setPosition(prev => {
+        if (isMobile) {
+          // On mobile, center horizontally and keep at bottom
+          return {
+            x: Math.max(16, (window.innerWidth - 280) / 2),
+            y: Math.min(prev.y, window.innerHeight - 120)
+          };
+        } else {
+          // On desktop, keep in bounds
+          return {
+            x: Math.min(prev.x, window.innerWidth - 320),
+            y: Math.min(prev.y, window.innerHeight - 200)
+          };
+        }
+      });
       
       // Close dropdown on resize to prevent positioning issues
       if (dropdownOpen) {
@@ -220,9 +242,16 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
       dragRef.current.hasMoved = true;
     }
     
+    const isMobile = window.innerWidth < 768;
     const newPosition = {
-      x: Math.max(0, Math.min(window.innerWidth - 320, dragRef.current.startPosX + deltaX)),
-      y: Math.max(0, Math.min(window.innerHeight - 200, dragRef.current.startPosY + deltaY))
+      x: Math.max(0, Math.min(
+        window.innerWidth - (isMobile ? 280 : 320), 
+        dragRef.current.startPosX + deltaX
+      )),
+      y: Math.max(0, Math.min(
+        window.innerHeight - (isMobile ? 120 : 200), 
+        dragRef.current.startPosY + deltaY
+      ))
     };
     
     setPosition(newPosition);
@@ -244,13 +273,16 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
 
 
   const getContainerClasses = () => {
+    const isMobile = window.innerWidth < 768;
     const baseClasses = 'fixed z-50 transition-all duration-300 ease-in-out';
-    const sizeClasses = isMinimized ? 'w-16 h-16' : 'w-80';
+    const sizeClasses = isMinimized 
+      ? (isMobile ? 'w-12 h-12' : 'w-16 h-16') 
+      : (isMobile ? 'w-72 max-w-[calc(100vw-32px)]' : 'w-80');
     const themeClasses = theme === 'space' 
-      ? 'bg-gray-900/90 backdrop-blur-lg border border-gray-700/50 shadow-2xl'
+      ? 'bg-gray-900/95 backdrop-blur-lg border border-gray-700/50 shadow-2xl'
       : theme === 'light'
-      ? 'bg-white/90 backdrop-blur-lg border border-gray-200/50 shadow-2xl'
-      : 'bg-gray-800/90 backdrop-blur-lg border border-gray-700/50 shadow-2xl';
+      ? 'bg-white/95 backdrop-blur-lg border border-gray-200/50 shadow-2xl'
+      : 'bg-gray-800/95 backdrop-blur-lg border border-gray-700/50 shadow-2xl';
     
     return `${baseClasses} ${sizeClasses} ${themeClasses}`;
   };
@@ -267,12 +299,14 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
   };
 
   if (loading && guilds.length === 0) {
+    const isMobile = window.innerWidth < 768;
     return (
       <div 
         className={getContainerClasses()}
         style={{ 
-          right: '20px', 
+          right: isMobile ? 'auto' : '20px', 
           bottom: '20px',
+          left: isMobile ? 'auto' : 'auto',
           borderRadius: '12px'
         }}
       >
@@ -284,12 +318,14 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
   }
 
   if (error && guilds.length === 0) {
+    const isMobile = window.innerWidth < 768;
     return (
       <div 
         className={getContainerClasses()}
         style={{ 
-          right: '20px', 
+          right: isMobile ? 'auto' : '20px', 
           bottom: '20px',
+          left: isMobile ? 'auto' : 'auto',
           borderRadius: '12px'
         }}
       >
@@ -337,7 +373,8 @@ export default function FloatingGuildSelector({ selectedGuild, onGuildSelect, ca
           userSelect: 'none',
           WebkitUserSelect: 'none',
           MozUserSelect: 'none',
-          msUserSelect: 'none'
+          msUserSelect: 'none',
+          zIndex: 50
         }}
       >
         {isMinimized ? (

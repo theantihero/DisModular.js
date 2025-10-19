@@ -328,40 +328,41 @@ export function Dashboard() {
               </a>
 
               {/* User Menu */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 md:space-x-3">
                 {user?.data?.is_admin && (
                   <button
                     onClick={() => setShowAdminTools(!showAdminTools)}
-                    className="macos-button flex items-center space-x-2"
+                    className="macos-button flex items-center space-x-1 md:space-x-2 px-2 md:px-3 py-1.5"
                   >
-                    <span className="text-blue-400">👑</span>
-                    <span className="text-blue-400 text-sm font-medium">Admin</span>
+                    <span className="text-blue-400 text-sm md:text-base">👑</span>
+                    <span className="text-blue-400 text-xs md:text-sm font-medium hidden sm:inline">Admin</span>
                   </button>
                 )}
 
                 <button
                   onClick={() => setShowCryptoSupport(true)}
-                  className="macos-button flex items-center space-x-2 bg-gradient-to-r from-energy-green/20 to-hologram-500/20 hover:from-energy-green/30 hover:to-hologram-500/30"
+                  className="macos-button flex items-center space-x-1 md:space-x-2 bg-gradient-to-r from-energy-green/20 to-hologram-500/20 hover:from-energy-green/30 hover:to-hologram-500/30 px-2 md:px-3 py-1.5"
                 >
-                  <span className="text-energy-green">💎</span>
-                  <span className="text-energy-green text-sm font-medium">Support</span>
+                  <span className="text-energy-green text-sm md:text-base">💎</span>
+                  <span className="text-energy-green text-xs md:text-sm font-medium hidden sm:inline">Support</span>
                 </button>
 
-                <div className="macos-badge flex items-center space-x-2">
+                <div className="macos-badge flex items-center space-x-1 md:space-x-2 px-2 md:px-3 py-1.5">
                   <img 
                     src={user?.data?.avatar ? `https://cdn.discordapp.com/avatars/${user.data.discord_id}/${user.data.avatar}.png` : '/default-avatar.png'} 
                     alt={user?.data?.username || 'User'} 
-                    className="w-6 h-6 rounded-full"
+                    className="w-5 h-5 md:w-6 md:h-6 rounded-full"
                     onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiM2MzY2RjEiLz4KPHN2Zz4K'; }}
                   />
-                  <span className="text-white text-sm font-medium">{user?.data?.username || 'Loading...'}</span>
+                  <span className="text-white text-xs md:text-sm font-medium hidden sm:inline">{user?.data?.username || 'Loading...'}</span>
                 </div>
 
                 <button
                   onClick={logout}
-                  className="macos-button px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400"
+                  className="macos-button px-2 md:px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs md:text-sm"
                 >
-                  🚪 Logout
+                  <span className="hidden sm:inline">🚪 Logout</span>
+                  <span className="sm:hidden">🚪</span>
                 </button>
               </div>
             </div>
@@ -605,7 +606,7 @@ export function Dashboard() {
                 <button
                   onClick={() => navigate('/plugins/new')}
                   disabled={(selectedGuild && !selectedGuild.bot_present) || arePluginButtonsDisabled()}
-                  className={`macos-button px-6 py-3 font-medium flex items-center gap-2 transition-all duration-200 mx-auto ${
+                  className={`macos-button px-4 md:px-6 py-2 md:py-3 font-medium flex items-center gap-2 transition-all duration-200 mx-auto text-sm md:text-base ${
                     (selectedGuild && !selectedGuild.bot_present) || arePluginButtonsDisabled()
                       ? 'text-gray-500 cursor-not-allowed opacity-50'
                       : 'text-white hover:scale-105'
@@ -621,12 +622,12 @@ export function Dashboard() {
                   {arePluginButtonsDisabled() ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading...</span>
+                      <span className="text-sm md:text-base">Loading...</span>
                     </div>
                   ) : (
                     <>
-                      <span className="text-lg">🚀</span>
-                      <span>Create First Plugin</span>
+                      <span className="text-base md:text-lg">🚀</span>
+                      <span className="text-sm md:text-base">Create First Plugin</span>
                     </>
                   )}
                 </button>
