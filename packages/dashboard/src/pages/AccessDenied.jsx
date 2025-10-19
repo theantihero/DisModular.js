@@ -102,7 +102,7 @@ export function AccessDenied() {
             {user && (
               <div className="bg-gray-700 rounded-lg p-4 mb-4">
                 <p className="text-gray-400 text-sm mb-1">Logged in as:</p>
-                <p className="text-white font-semibold">{user.data.username}#{user.data.discriminator}</p>
+                <p className="text-white font-semibold">{user?.data?.username || 'User'}#{user?.data?.discriminator || '0000'}</p>
               </div>
             )}
             

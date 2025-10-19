@@ -290,7 +290,7 @@ export function AccessPending() {
         {user && (
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
-              Logged in as <span className="text-white font-semibold">{user.data.username}</span>
+              Logged in as <span className="text-white font-semibold">{user?.data?.username || 'User'}</span>
             </p>
           </div>
         )}

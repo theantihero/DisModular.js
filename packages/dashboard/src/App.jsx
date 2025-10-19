@@ -73,11 +73,11 @@ function AdminRoute({ children }) {
   }
   
   // Check if user has platform access first
-  if (user?.access_status === 'pending' || user?.access_status === 'denied') {
+  if (user?.data?.access_status === 'pending' || user?.data?.access_status === 'denied') {
     return <Navigate to="/access-pending" replace />;
   }
   
-  if (user?.access_status !== 'approved') {
+  if (user?.data?.access_status !== 'approved') {
     return <Navigate to="/access-denied" replace />;
   }
   

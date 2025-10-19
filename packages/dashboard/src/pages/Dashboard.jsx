@@ -325,11 +325,11 @@ export function Dashboard() {
                 <div className="macos-badge flex items-center space-x-2">
                   <img 
                     src={user?.data?.avatar ? `https://cdn.discordapp.com/avatars/${user.data.discord_id}/${user.data.avatar}.png` : '/default-avatar.png'} 
-                    alt={user?.data?.username} 
+                    alt={user?.data?.username || 'User'} 
                     className="w-6 h-6 rounded-full"
                     onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiM2MzY2RjEiLz4KPHN2Zz4K'; }}
                   />
-                  <span className="text-white text-sm font-medium">{user?.data?.username}</span>
+                  <span className="text-white text-sm font-medium">{user?.data?.username || 'Loading...'}</span>
                 </div>
 
                 <button
