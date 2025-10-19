@@ -301,6 +301,28 @@ describe('Access Request Flow', () => {
     // Reset user access status before each test
     if (prisma) {
       try {
+        // First, ensure the test user exists
+        let user = await prisma.user.findUnique({
+          where: { discord_id: '111111111' }
+        });
+        
+        if (!user) {
+          // Create the test user if it doesn't exist
+          user = await prisma.user.create({
+            data: {
+              discord_id: '111111111',
+              username: 'testuser',
+              discriminator: '1234',
+              access_status: 'denied',
+              is_admin: false
+            }
+          });
+        }
+        
+        // Update testUserId to use the actual database ID
+        testUserId = user.id;
+        
+        // Reset user access status
         await prisma.user.update({
           where: { id: testUserId },
           data: {
@@ -311,18 +333,29 @@ describe('Access Request Flow', () => {
           }
         });
       } catch (error) {
-        // User might not exist, create it
-        await prisma.user.create({
+        console.error('Error in beforeEach:', error);
+        throw error;
+      }
+      
+      // Ensure admin user exists
+      let adminUser = await prisma.user.findUnique({
+        where: { discord_id: '222222222' }
+      });
+      
+      if (!adminUser) {
+        adminUser = await prisma.user.create({
           data: {
-            id: testUserId,
-            discord_id: '111111111',
-            username: 'testuser',
-            discriminator: '1234',
-            access_status: 'denied', // Start with denied status
-            is_admin: false
+            discord_id: '222222222',
+            username: 'adminuser',
+            discriminator: '5678',
+            access_status: 'approved',
+            is_admin: true
           }
         });
       }
+      
+      // Update adminUserId to use the actual database ID
+      adminUserId = adminUser.id;
       
       // Clean up any existing access requests to prevent test conflicts
       await prisma.user.updateMany({

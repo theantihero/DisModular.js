@@ -322,15 +322,20 @@ describe('Security Fixes', () => {
       const safeFilePath = mockGetSafePluginFilePath(testPluginId, testPluginsDir, testFilename);
       expect(safeFilePath).toBe('/safe/plugins/test_plugin/plugin.json');
       
-      // Test dangerous filename
+      // Test dangerous filename - should fail on invalid characters first
       expect(() => {
         mockGetSafePluginFilePath(testPluginId, testPluginsDir, '../../../etc/passwd');
-      }).toThrow('Filename contains path traversal characters');
+      }).toThrow('Filename contains invalid characters');
       
       // Test invalid filename characters
       expect(() => {
         mockGetSafePluginFilePath(testPluginId, testPluginsDir, 'plugin<script>.json');
       }).toThrow('Filename contains invalid characters');
+      
+      // Test path traversal with valid characters
+      expect(() => {
+        mockGetSafePluginFilePath(testPluginId, testPluginsDir, '..passwd');
+      }).toThrow('Filename contains path traversal characters');
     });
   });
 
