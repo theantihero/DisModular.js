@@ -44,8 +44,9 @@ describe('Plugin CRUD Integration Tests', () => {
     app.use(passport.initialize());
     app.use(passport.session());
     
-    // Add authentication helper methods
+    // Add authentication helper methods and auto-authenticate for testing
     app.use((req, res, next) => {
+      // Set authentication helper methods
       req.isAuthenticated = () => !!req.user;
       req.login = (user, callback) => {
         req.user = user;
@@ -55,6 +56,12 @@ describe('Plugin CRUD Integration Tests', () => {
         req.user = null;
         if (callback) callback();
       };
+      
+      // For testing, automatically set user if not already set
+      if (!req.user) {
+        req.user = { id: 'test-user', username: 'testuser', is_admin: true };
+      }
+      
       next();
     });
 

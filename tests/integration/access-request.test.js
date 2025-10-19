@@ -14,6 +14,7 @@ import passport from 'passport';
 import lusca from 'lusca';
 import createAuthRoutes from '../../packages/api/src/routes/auth.js';
 import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
+import { TestDatabase } from '../setup.js';
 
 // Setup test environment variables
 if (!process.env.DATABASE_URL) {
@@ -36,9 +37,7 @@ if (!process.env.SESSION_SECRET) {
 
 // Skip database operations in CI mode
 let prisma = null;
-if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
-  prisma = new PrismaClient();
-}
+let testDb = null;
 
 // Helper function to skip database operations in CI mode
 function skipIfNoDatabase() {
@@ -83,6 +82,11 @@ describe('Access Request Flow', () => {
   let adminUserId = 'admin-user-123';
 
   beforeAll(async () => {
+    // Setup test database
+    testDb = new TestDatabase();
+    await testDb.setup();
+    prisma = testDb.getClient();
+
     // Create test app
     app = express();
     app.use(express.json());
@@ -140,20 +144,8 @@ describe('Access Request Flow', () => {
 
   afterAll(async () => {
     // Clean up test data
-    if (prisma) {
-      await prisma.auditLog.deleteMany({
-        where: {
-          user_id: { in: [testUserId, adminUserId] }
-        }
-      });
-      
-      await prisma.user.deleteMany({
-        where: {
-          id: { in: [testUserId, adminUserId] }
-        }
-      });
-      
-      await prisma.$disconnect();
+    if (testDb) {
+      await testDb.close();
     }
   });
 
