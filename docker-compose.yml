@@ -20,7 +20,11 @@ services:
       - dismodular-network
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://dismodular.pulsecord.app/api}
+        VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID:-your_client_id_here}
     container_name: dismodular-app
     restart: unless-stopped
     depends_on:
