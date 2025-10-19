@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useAppStore } from '../viewmodels/AppViewModel';
-import { _ToastContainer } from '../components/Toast';
+import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
 import _AdminPanel from '../components/AdminPanel';

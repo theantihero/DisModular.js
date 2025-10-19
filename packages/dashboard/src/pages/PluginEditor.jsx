@@ -7,11 +7,11 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import _ReactFlow, {
+import ReactFlow, {
   addEdge,
-  _Background,
-  _Controls,
-  _MiniMap,
+  Background,
+  Controls,
+  MiniMap,
   useNodesState,
   useEdgesState
 } from 'reactflow';

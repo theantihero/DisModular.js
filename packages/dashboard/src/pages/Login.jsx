@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { useTheme } from '../hooks/useTheme';
 import _CryptoSupport from '../components/CryptoSupport';
-import { _SpaceBackground } from '../components/SpaceBackground';
+import SpaceBackground from '../components/SpaceBackground';
 
 export function Login() {
   const navigate = useNavigate();
