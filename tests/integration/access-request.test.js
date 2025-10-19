@@ -227,9 +227,12 @@ describe('Access Request Flow', () => {
         if (process.env.NODE_ENV === 'test' && prisma) {
           try {
             const discordId = isAdminRoute ? '222222222' : '111111111';
+            console.log('Looking up user with discord_id:', discordId);
             const user = await prisma.user.findUnique({
               where: { discord_id: discordId }
             });
+            
+            console.log('Found user:', user);
             
             if (user) {
               req.user = { 
@@ -238,6 +241,9 @@ describe('Access Request Flow', () => {
                 is_admin: user.is_admin,
                 access_status: user.access_status
               };
+              console.log('Set req.user:', req.user);
+            } else {
+              console.log('No user found for discord_id:', discordId);
             }
           } catch (error) {
             console.warn('Error looking up user in test middleware:', error.message);
@@ -392,11 +398,25 @@ describe('Access Request Flow', () => {
       
       const requestMessage = 'I want to use this platform for my community server';
       
+      // Debug: Check if user exists before making request
+      const userBefore = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      console.log('User before request:', userBefore);
+      
       const response = await request(app)
         .post('/auth/request-access')
-        .send({ message: requestMessage })
-        .expect(200);
+        .send({ message: requestMessage });
 
+      console.log('Response status:', response.status);
+      console.log('Response body:', response.body);
+      
+      if (response.status !== 200) {
+        console.error('Request failed with status:', response.status);
+        console.error('Response body:', response.body);
+      }
+      
+      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
