@@ -9,11 +9,11 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * Authentication rate limiter
- * 20 requests per minute for auth endpoints
+ * 50 requests per minute for auth endpoints
  */
 export const authLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 20,
+  max: 50,
   message: {
     success: false,
     error: 'Too many authentication attempts, please try again later',
@@ -34,11 +34,11 @@ export const authLimiter = rateLimit({
 
 /**
  * General API rate limiter
- * 60 requests per minute for general API endpoints
+ * 200 requests per minute for general API endpoints
  */
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 60,
+  max: 200,
   message: {
     success: false,
     error: 'Too many requests, please slow down',
