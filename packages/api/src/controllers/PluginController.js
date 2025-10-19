@@ -138,6 +138,57 @@ function validatePluginData(pluginData) {
     }
   }
   
+  // Validate node configurations for URLs and emojis
+  for (const node of pluginData.nodes) {
+    if (node.data && node.data.config) {
+      const config = node.data.config;
+      
+      // Validate image URLs in embed builder nodes
+      if (node.type === 'embed_builder') {
+        if (config.image) {
+          const imageValidation = validateUrl(config.image);
+          if (!imageValidation.valid) {
+            return { valid: false, error: `Invalid image URL in node ${node.id}: ${imageValidation.error}` };
+          }
+        }
+        if (config.thumbnail) {
+          const thumbnailValidation = validateUrl(config.thumbnail);
+          if (!thumbnailValidation.valid) {
+            return { valid: false, error: `Invalid thumbnail URL in node ${node.id}: ${thumbnailValidation.error}` };
+          }
+        }
+      }
+      
+      // Validate emoji in reaction nodes
+      if (node.type === 'reaction' || config.action === 'add_reaction') {
+        if (config.emoji) {
+          const emojiValidation = validateEmoji(config.emoji);
+          if (!emojiValidation.valid) {
+            return { valid: false, error: `Invalid emoji in node ${node.id}: ${emojiValidation.error}` };
+          }
+        }
+      }
+      
+      // Validate emojis array in multiple reactions
+      if (config.action === 'add_multiple_reactions' && config.emojis) {
+        if (typeof config.emojis === 'string') {
+          // If it's a variable reference, validate the variable name
+          if (!config.emojis.startsWith('{') || !config.emojis.endsWith('}')) {
+            return { valid: false, error: `Invalid emojis variable format in node ${node.id}` };
+          }
+        }
+      }
+      
+      // Validate HTTP request URLs
+      if (node.type === 'http_request' && config.url) {
+        const urlValidation = validateUrl(config.url);
+        if (!urlValidation.valid) {
+          return { valid: false, error: `Invalid HTTP URL in node ${node.id}: ${urlValidation.error}` };
+        }
+      }
+    }
+  }
+  
   return { valid: true };
 }
 
@@ -165,6 +216,51 @@ function sanitizePluginData(pluginData) {
         sanitized.trigger[field] = sanitizeString(sanitized.trigger[field]);
       }
     }
+  }
+  
+  // Sanitize node configurations
+  if (sanitized.nodes && Array.isArray(sanitized.nodes)) {
+    sanitized.nodes = sanitized.nodes.map(node => {
+      if (node.data && node.data.config) {
+        const config = { ...node.data.config };
+        
+        // Sanitize URLs
+        if (config.image) {
+          config.image = sanitizeString(config.image);
+        }
+        if (config.thumbnail) {
+          config.thumbnail = sanitizeString(config.thumbnail);
+        }
+        if (config.url) {
+          config.url = sanitizeString(config.url);
+        }
+        
+        // Sanitize emoji
+        if (config.emoji) {
+          config.emoji = sanitizeString(config.emoji);
+        }
+        if (config.emojis) {
+          config.emojis = sanitizeString(config.emojis);
+        }
+        
+        // Sanitize other string fields in config
+        const configStringFields = ['title', 'description', 'content', 'method', 'body'];
+        for (const field of configStringFields) {
+          if (config[field]) {
+            config[field] = sanitizeString(config[field]);
+          }
+        }
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            config
+          }
+        };
+      }
+      return node;
+    });
   }
   
   return sanitized;
@@ -213,6 +309,76 @@ function safeSetProperty(obj, propName, value) {
   } catch (error) {
     return false;
   }
+}
+
+/**
+ * Validate URL to prevent XSS attacks
+ * @param {string} url - URL to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validateUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return { valid: false, error: 'URL must be a non-empty string' };
+  }
+  
+  try {
+    const urlObj = new URL(url);
+    
+    // Only allow safe schemes
+    const allowedSchemes = ['http:', 'https:', 'data:'];
+    if (!allowedSchemes.includes(urlObj.protocol)) {
+      return { valid: false, error: 'Only HTTP, HTTPS, and data URLs are allowed' };
+    }
+    
+    // For data URLs, only allow image MIME types
+    if (urlObj.protocol === 'data:') {
+      const isValidImageMime = /^data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,/i.test(url);
+      if (!isValidImageMime) {
+        return { valid: false, error: 'Data URLs must be valid base64-encoded images' };
+      }
+    }
+    
+    // Limit URL length
+    if (url.length > 2000) {
+      return { valid: false, error: 'URL too long (max 2000 characters)' };
+    }
+    
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
+/**
+ * Validate emoji input to prevent XSS attacks
+ * @param {string} emoji - Emoji to validate
+ * @returns {{valid: boolean, error?: string}} Validation result
+ */
+function validateEmoji(emoji) {
+  if (!emoji || typeof emoji !== 'string') {
+    return { valid: false, error: 'Emoji must be a non-empty string' };
+  }
+  
+  // Limit emoji length
+  if (emoji.length > 10) {
+    return { valid: false, error: 'Emoji too long (max 10 characters)' };
+  }
+  
+  // Check for dangerous characters that could be used for XSS
+  const dangerousChars = ['<', '>', 'javascript:', 'vbscript:', 'data:', 'onload', 'onerror'];
+  for (const char of dangerousChars) {
+    if (emoji.toLowerCase().includes(char)) {
+      return { valid: false, error: 'Emoji contains potentially dangerous content' };
+    }
+  }
+  
+  // Allow Unicode emojis, Discord emoji format (:emoji:), and basic characters
+  const isValidEmoji = /^[\p{Emoji}\p{Emoji_Modifier_Sequence}\p{Emoji_Presentation}\p{Emoji_Modifier_Base}:a-zA-Z0-9_-]+$/u.test(emoji);
+  if (!isValidEmoji) {
+    return { valid: false, error: 'Invalid emoji format' };
+  }
+  
+  return { valid: true };
 }
 
 /**
