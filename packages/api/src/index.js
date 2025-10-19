@@ -10,6 +10,7 @@ import cors from 'cors';
 import session from 'express-session';
 import passport from 'passport';
 import helmet from 'helmet';
+import lusca from 'lusca';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -128,6 +129,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 initializePassport(config.discord);
+// Add CSRF protection middleware
+app.use(lusca.csrf());
 
 // Initialize controllers
 const pluginController = new PluginController(db, config.pluginsDir);
