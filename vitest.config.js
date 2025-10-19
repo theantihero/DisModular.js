@@ -29,8 +29,8 @@ export default defineConfig({
     },
     logLevel: 'info',
     env: {
-      DATABASE_URL: 'file:./test.db',
-      TEST_DATABASE_URL: 'file:./test.db',
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test_db',
+      TEST_DATABASE_URL: 'postgresql://test:test@localhost:5432/test_db',
       DISCORD_CLIENT_ID: 'test_client_id',
       DISCORD_CLIENT_SECRET: 'test_client_secret',
       DISCORD_CALLBACK_URL: 'http://localhost:3002/auth/discord/callback',

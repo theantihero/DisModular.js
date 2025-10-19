@@ -46,6 +46,7 @@
     "@vitest/coverage-v8": "^1.0.0",
     "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
+    "prisma": "^6.17.1",
     "supertest": "^6.3.3",
     "vitest": "^1.0.0"
   },
@@ -58,6 +59,7 @@
   },
   "dependencies": {
     "@aashari/nodejs-geocoding": "^2.7.2",
+    "@prisma/client": "^6.17.1",
     "express-rate-limit": "^8.1.0",
     "node-fetch": "^3.3.2"
   }

@@ -42,7 +42,12 @@ const prisma = new PrismaClient({
 
 // Mock auth middleware for testing
 const mockRequireAdmin = (req, res, next) => {
-  req.user = { id: 'test-admin', is_admin: true };
+  req.user = { id: 'test-admin', is_admin: true, username: 'test-admin' };
+  next();
+};
+
+const mockRequireAuth = (req, res, next) => {
+  req.user = { id: 'test-user', is_admin: false, username: 'test-user' };
   next();
 };
 
@@ -76,7 +81,15 @@ describe('Multi-Guild Plugin System', () => {
     } else {
       app.use('/guilds', mockRequireAdmin, createGuildRoutes());
     }
-    app.use('/plugins', createPluginRoutes(pluginController));
+    
+    // Mock the auth middleware for plugin routes
+    const mockPluginRoutes = (req, res, next) => {
+      // Set up mock user for plugin operations
+      req.user = { id: 'test-admin', is_admin: true, username: 'test-admin' };
+      next();
+    };
+    
+    app.use('/plugins', mockPluginRoutes, createPluginRoutes(pluginController));
 
     // Create test data - skip in CI mode
     if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
