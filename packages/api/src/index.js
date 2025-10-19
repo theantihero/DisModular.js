@@ -69,8 +69,8 @@ const db = database.getInstance();
 // Initialize Express app
 const app = express();
 
-// Trust proxy for rate limiting (required when behind reverse proxy)
-app.set('trust proxy', true);
+// Trust proxy for rate limiting (trust only the first proxy - Traefik)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet({

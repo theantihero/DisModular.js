@@ -23,7 +23,7 @@ services:
     build:
       context: .
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://dismodular.pulsecord.app/api}
+        VITE_API_URL: ${VITE_API_URL:-https://dismodular.pulsecord.app}
         VITE_DISCORD_CLIENT_ID: ${VITE_DISCORD_CLIENT_ID:-your_client_id_here}
     container_name: dismodular-app
     restart: unless-stopped
@@ -42,8 +42,8 @@ services:
       API_PORT: ${API_PORT:-3002}
       API_URL: ${API_URL:-https://dismodular.pulsecord.app}
       SESSION_SECRET: ${SESSION_SECRET:-your_random_session_secret_here}
-      VITE_API_URL: ${VITE_API_URL:-https://dismodular.pulsecord.app/api}
-      VITE_DISCORD_OAUTH_CALLBACK: ${VITE_DISCORD_OAUTH_CALLBACK:-https://dismodular.pulsecord.app/api/auth/discord/callback}
+      VITE_API_URL: ${API_URL:-https://dismodular.pulsecord.app}
+      DISCORD_CALLBACK_URL: ${API_URL:-https://dismodular.pulsecord.app}/auth/discord/callback
       ENABLE_MESSAGE_CONTENT: ${ENABLE_MESSAGE_CONTENT:-false}
       ENABLE_GUILD_MEMBERS: ${ENABLE_GUILD_MEMBERS:-false}
       # Prisma configuration
