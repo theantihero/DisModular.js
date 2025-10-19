@@ -58,7 +58,16 @@ const IconEditor = ({
       const urlObj = new URL(url);
       // Only allow safe schemes to prevent XSS
       const allowedSchemes = ['http:', 'https:', 'data:'];
-      return allowedSchemes.includes(urlObj.protocol);
+      if (!allowedSchemes.includes(urlObj.protocol)) {
+        return false;
+      }
+      // Further restrict data: URLs to only certain image MIME types (no SVG)
+      if (urlObj.protocol === 'data:') {
+        // Accept only data URLs starting with the following mime types
+        // data:image/png, data:image/jpeg, data:image/gif, data:image/webp, data:image/bmp
+        return /^data:image\/(png|jpeg|jpg|gif|webp|bmp);base64,/i.test(url);
+      }
+      return true;
     } catch {
       return false;
     }
