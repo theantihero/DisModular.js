@@ -79,7 +79,7 @@ app.use(helmet({
     ? {
       directives: {
         defaultSrc: ['\'self\''],
-        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\'', 'https://static.cloudflareinsights.com'],
         styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
         imgSrc: ['\'self\'', 'data:', 'https:'],
         connectSrc: ['\'self\''],
@@ -92,7 +92,7 @@ app.use(helmet({
     : {
       directives: {
         defaultSrc: ['\'self\'', 'http://localhost:5173'],
-        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\''],
+        scriptSrc: ['\'self\'', '\'unsafe-inline\'', '\'unsafe-eval\'', 'https://static.cloudflareinsights.com'],
         styleSrc: ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
         imgSrc: ['\'self\'', 'data:', 'https:'],
         connectSrc: ['\'self\'', 'ws://localhost:5173'],
