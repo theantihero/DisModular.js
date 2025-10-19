@@ -560,23 +560,13 @@ describe('Access Request Flow', () => {
     });
 
     it('should get user access status', async () => {
-      // Create user with pending status directly (bypass beforeEach)
-      await prisma.user.upsert({
+      // Simply update the existing user to pending status
+      await prisma.user.update({
         where: { id: testUserId },
-        update: {
+        data: {
           access_status: 'pending',
           access_requested_at: new Date(),
           access_request_message: 'Test request message'
-        },
-        create: {
-          id: testUserId,
-          discord_id: '111111111',
-          username: 'testuser',
-          discriminator: '1234',
-          access_status: 'pending',
-          access_requested_at: new Date(),
-          access_request_message: 'Test request message',
-          is_admin: false
         }
       });
 

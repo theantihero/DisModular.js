@@ -36,6 +36,7 @@ if (!process.env.SESSION_SECRET) {
 // Use test database from setup
 let prisma = null;
 let pluginController = null;
+let templatePluginId = 'template-plugin-123';
 
 // Helper function to skip database operations in CI mode
 function skipIfNoDatabase() {
@@ -361,11 +362,10 @@ describe('Multi-Guild Plugin System', () => {
   });
 
   describe('Template Plugin System', () => {
-    let templatePluginId;
 
     beforeAll(async () => {
       // Create a template plugin
-      templatePluginId = 'template-plugin-123';
+      // templatePluginId is already defined at module level
       const prisma = testDb.getClient();
       if (prisma) {
         await prisma.plugin.create({
