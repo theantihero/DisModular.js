@@ -606,17 +606,43 @@ export class BotClient {
    */
   async getEnabledPluginsForGuild(guildId) {
     try {
-      const guildPlugins = await this.getPrisma().guildPlugin.findMany({
-        where: {
-          guild_id: guildId,
-          enabled: true,
-        },
-        include: {
-          plugin: true,
-        },
+      // Get all plugins
+      const allPlugins = await this.getPrisma().plugin.findMany({
+        where: { enabled: true }, // Only globally enabled plugins
       });
 
-      return guildPlugins.map(gp => gp.plugin);
+      // Get guild-specific plugin settings
+      const guildPluginSettings = await this.getPrisma().guildPlugin.findMany({
+        where: { guild_id: guildId },
+      });
+
+      // Create a map of guild-specific settings for quick lookup
+      const guildSettingsMap = new Map();
+      guildPluginSettings.forEach(gp => {
+        guildSettingsMap.set(gp.plugin_id, gp.enabled);
+      });
+
+      // Filter plugins based on guild-specific settings or global enabled status
+      const enabledPlugins = allPlugins.filter(plugin => {
+        const guildSetting = guildSettingsMap.get(plugin.id);
+        
+        // If there's a guild-specific setting, use it
+        if (guildSetting !== undefined) {
+          return guildSetting;
+        }
+        
+        // If no guild-specific setting exists, use global enabled status
+        return plugin.enabled;
+      });
+
+      logger.debug(`Guild ${guildId} enabled plugins:`, {
+        totalPlugins: allPlugins.length,
+        guildSpecificSettings: guildPluginSettings.length,
+        enabledPlugins: enabledPlugins.length,
+        pluginIds: enabledPlugins.map(p => p.id)
+      });
+
+      return enabledPlugins;
     } catch (error) {
       logger.error(`Failed to get enabled plugins for guild ${guildId}:`, error);
       return [];
