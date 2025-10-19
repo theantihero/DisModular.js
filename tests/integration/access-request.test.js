@@ -14,6 +14,23 @@ import passport from 'passport';
 import { createAuthRoutes } from '../../packages/api/src/routes/auth.js';
 import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
 
+// Setup test environment variables
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+}
+if (!process.env.DISCORD_CLIENT_ID) {
+  process.env.DISCORD_CLIENT_ID = 'test_client_id';
+}
+if (!process.env.DISCORD_CLIENT_SECRET) {
+  process.env.DISCORD_CLIENT_SECRET = 'test_client_secret';
+}
+if (!process.env.DISCORD_CALLBACK_URL) {
+  process.env.DISCORD_CALLBACK_URL = 'http://localhost:3002/auth/discord/callback';
+}
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = 'test_session_secret';
+}
+
 const prisma = new PrismaClient();
 
 // Mock passport for testing
