@@ -7,6 +7,7 @@
 
 import { Logger } from '@dismodular/shared';
 import NodeCompiler from '../services/NodeCompiler.js';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 
@@ -743,14 +744,15 @@ export class PluginController {
    */
   async getTemplates(req, res) {
     try {
-      if (!this.db) {
+      const prisma = getPrismaClient();
+      if (!prisma) {
         return res.status(500).json({
           success: false,
           error: 'Database not available',
         });
       }
 
-      const templates = await this.db.plugin.findMany({
+      const templates = await prisma.plugin.findMany({
         where: { is_template: true },
         select: {
           id: true,
@@ -786,7 +788,8 @@ export class PluginController {
    */
   async cloneTemplate(req, res) {
     try {
-      if (!this.db) {
+      const prisma = getPrismaClient();
+      if (!prisma) {
         return res.status(500).json({
           success: false,
           error: 'Database not available',
@@ -804,7 +807,7 @@ export class PluginController {
       }
 
       // Get the template plugin
-      const template = await this.db.plugin.findFirst({
+      const template = await prisma.plugin.findFirst({
         where: { 
           id: templateId,
           is_template: true,
@@ -844,7 +847,7 @@ export class PluginController {
       };
 
       // Save to database
-      const savedPlugin = await this.db.plugin.create({
+      const savedPlugin = await prisma.plugin.create({
         data: newPlugin,
       });
 
@@ -854,7 +857,7 @@ export class PluginController {
       // Create audit log (only if user exists in database)
       if (req.user?.id) {
         try {
-          await this.db.auditLog.create({
+          await prisma.auditLog.create({
             data: {
               user_id: req.user.id,
               action: 'CLONE_TEMPLATE',

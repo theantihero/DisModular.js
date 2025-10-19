@@ -19,12 +19,29 @@ export function getPrismaClient() {
     try {
       prismaClient = new PrismaClient();
     } catch (error) {
-      // If Prisma client generation failed, return null for testing scenarios
+      // If Prisma client generation failed, try with test database URL
       if (process.env.NODE_ENV === 'test' || process.env.CI) {
-        console.warn('⚠️ Prisma client not available (test/CI mode)');
-        return null;
+        try {
+          const testDatabaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+          if (testDatabaseUrl) {
+            prismaClient = new PrismaClient({
+              datasources: {
+                db: {
+                  url: testDatabaseUrl
+                }
+              }
+            });
+          } else {
+            console.warn('⚠️ Prisma client not available (no test database URL)');
+            return null;
+          }
+        } catch (testError) {
+          console.warn('⚠️ Prisma client not available (test mode):', testError.message);
+          return null;
+        }
+      } else {
+        throw error;
       }
-      throw error;
     }
   }
   return prismaClient;
