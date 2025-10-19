@@ -206,7 +206,7 @@ describe('Access Request Flow', () => {
     }
 
     // Add authentication helper methods and auto-authenticate for testing
-    app.use(async (req, res, next) => {
+    app.use((req, res, next) => {
       // Set authentication helper methods
       req.isAuthenticated = () => !!req.user;
       req.login = (user, callback) => {
@@ -225,13 +225,12 @@ describe('Access Request Flow', () => {
         
         // In test environment, look up the user from database dynamically
         if (process.env.NODE_ENV === 'test' && prisma) {
-          try {
-            const discordId = isAdminRoute ? '222222222' : '111111111';
-            console.log('Looking up user with discord_id:', discordId);
-            const user = await prisma.user.findUnique({
-              where: { discord_id: discordId }
-            });
-            
+          const discordId = isAdminRoute ? '222222222' : '111111111';
+          console.log('Looking up user with discord_id:', discordId);
+          
+          prisma.user.findUnique({
+            where: { discord_id: discordId }
+          }).then(user => {
             console.log('Found user:', user);
             
             if (user) {
@@ -245,13 +244,17 @@ describe('Access Request Flow', () => {
             } else {
               console.log('No user found for discord_id:', discordId);
             }
-          } catch (error) {
+            next();
+          }).catch(error => {
             console.warn('Error looking up user in test middleware:', error.message);
-          }
+            next();
+          });
+        } else {
+          next();
         }
+      } else {
+        next();
       }
-      
-      next();
     });
 
     // Add auth routes after middleware
@@ -418,39 +421,13 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
-      // Create a custom app for this test with the correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
-      
-      // Set up authentication for this specific test with correct user ID
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, // Use the actual database ID
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
-        next();
-      });
-      
-      // Ensure PrismaService uses test database
-      process.env.NODE_ENV = 'test';
-      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
-      
-      testApp.use('/auth', createAuthRoutes());
-
-      const response = await request(testApp)
+      // Use the main app but ensure the user is properly authenticated
+      // The authentication middleware should pick up the user from beforeEach
+      const response = await request(app)
         .post('/auth/request-access')
-        .send({ message: requestMessage })
-        .expect(200);
+        .send({ message: requestMessage });
 
+      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 

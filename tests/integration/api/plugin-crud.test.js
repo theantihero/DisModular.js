@@ -561,14 +561,13 @@ describe('Plugin CRUD Integration Tests', () => {
       if (prisma) {
         try {
           await prisma.user.upsert({
-            where: { id: 'test-user' },
+            where: { discord_id: '123456789' },
             update: {
               username: 'testuser',
               access_status: 'approved',
               is_admin: true
             },
             create: {
-              id: 'test-user',
               discord_id: '123456789',
               username: 'testuser',
               discriminator: '1234',
