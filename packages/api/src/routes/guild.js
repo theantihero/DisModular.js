@@ -8,8 +8,8 @@
 import { Router } from 'express';
 import { getPrismaClient } from '../services/PrismaService.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
-import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
 import axios from 'axios';
+import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -367,9 +367,10 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
 
     if (!plugin) {
+      console.error(`Plugin not found: ${pluginId}`);
       return res.status(404).json({
         success: false,
-        error: 'Plugin not found',
+        error: `Plugin '${pluginId}' not found. Please ensure the plugin is loaded in the database.`,
       });
     }
 
@@ -419,6 +420,60 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     res.status(500).json({
       success: false,
       error: 'Failed to update guild plugin',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * POST /api/guilds/:guildId/reregister-commands
+ * Force re-register commands for a guild (for debugging)
+ */
+router.post('/:guildId/reregister-commands', requireAuth, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Check if user has admin permissions in this guild
+    const userGuilds = await getUserGuilds(req.user.access_token);
+    const userGuild = userGuilds.find(g => g.id === guildId);
+    
+    if (!userGuild || !(userGuild.permissions & 0x8)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions for this guild',
+      });
+    }
+
+    // Clear bot guild cache to force fresh command registration
+    // This will make the bot re-fetch guild data and re-register commands
+    try {
+      // Import the clearBotGuildCache function from auth routes
+      const { clearBotGuildCache } = await import('../routes/auth.js');
+      clearBotGuildCache();
+      
+      res.json({
+        success: true,
+        message: 'Command re-registration triggered successfully',
+        data: {
+          guildId: guildId,
+          timestamp: new Date().toISOString(),
+          note: 'Bot guild cache cleared - commands will be re-registered on next sync'
+        }
+      });
+    } catch (error) {
+      console.error('Error triggering command re-registration:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to trigger command re-registration',
+        details: error.message,
+      });
+    }
+  } catch (error) {
+    console.error('Error re-registering commands:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to re-register commands',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });

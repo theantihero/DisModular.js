@@ -763,9 +763,105 @@ export function PluginEditor() {
    */
   const handleTestCompile = async () => {
     try {
-      const _result = await compilePlugin(nodes, edges);
-      // Compiled code received
-      toast.success('Plugin compiled successfully! Check console for output.');
+      const result = await compilePlugin(nodes, edges);
+      
+      // Show compilation result in a popup/modal
+      const lineCount = result.compiled.split('\n').length;
+      const charCount = result.compiled.length;
+      
+      // Create a modal to show the compiled code
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      
+      // Create modal content
+      const modalContent = document.createElement('div');
+      modalContent.className = 'bg-gray-800 rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-hidden flex flex-col';
+      
+      // Create header
+      const header = document.createElement('div');
+      header.className = 'flex justify-between items-center mb-4';
+      header.innerHTML = `
+        <h3 class="text-xl font-bold text-white">Compilation Result</h3>
+        <button class="text-gray-400 hover:text-white text-2xl close-btn">&times;</button>
+      `;
+      
+      // Create info section
+      const info = document.createElement('div');
+      info.className = 'mb-4 text-sm text-gray-300';
+      info.innerHTML = `
+        <p>✅ Compilation successful!</p>
+        <p>📊 Generated ${lineCount} lines of code (${charCount} characters)</p>
+      `;
+      
+      // Create code block
+      const codeContainer = document.createElement('div');
+      codeContainer.className = 'flex-1 overflow-hidden';
+      const codeBlock = document.createElement('pre');
+      codeBlock.className = 'bg-gray-900 text-green-400 p-4 rounded text-xs overflow-auto h-full font-mono whitespace-pre-wrap max-h-96';
+      codeBlock.textContent = result.compiled;
+      codeContainer.appendChild(codeBlock);
+      
+      // Create buttons
+      const buttons = document.createElement('div');
+      buttons.className = 'mt-4 flex justify-end';
+      
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded copy-btn';
+      copyBtn.textContent = 'Copy Code';
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded ml-2 close-btn';
+      closeBtn.textContent = 'Close';
+      
+      buttons.appendChild(copyBtn);
+      buttons.appendChild(closeBtn);
+      
+      // Assemble modal
+      modalContent.appendChild(header);
+      modalContent.appendChild(info);
+      modalContent.appendChild(codeContainer);
+      modalContent.appendChild(buttons);
+      modal.appendChild(modalContent);
+      
+      // Add event listeners
+      const closeModal = () => {
+        document.body.removeChild(modal);
+      };
+      
+      const copyCode = async () => {
+        try {
+          await navigator.clipboard.writeText(result.compiled);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyBtn.textContent = 'Copy Code';
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy code:', err);
+          copyBtn.textContent = 'Copy Failed';
+          setTimeout(() => {
+            copyBtn.textContent = 'Copy Code';
+          }, 2000);
+        }
+      };
+      
+      // Add event listeners
+      modal.querySelectorAll('.close-btn').forEach(btn => {
+        btn.addEventListener('click', closeModal);
+      });
+      
+      copyBtn.addEventListener('click', copyCode);
+      
+      // Close on backdrop click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+      
+      document.body.appendChild(modal);
+      
+      // Also show a toast
+      toast.success(`✅ Compilation successful! Generated ${lineCount} lines of code`);
     } catch (error) {
       toast.error(`Compilation failed: ${error.error || error.message}`);
     }

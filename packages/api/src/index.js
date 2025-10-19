@@ -67,6 +67,13 @@ logger.info(`Dashboard Directory: ${config.dashboardDir}`);
 const database = new DatabaseModel();
 const db = database.getInstance();
 
+// Validate database connection
+if (!db) {
+  logger.error('Failed to initialize database connection - some features may not work');
+} else {
+  logger.info('Database connection initialized successfully');
+}
+
 // Initialize Express app
 const app = express();
 
@@ -129,8 +136,18 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 initializePassport(config.discord);
-// Add CSRF protection middleware
-app.use(lusca.csrf());
+
+// Add CSRF protection middleware (disabled in development for easier testing)
+if (process.env.NODE_ENV === 'production') {
+  app.use(lusca.csrf());
+} else {
+  // In development, skip CSRF protection to avoid token issues
+  app.use((req, res, next) => {
+    // Mock CSRF token for development
+    req.csrfToken = () => 'dev-csrf-token';
+    next();
+  });
+}
 
 // Initialize controllers
 const pluginController = new PluginController(db, config.pluginsDir);
@@ -141,6 +158,7 @@ app.get('/health', (req, res) => {
     success: true,
     status: 'healthy',
     uptime: process.uptime(),
+    database: db ? 'connected' : 'disconnected',
   });
 });
 

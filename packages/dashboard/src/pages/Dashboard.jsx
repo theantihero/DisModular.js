@@ -39,7 +39,18 @@ export function Dashboard() {
   const [selectedGuild, setSelectedGuild] = useState(null);
   const [guildSettings, setGuildSettings] = useState({});
   const [showGuildSettings, setShowGuildSettings] = useState(false);
+  const [reregisterCooldown, setReregisterCooldown] = useState(0);
   const toast = useToast();
+
+  // Cooldown timer for re-register button
+  useEffect(() => {
+    if (reregisterCooldown > 0) {
+      const timer = setTimeout(() => {
+        setReregisterCooldown(reregisterCooldown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [reregisterCooldown]);
 
   useEffect(() => {
     // Initialize cached guild selection
@@ -221,6 +232,44 @@ export function Dashboard() {
         newSet.delete(plugin.id);
         return newSet;
       });
+    }
+  };
+
+  const handleReregisterCommands = async () => {
+    if (!selectedGuild) {
+      toast.error('❌ No guild selected');
+      return;
+    }
+
+    if (reregisterCooldown > 0) {
+      toast.error(`⏰ Please wait ${reregisterCooldown} seconds before re-registering commands again`);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/guilds/${selectedGuild.id}/reregister-commands`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to re-register commands');
+      }
+
+      const result = await response.json();
+      toast.success(`✅ Command cache cleared for ${selectedGuild.name}. Bot will re-register commands on next sync.`);
+      
+      // Set 30 second cooldown
+      setReregisterCooldown(30);
+      
+      // Refresh guild plugins to reflect any changes
+      await loadGuildPlugins();
+    } catch (error) {
+      console.error('Failed to re-register commands:', error);
+      toast.error(`❌ Failed to re-register commands: ${error.message}`);
     }
   };
 
@@ -499,31 +548,61 @@ export function Dashboard() {
               </div>
               <div className="flex items-center space-x-3">
                 {selectedGuild && (
-                  <button
-                    onClick={() => setShowGuildSettings(true)}
-                    disabled={!selectedGuild.bot_present || arePluginButtonsDisabled()}
-                    className={`macos-button px-4 py-2 transition-all duration-200 ${
-                      !selectedGuild.bot_present || arePluginButtonsDisabled()
-                        ? 'text-gray-500 cursor-not-allowed opacity-50'
-                        : 'text-white hover:scale-105'
-                    }`}
-                    title={
-                      arePluginButtonsDisabled() 
-                        ? 'Please wait for data to load...' 
-                        : !selectedGuild.bot_present 
-                          ? 'Bot must be present in server to modify settings' 
-                          : 'Configure guild-specific settings'
-                    }
-                  >
-                    {loadingGuildSettings ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin"></div>
-                        <span>Loading...</span>
-                      </div>
-                    ) : (
-                      '⚙️ Guild Settings'
-                    )}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setShowGuildSettings(true)}
+                      disabled={!selectedGuild.bot_present || arePluginButtonsDisabled()}
+                      className={`macos-button px-4 py-2 transition-all duration-200 ${
+                        !selectedGuild.bot_present || arePluginButtonsDisabled()
+                          ? 'text-gray-500 cursor-not-allowed opacity-50'
+                          : 'text-white hover:scale-105'
+                      }`}
+                      title={
+                        arePluginButtonsDisabled() 
+                          ? 'Please wait for data to load...' 
+                          : !selectedGuild.bot_present 
+                            ? 'Bot must be present in server to modify settings' 
+                            : 'Configure guild-specific settings'
+                      }
+                    >
+                      {loadingGuildSettings ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin"></div>
+                          <span>Loading...</span>
+                        </div>
+                      ) : (
+                        '⚙️ Guild Settings'
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleReregisterCommands}
+                      disabled={!selectedGuild.bot_present || reregisterCooldown > 0 || arePluginButtonsDisabled()}
+                      className={`macos-button px-4 py-2 transition-all duration-200 ${
+                        !selectedGuild.bot_present || reregisterCooldown > 0 || arePluginButtonsDisabled()
+                          ? 'text-gray-500 cursor-not-allowed opacity-50'
+                          : 'text-blue-300 hover:scale-105'
+                      }`}
+                      title={
+                        arePluginButtonsDisabled() 
+                          ? 'Please wait for data to load...' 
+                          : !selectedGuild.bot_present 
+                            ? 'Bot must be present in server to clear command cache' 
+                            : reregisterCooldown > 0
+                              ? `Please wait ${reregisterCooldown} seconds before clearing cache again`
+                              : 'Clear bot cache to force command re-registration on next sync'
+                      }
+                    >
+                      {reregisterCooldown > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin"></div>
+                          <span>⏰ {reregisterCooldown}s</span>
+                        </div>
+                      ) : (
+                        '🔄 Re-register Commands'
+                      )}
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => navigate('/plugins/new')}

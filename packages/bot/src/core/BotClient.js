@@ -50,6 +50,13 @@ export class BotClient {
       this.pluginModel,
       () => this.registerSlashCommands(), // Re-register commands when plugins change
     );
+    
+    // Pass bot client reference to plugin loader for cache management
+    this.pluginLoader.botClient = this;
+
+    // Cache for registered commands to avoid unnecessary re-registration
+    this.registeredCommands = new Map(); // guildId -> Set of command names
+    this.commandHashes = new Map(); // guildId -> hash of command definitions
 
     // Setup event handlers
     this.setupEventHandlers();
@@ -161,8 +168,12 @@ export class BotClient {
         const guildPlugins = await this.getEnabledPluginsForGuild(interaction.guild.id);
         const isEnabledForGuild = guildPlugins.some(gp => gp.id === plugin.id);
         
+        logger.debug(`Guild ${interaction.guild.name} (${interaction.guild.id}):`);
+        logger.debug(`  Plugin ${plugin.name} (${plugin.id}): enabled=${isEnabledForGuild}`);
+        logger.debug(`  Guild enabled plugins: ${guildPlugins.map(gp => `${gp.name}(${gp.id})`).join(', ')}`);
+        
         if (!isEnabledForGuild) {
-          logger.warn(`Plugin ${plugin.name} not enabled for guild ${interaction.guild.name}`);
+          logger.warn(`Plugin ${plugin.name} (${plugin.id}) not enabled for guild ${interaction.guild.name} (${interaction.guild.id})`);
           await interaction.editReply({
             content: '⚠️ This command is not enabled in this server.',
           });
@@ -252,6 +263,63 @@ export class BotClient {
   }
 
   /**
+   * Generate a hash for command definitions to detect changes
+   * @param {Array} commands - Array of command objects
+   * @returns {string} Hash string
+   */
+  generateCommandHash(commands) {
+    const crypto = require('crypto');
+    const commandString = JSON.stringify(commands.map(cmd => ({
+      name: cmd.name,
+      description: cmd.description,
+      options: cmd.options || []
+    })));
+    return crypto.createHash('md5').update(commandString).digest('hex');
+  }
+
+  /**
+   * Compare two command arrays to see if they're different
+   * @param {Array} oldCommands - Previously registered commands
+   * @param {Array} newCommands - New commands to register
+   * @returns {boolean} True if commands have changed
+   */
+  commandsHaveChanged(oldCommands, newCommands) {
+    if (!oldCommands || !newCommands) return true;
+    if (oldCommands.length !== newCommands.length) return true;
+
+    const oldHash = this.generateCommandHash(oldCommands);
+    const newHash = this.generateCommandHash(newCommands);
+    
+    return oldHash !== newHash;
+  }
+
+  /**
+   * Clear command cache for a specific guild or all guilds
+   * @param {string} [guildId] - Specific guild ID, or undefined for all guilds
+   */
+  clearCommandCache(guildId = null) {
+    if (guildId) {
+      this.registeredCommands.delete(guildId);
+      this.commandHashes.delete(guildId);
+      logger.debug(`Cleared command cache for guild ${guildId}`);
+    } else {
+      this.registeredCommands.clear();
+      this.commandHashes.clear();
+      logger.debug('Cleared command cache for all guilds');
+    }
+  }
+
+  /**
+   * Force re-register commands for a specific guild (for debugging)
+   * @param {string} guildId - Discord guild ID
+   */
+  async forceReregisterCommands(guildId) {
+    logger.info(`Force re-registering commands for guild ${guildId}`);
+    this.clearCommandCache(guildId);
+    await this.registerGuildCommands(guildId);
+  }
+
+  /**
    * Register slash commands for all guilds
    */
   async registerSlashCommands() {
@@ -300,12 +368,19 @@ export class BotClient {
 
       if (slashPlugins.length === 0) {
         logger.debug(`No slash commands to register for guild ${guild.name} (${guildId})`);
-        // Clear existing commands if no plugins are available
-        const rest = new REST({ version: '10' }).setToken(this.config.token);
-        await rest.put(
-          Routes.applicationGuildCommands(this.config.clientId, guildId),
-          { body: [] },
-        );
+        
+        // Check if we need to clear commands
+        const cachedCommands = this.registeredCommands.get(guildId);
+        if (cachedCommands && cachedCommands.size > 0) {
+          logger.info(`Clearing ${cachedCommands.size} commands for guild ${guild.name} (${guildId})`);
+          const rest = new REST({ version: '10' }).setToken(this.config.token);
+          await rest.put(
+            Routes.applicationGuildCommands(this.config.clientId, guildId),
+            { body: [] },
+          );
+          this.registeredCommands.set(guildId, new Set());
+          this.commandHashes.set(guildId, '');
+        }
         return;
       }
 
@@ -335,6 +410,31 @@ export class BotClient {
         return;
       }
 
+      // Check if commands have changed
+      const cachedCommands = this.registeredCommands.get(guildId);
+      const cachedHash = this.commandHashes.get(guildId);
+      const newHash = this.generateCommandHash(commands);
+      
+      if (cachedHash === newHash && cachedCommands && cachedCommands.size === commands.length) {
+        logger.debug(`Commands unchanged for guild ${guild.name} (${guildId}), skipping registration`);
+        return;
+      }
+      
+      // Additional validation: check if we're trying to register the same commands
+      if (cachedCommands && commands.length > 0) {
+        const currentCommandNames = new Set(commands.map(cmd => cmd.name));
+        const commandsMatch = cachedCommands.size === currentCommandNames.size && 
+                             [...cachedCommands].every(name => currentCommandNames.has(name));
+        
+        if (commandsMatch && cachedHash === newHash) {
+          logger.debug(`Same commands already registered for guild ${guild.name} (${guildId}), skipping registration`);
+          return;
+        }
+      }
+
+      // Commands have changed, register them
+      logger.info(`Commands changed for guild ${guild.name} (${guildId}), registering ${commands.length} commands`);
+      
       const rest = new REST({ version: '10' }).setToken(this.config.token);
 
       await rest.put(
@@ -342,15 +442,57 @@ export class BotClient {
         { body: commands },
       );
 
+      // Update cache
+      const commandNames = new Set(commands.map(cmd => cmd.name));
+      this.registeredCommands.set(guildId, commandNames);
+      this.commandHashes.set(guildId, newHash);
+
       logger.success(`Registered ${commands.length} commands for guild ${guild.name} (${guildId})`);
       logger.debug(`Commands: ${commands.map(c => c.name).join(', ')}`);
     } catch (error) {
-      logger.error(`Failed to register commands for guild ${guildId}:`, error);
-      
-      // If it's a rate limit error, log it specifically
+      // Handle different types of errors more gracefully
       if (error.code === 429) {
-        logger.warn('Rate limited while registering commands, Discord will retry automatically');
+        logger.warn(`Rate limited while registering commands for guild ${guild.name} (${guildId}), Discord will retry automatically`);
+        return;
       }
+      
+      if (error.code === 50001) {
+        logger.warn(`Missing access for guild ${guild.name} (${guildId}), bot may not be in this server`);
+        return;
+      }
+      
+      if (error.code === 50013) {
+        logger.warn(`Missing permissions for guild ${guild.name} (${guildId}), bot lacks required permissions`);
+        return;
+      }
+      
+      // Check if it's an empty response (commands already registered)
+      if (error.message && error.message.includes('already registered') || 
+          (error.response && error.response.status === 200 && !error.response.data)) {
+        logger.debug(`Commands already registered for guild ${guild.name} (${guildId}), updating cache`);
+        // Update cache anyway since commands are registered
+        const commandNames = new Set(commands.map(cmd => cmd.name));
+        this.registeredCommands.set(guildId, commandNames);
+        this.commandHashes.set(guildId, newHash);
+        return;
+      }
+      
+      // Log the actual error details for debugging
+      logger.error(`Failed to register commands for guild ${guild.name} (${guildId}):`, {
+        code: error.code,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        stack: error.stack,
+        fullError: error
+      });
+      
+      // Also log the commands we were trying to register
+      logger.error(`Commands being registered:`, commands.map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        options: cmd.options?.length || 0
+      })));
     }
   }
 

@@ -17,7 +17,21 @@ let prismaClient = null;
 export function getPrismaClient() {
   if (!prismaClient) {
     try {
-      prismaClient = new PrismaClient();
+      // Check if we're in test mode and use test database URL if available
+      const isTestMode = process.env.NODE_ENV === 'test' || process.env.CI;
+      const testDatabaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+      
+      if (isTestMode && testDatabaseUrl) {
+        prismaClient = new PrismaClient({
+          datasources: {
+            db: {
+              url: testDatabaseUrl
+            }
+          }
+        });
+      } else {
+        prismaClient = new PrismaClient();
+      }
     } catch (error) {
       // If Prisma client generation failed, try with test database URL
       if (process.env.NODE_ENV === 'test' || process.env.CI) {
