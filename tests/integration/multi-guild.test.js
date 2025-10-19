@@ -16,11 +16,9 @@ import { requireAdmin } from '../../packages/api/src/middleware/auth.js';
 import { TestDatabase } from '../setup.js';
 import { createMockGuildRoutes } from '../mocks/MockGuildRoutes.js';
 
-// Setup test environment variables
+// Setup test environment variables - use environment variables from vitest config
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.CI 
-    ? 'postgresql://dismodular:password@localhost:5432/dismodular_test'
-    : 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
 }
 if (!process.env.DISCORD_CLIENT_ID) {
   process.env.DISCORD_CLIENT_ID = 'test_client_id';
