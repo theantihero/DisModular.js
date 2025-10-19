@@ -14,8 +14,8 @@ import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
 // Set test database URL
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
 process.env.DATABASE_URL = TEST_DATABASE_URL;
-import createAuthRoutes from '../../packages/api/src/routes/auth.js';
-import { initializePassport } from '../../packages/api/src/middleware/auth.js';
+import createAuthRoutes from '../../../packages/api/src/routes/auth.js';
+import { initializePassport } from '../../../packages/api/src/middleware/auth.js';
 
 describe('Auth Flow Integration Tests', () => {
   let app;

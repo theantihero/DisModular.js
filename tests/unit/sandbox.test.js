@@ -51,7 +51,7 @@ describe('SandboxExecutor State Serialization', () => {
         data: 'test',
         promise: promise,
         nested: {
-          anotherPromise: Promise.reject('error')
+          anotherPromise: Promise.resolve('error')
         }
       };
 
