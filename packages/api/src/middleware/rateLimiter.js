@@ -157,6 +157,32 @@ export const templateLimiter = rateLimit({
   },
 });
 
+/**
+ * Expensive operations rate limiter
+ * 10 requests per minute for operations that make external API calls
+ * This includes Discord API calls and external bot API calls
+ */
+export const expensiveOperationLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  message: {
+    success: false,
+    error: 'Too many expensive operations, please slow down',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for admin users
+    return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
+  },
+});
+
 export default {
   authLimiter,
   apiLimiter,
@@ -164,4 +190,5 @@ export default {
   adminLimiter,
   guildLimiter,
   templateLimiter,
+  expensiveOperationLimiter,
 };

@@ -28,6 +28,51 @@ function validatePluginId(id) {
 }
 
 /**
+ * Validate property name to prevent prototype pollution
+ * @param {string} propName - Property name to validate
+ * @returns {boolean} Whether the property name is safe
+ */
+function isValidPropertyName(propName) {
+  if (typeof propName !== 'string') {
+    return false;
+  }
+  
+  // Block dangerous property names that could lead to prototype pollution
+  const dangerousProps = ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'];
+  if (dangerousProps.includes(propName)) {
+    return false;
+  }
+  
+  // Block property names that start with dangerous prefixes
+  if (propName.startsWith('__') || propName.startsWith('constructor.') || propName.startsWith('prototype.')) {
+    return false;
+  }
+  
+  // Only allow alphanumeric characters, underscores, and hyphens
+  return /^[a-zA-Z0-9_-]+$/.test(propName) && propName.length <= 100;
+}
+
+/**
+ * Safe property setter that prevents prototype pollution
+ * @param {Object} obj - Object to set property on
+ * @param {string} propName - Property name
+ * @param {*} value - Value to set
+ * @returns {boolean} Whether the property was set successfully
+ */
+function safeSetProperty(obj, propName, value) {
+  if (!isValidPropertyName(propName)) {
+    return false;
+  }
+  
+  try {
+    obj[propName] = value;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Validate plugin node graph complexity to prevent resource exhaustion
  * @param {Array} nodes
  * @param {Array} edges
@@ -51,11 +96,18 @@ function validateNodeGraphComplexity(nodes, edges) {
   // Compute node graph depth by BFS from triggers
   // Find trigger nodes as entry points
   const nodeById = Object.create(null);
-  nodes.forEach(n => { if (n && n.id) {nodeById[n.id] = n;} });
+  nodes.forEach(n => { 
+    if (n && n.id && isValidPropertyName(n.id)) {
+      safeSetProperty(nodeById, n.id, n);
+    }
+  });
+  
   const outgoing = Object.create(null);
   edges.forEach(e => {
-    if (e && e.source && e.target) {
-      if (!outgoing[e.source]) {outgoing[e.source] = [];}
+    if (e && e.source && e.target && isValidPropertyName(e.source) && isValidPropertyName(e.target)) {
+      if (!outgoing[e.source]) {
+        safeSetProperty(outgoing, e.source, []);
+      }
       outgoing[e.source].push(e.target);
     }
   });
@@ -714,21 +766,48 @@ export class PluginController {
   }
 
   /**
-   * Write plugin to file system
+   * Write plugin to file system with enhanced security
    * @param {string} pluginId - Plugin ID
    * @param {Object} pluginData - Plugin data
    */
   async writePluginFile(pluginId, pluginData) {
     try {
+      // Validate plugin ID to prevent path traversal
+      if (!validatePluginId(pluginId)) {
+        throw new Error('Invalid plugin ID format');
+      }
+
+      // Validate plugin data structure
+      if (!pluginData || typeof pluginData !== 'object') {
+        throw new Error('Invalid plugin data structure');
+      }
+
+      // Check file size limit (10MB max)
+      const jsonString = JSON.stringify(pluginData, null, 2);
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (jsonString.length > MAX_FILE_SIZE) {
+        throw new Error(`Plugin file too large (max ${MAX_FILE_SIZE} bytes)`);
+      }
+
+      // Validate plugin directory path
       const pluginDir = join(this.pluginsDir, pluginId);
+      
+      // Ensure the resolved path is within the plugins directory (prevent path traversal)
+      const resolvedPluginDir = join(process.cwd(), pluginDir);
+      const resolvedPluginsDir = join(process.cwd(), this.pluginsDir);
+      
+      if (!resolvedPluginDir.startsWith(resolvedPluginsDir)) {
+        throw new Error('Invalid plugin directory path');
+      }
+
       const pluginFile = join(pluginDir, 'plugin.json');
 
       // Create directory if it doesn't exist
       const { mkdir } = await import('fs/promises');
       await mkdir(pluginDir, { recursive: true });
 
-      // Write plugin file
-      await writeFile(pluginFile, JSON.stringify(pluginData, null, 2));
+      // Write plugin file with restricted permissions
+      await writeFile(pluginFile, jsonString, { mode: 0o644 });
 
       logger.debug(`Plugin file written: ${pluginFile}`);
     } catch (error) {

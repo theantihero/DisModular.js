@@ -126,9 +126,16 @@ const IconEditor = ({
     setPreviewError(false);
   };
   
-  // Get current display value
+  // Get current display value with strict validation
   const getCurrentValue = () => {
-    return iconType === 'emoji' ? emojiValue : urlValue;
+    const value = iconType === 'emoji' ? emojiValue : urlValue;
+    
+    // For URL type, ensure it's validated before returning
+    if (iconType === 'url' && value && !isValidUrl(value)) {
+      return ''; // Return empty string if URL is invalid
+    }
+    
+    return value;
   };
   
   // Check if current value is valid
@@ -279,23 +286,23 @@ const IconEditor = ({
           {getCurrentValue() ? (
             iconType === 'emoji' ? (
               <span className="text-3xl">{getCurrentValue()}</span>
-            ) : (
-              <div className="relative w-full h-full">
-                {previewError ? (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <span className="text-red-400 text-xs">Error loading image</span>
-                  </div>
                 ) : (
-                  <img
-                    src={getCurrentValue()}
-                    alt="Icon preview"
-                    className="w-full h-full object-cover rounded-lg"
-                    onError={handleImageError}
-                    onLoad={handleImageLoad}
-                  />
-                )}
-              </div>
-            )
+                  <div className="relative w-full h-full">
+                    {previewError ? (
+                      <div className="flex items-center justify-center w-full h-full">
+                        <span className="text-red-400 text-xs">Error loading image</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={isValidUrl(getCurrentValue()) ? getCurrentValue() : ''}
+                        alt="Icon preview"
+                        className="w-full h-full object-cover rounded-lg"
+                        onError={handleImageError}
+                        onLoad={handleImageLoad}
+                      />
+                    )}
+                  </div>
+                )
           ) : (
             <span className={`text-2xl ${
               theme === 'space' ? 'text-hologram-500/50' : 'text-gray-500'

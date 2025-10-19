@@ -123,6 +123,8 @@ describe('Access Request Flow', () => {
         httpOnly: true,
         sameSite: 'lax'
       }
+      // SECURITY NOTE: secure: false is acceptable for testing only
+      // In production, cookies must use secure: true for HTTPS
     }));
     // app.use(lusca.csrf()); // Disabled for testing
     app.use(mockPassport.initialize());
@@ -242,7 +244,8 @@ describe('Access Request Flow', () => {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false }
+        cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                  // In production, cookies must use secure: true for HTTPS
       }));
       adminApp.use(mockPassport.initialize());
       adminApp.use(mockPassport.session());
@@ -469,7 +472,8 @@ describe('Access Request Flow', () => {
         secret: 'test-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false }
+        cookie: { secure: false } // SECURITY NOTE: secure: false is acceptable for testing only
+                                  // In production, cookies must use secure: true for HTTPS
       }));
       statusApp.use(mockPassport.initialize());
       statusApp.use(mockPassport.session());

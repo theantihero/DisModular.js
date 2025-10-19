@@ -13,6 +13,22 @@ const logger = new Logger('NodeCompiler');
 
 export class NodeCompiler {
   /**
+   * Pre-computed indentation strings to prevent resource exhaustion
+   * @type {Array<string>}
+   */
+  static INDENT_CACHE = Array.from({ length: 51 }, (_, i) => '  '.repeat(i));
+
+  /**
+   * Get safe indentation string with bounded depth
+   * @param {number} indent - Indentation level
+   * @returns {string} Indentation string
+   */
+  getSafeIndent(indent) {
+    const safeIndent = Math.min(Math.max(0, indent), 50);
+    return NodeCompiler.INDENT_CACHE[safeIndent];
+  }
+
+  /**
    * Extract command options from variable nodes
    * @param {Array} nodes - React Flow nodes
    * @returns {Array} Discord slash command options
@@ -165,9 +181,7 @@ export class NodeCompiler {
     if (!entry) {return;}
 
     const { node } = entry;
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
 
     // Generate code based on node type
     switch (node.type) {
@@ -326,9 +340,7 @@ export class NodeCompiler {
    * Generate condition node code
    */
   generateConditionCode(node, entry, graph, codeLines, visited, indent) {
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
     const condition = node.data.config?.condition || 'true';
     const interpolated = this.interpolateVariables(condition);
 
@@ -356,9 +368,7 @@ export class NodeCompiler {
    * Generate permission node code
    */
   generatePermissionCode(node, entry, graph, codeLines, visited, indent) {
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
     const checkType = node.data.config?.checkType || 'user_id';
     const values = node.data.config?.values || [];
     const mode = node.data.config?.mode || 'whitelist';
@@ -770,9 +780,7 @@ export class NodeCompiler {
    * Generate for loop code
    */
   generateForLoopCode(node, entry, graph, codeLines, visited, indent) {
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
     const arrayVar = node.data.config?.arrayVar || 'array';
     const iteratorVar = node.data.config?.iteratorVar || 'item';
     const maxIterations = node.data.config?.maxIterations || 1000;
@@ -803,9 +811,7 @@ export class NodeCompiler {
    * Generate while loop code
    */
   generateWhileLoopCode(node, entry, graph, codeLines, visited, indent) {
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
     const condition = this.interpolateVariables(node.data.config?.condition || 'false');
     const maxIterations = node.data.config?.maxIterations || 1000;
 
@@ -830,9 +836,7 @@ export class NodeCompiler {
    * Generate comparison code
    */
   generateComparisonCode(node, entry, graph, codeLines, visited, indent) {
-    // Limit indent depth to prevent resource exhaustion
-    const safeIndent = Math.min(Math.max(0, indent), 50);
-    const indentStr = '  '.repeat(safeIndent);
+    const indentStr = this.getSafeIndent(indent);
     const operator = node.data.config?.operator || '==';
     const left = this.interpolateVariables(node.data.config?.left || '');
     const right = this.interpolateVariables(node.data.config?.right || '');

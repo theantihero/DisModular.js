@@ -4,6 +4,24 @@
  * @date 2025-10-18
  */
 
+/**
+ * Sanitize log message to prevent log injection attacks
+ * @param {string} message - Message to sanitize
+ * @returns {string} Sanitized message
+ */
+function sanitizeLogMessage(message) {
+  if (typeof message !== 'string') {
+    return String(message);
+  }
+  
+  // Remove newlines and control characters that could be used to forge log entries
+  return message
+    .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with spaces
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+    .trim()
+    .substring(0, 1000); // Limit message length to prevent log flooding
+}
+
 export class Logger {
   constructor(name) {
     this.name = name;
@@ -21,11 +39,15 @@ export class Logger {
   }
 
   info(message, ...args) {
-    console.log(`[INFO] [${this.name}] ${new Date().toISOString()} - ${message}`, ...args);
+    const sanitizedMessage = sanitizeLogMessage(message);
+    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    console.log(`[INFO] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   success(message, ...args) {
-    console.log(`[SUCCESS] [${this.name}] ${new Date().toISOString()} - ${message}`, ...args);
+    const sanitizedMessage = sanitizeLogMessage(message);
+    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    console.log(`[SUCCESS] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   warn(message, ...args) {
@@ -33,16 +55,22 @@ export class Logger {
     if (this.isTestMode && this.isExpectedTestWarning(message)) {
       return;
     }
-    console.warn(`[WARN] [${this.name}] ${new Date().toISOString()} - ${message}`, ...args);
+    const sanitizedMessage = sanitizeLogMessage(message);
+    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    console.warn(`[WARN] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   error(message, ...args) {
-    console.error(`[ERROR] [${this.name}] ${new Date().toISOString()} - ${message}`, ...args);
+    const sanitizedMessage = sanitizeLogMessage(message);
+    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+    console.error(`[ERROR] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
   }
 
   debug(message, ...args) {
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG) {
-      console.debug(`[DEBUG] [${this.name}] ${new Date().toISOString()} - ${message}`, ...args);
+      const sanitizedMessage = sanitizeLogMessage(message);
+      const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogMessage(arg) : arg);
+      console.debug(`[DEBUG] [${this.name}] ${new Date().toISOString()} - ${sanitizedMessage}`, ...sanitizedArgs);
     }
   }
 
