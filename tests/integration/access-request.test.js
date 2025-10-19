@@ -681,6 +681,15 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
+      // Ensure admin user exists
+      const adminUser = await prisma.user.findUnique({
+        where: { discord_id: '222222222' }
+      });
+      
+      if (!adminUser) {
+        throw new Error('Admin user not found in database');
+      }
+      
       // Set up pending user
       await prisma.user.update({
         where: { id: testUser.id },
@@ -693,7 +702,32 @@ describe('Access Request Flow', () => {
 
       const denialMessage = 'Your request does not meet our requirements.';
 
-      const adminApp = createAdminApp();
+      // Create admin app with explicit admin user setup
+      const adminApp = express();
+      adminApp.use(express.json());
+      adminApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set admin user explicitly
+      adminApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: adminUser.id, 
+          username: 'adminuser', 
+          is_admin: true,
+          access_status: 'approved'
+        };
+        next();
+      });
+      
+      // Use the real admin routes
+      const adminRoutes = createAdminRoutes();
+      adminApp.use('/admin', adminRoutes);
+
       const response = await request(adminApp)
         .post(`/admin/access-requests/${testUser.id}/deny`)
         .send({ message: denialMessage })
@@ -713,7 +747,7 @@ describe('Access Request Flow', () => {
       // Verify audit log was created
       const auditLog = await prisma.auditLog.findFirst({
         where: {
-          user_id: adminUserId,
+          user_id: adminUser.id,
           action: 'DENY_ACCESS',
           resource_id: testUser.id
         }
