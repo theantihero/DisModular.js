@@ -13,10 +13,10 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Test database URL - use SQLite for testing to avoid external database dependencies
+// Test database URL - use PostgreSQL for all testing
 const TEST_DATABASE_URL = process.env.CI 
-  ? 'file:./test.db' 
-  : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'file:./test.db');
+  ? 'postgresql://dismodular:password@localhost:5432/dismodular_test'
+  : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test_db');
 
 // Global test configuration
 global.testConfig = {
@@ -39,11 +39,7 @@ export class TestDatabase {
     try {
       // Always try to generate Prisma client first
       try {
-        // Use main schema for PostgreSQL, test schema only for SQLite
-        const schemaFile = TEST_DATABASE_URL.startsWith('file:') 
-          ? 'prisma/schema.test.prisma' 
-          : 'prisma/schema.prisma';
-        execSync(`npx prisma generate --schema=${schemaFile}`, { 
+        execSync(`npx prisma generate --schema=prisma/schema.prisma`, { 
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit' 
         });
@@ -54,11 +50,7 @@ export class TestDatabase {
 
       // Try to push database schema
       try {
-        // Use main schema for PostgreSQL, test schema only for SQLite
-        const schemaFile = TEST_DATABASE_URL.startsWith('file:') 
-          ? 'prisma/schema.test.prisma' 
-          : 'prisma/schema.prisma';
-        execSync(`npx prisma db push --accept-data-loss --schema=${schemaFile}`, {
+        execSync(`npx prisma db push --accept-data-loss --schema=prisma/schema.prisma`, {
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit'
         });

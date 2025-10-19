@@ -54,7 +54,12 @@ describe('Auth Flow Integration Tests', () => {
       
       // For testing, automatically set user if not already set
       if (!req.user) {
-        req.user = { id: 'test-user', username: 'testuser', is_admin: true };
+        req.user = { 
+          id: 'test-user', 
+          username: 'testuser', 
+          is_admin: true,
+          access_status: 'approved'
+        };
       }
       
       next();

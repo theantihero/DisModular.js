@@ -117,7 +117,12 @@ describe('Access Request Flow', () => {
       
       // For testing, automatically set user if not already set
       if (!req.user) {
-        req.user = { id: testUserId, username: 'testuser', is_admin: false };
+        req.user = { 
+          id: testUserId, 
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
       }
       
       next();
@@ -136,7 +141,7 @@ describe('Access Request Flow', () => {
           discord_id: '123456789',
           username: 'testuser',
           discriminator: '1234',
-          access_status: 'pending',
+          access_status: 'denied',
           is_admin: false
         },
         {

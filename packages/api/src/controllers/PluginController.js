@@ -100,6 +100,13 @@ export class PluginController {
    */
   async getAll(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const plugins = await this.db.plugin.findMany({
         orderBy: { created_at: 'desc' },
         include: {
@@ -147,6 +154,13 @@ export class PluginController {
    */
   async getById(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const { id } = req.params;
 
       // Validate plugin ID to prevent path traversal
@@ -321,6 +335,13 @@ export class PluginController {
    */
   async update(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const { id } = req.params;
       const { name, description, type, trigger, nodes, edges, enabled, options, compiled: providedCompiled } = req.body;
 
@@ -524,6 +545,13 @@ export class PluginController {
    */
   async delete(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const { id } = req.params;
 
       // Validate plugin ID to prevent path traversal
@@ -664,6 +692,13 @@ export class PluginController {
    */
   async getTemplates(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const templates = await this.db.plugin.findMany({
         where: { is_template: true },
         select: {
@@ -699,6 +734,13 @@ export class PluginController {
    */
   async cloneTemplate(req, res) {
     try {
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       const { templateId } = req.params;
       const { name, description } = req.body;
 

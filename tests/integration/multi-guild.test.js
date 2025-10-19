@@ -47,12 +47,22 @@ function skipIfNoDatabase() {
 
 // Mock auth middleware for testing
 const mockRequireAdmin = (req, res, next) => {
-  req.user = { id: 'test-admin', is_admin: true, username: 'test-admin' };
+  req.user = { 
+    id: 'test-admin', 
+    is_admin: true, 
+    username: 'test-admin',
+    access_status: 'approved'
+  };
   next();
 };
 
 const mockRequireAuth = (req, res, next) => {
-  req.user = { id: 'test-user', is_admin: false, username: 'test-user' };
+  req.user = { 
+    id: 'test-user', 
+    is_admin: false, 
+    username: 'test-user',
+    access_status: 'approved'
+  };
   next();
 };
 
@@ -87,7 +97,12 @@ describe('Multi-Guild Plugin System', () => {
     // Mock the auth middleware for plugin routes
     const mockPluginRoutes = (req, res, next) => {
       // Set up mock user for plugin operations
-      req.user = { id: 'test-admin', is_admin: true, username: 'test-admin' };
+      req.user = { 
+    id: 'test-admin', 
+    is_admin: true, 
+    username: 'test-admin',
+    access_status: 'approved'
+  };
       next();
     };
     
