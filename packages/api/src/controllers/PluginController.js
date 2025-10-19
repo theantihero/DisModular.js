@@ -51,6 +51,36 @@ function validatePluginPath(pluginId, pluginsDir) {
 }
 
 /**
+ * Get safe plugin directory path with explicit validation
+ * @param {string} pluginId - Plugin ID
+ * @param {string} pluginsDir - Base plugins directory
+ * @returns {string} Safe plugin directory path
+ * @throws {Error} If path is unsafe
+ */
+function getSafePluginPath(pluginId, pluginsDir) {
+  // Explicit validation before any path operations
+  if (!validatePluginPath(pluginId, pluginsDir)) {
+    throw new Error('Invalid plugin ID format or path traversal detected');
+  }
+  
+  // Additional explicit checks
+  if (pluginId.includes('..') || pluginId.includes('\\') || pluginId.includes('/')) {
+    throw new Error('Path traversal characters detected');
+  }
+  
+  // Use resolve for canonical path
+  const safePath = resolve(pluginsDir, pluginId);
+  
+  // Double-check the resolved path is still within the base directory
+  const baseDir = resolve(pluginsDir);
+  if (!safePath.startsWith(baseDir + '/') && safePath !== baseDir) {
+    throw new Error('Resolved path outside base directory');
+  }
+  
+  return safePath;
+}
+
+/**
  * Get safe plugin file path with explicit validation
  * @param {string} pluginId - Plugin ID
  * @param {string} pluginsDir - Base plugins directory
