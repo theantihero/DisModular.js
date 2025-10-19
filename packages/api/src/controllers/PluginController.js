@@ -767,14 +767,22 @@ export class PluginController {
       // Add audit log (only if user exists in database)
       if (req.user?.id) {
         try {
-          await this.db.auditLog.create({
-            data: {
-              user_id: req.user.id,
-              action: 'CREATE',
-              resource_type: 'plugin',
-              resource_id: pluginId,
-            },
+          // Verify user exists in database before creating audit log
+          const userExists = await this.db.user.findUnique({
+            where: { id: req.user.id },
+            select: { id: true }
           });
+          
+          if (userExists) {
+            await this.db.auditLog.create({
+              data: {
+                user_id: req.user.id,
+                action: 'CREATE',
+                resource_type: 'plugin',
+                resource_id: pluginId,
+              },
+            });
+          }
         } catch (auditError) {
           logger.warn(`Failed to create audit log for plugin creation:`, auditError.message);
         }
@@ -911,14 +919,22 @@ export class PluginController {
       // Add audit log (only if user exists in database)
       if (req.user?.id) {
         try {
-          await this.db.auditLog.create({
-            data: {
-              user_id: req.user.id,
-              action: 'UPDATE',
-              resource_type: 'plugin',
-              resource_id: id,
-            },
+          // Verify user exists in database before creating audit log
+          const userExists = await this.db.user.findUnique({
+            where: { id: req.user.id },
+            select: { id: true }
           });
+          
+          if (userExists) {
+            await this.db.auditLog.create({
+              data: {
+                user_id: req.user.id,
+                action: 'UPDATE',
+                resource_type: 'plugin',
+                resource_id: id,
+              },
+            });
+          }
         } catch (auditError) {
           logger.warn(`Failed to create audit log for plugin update:`, auditError.message);
         }
@@ -1074,14 +1090,22 @@ export class PluginController {
       // Add audit log (only if user exists in database)
       if (req.user?.id) {
         try {
-          await this.db.auditLog.create({
-            data: {
-              user_id: req.user.id,
-              action: 'DELETE',
-              resource_type: 'plugin',
-              resource_id: id,
-            },
+          // Verify user exists in database before creating audit log
+          const userExists = await this.db.user.findUnique({
+            where: { id: req.user.id },
+            select: { id: true }
           });
+          
+          if (userExists) {
+            await this.db.auditLog.create({
+              data: {
+                user_id: req.user.id,
+                action: 'DELETE',
+                resource_type: 'plugin',
+                resource_id: id,
+              },
+            });
+          }
         } catch (auditError) {
           // Log warning but don't fail the operation if audit log creation fails
           logger.warn(`Failed to create audit log for plugin deletion:`, auditError.message);
