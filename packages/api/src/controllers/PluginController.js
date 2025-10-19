@@ -12,6 +12,20 @@ import { join } from 'path';
 
 const logger = new Logger('PluginController');
 
+/**
+ * Validate plugin ID to prevent path traversal attacks
+ * @param {string} id - Plugin ID to validate
+ * @returns {boolean} Whether the ID is valid
+ */
+function validatePluginId(id) {
+  if (!id || typeof id !== 'string') {
+    return false;
+  }
+  // Only allow alphanumeric characters, underscores, and hyphens
+  // Must start with a letter or underscore
+  return /^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(id) && id.length <= 100;
+}
+
 export class PluginController {
   /**
    * Initialize Plugin Controller
@@ -79,6 +93,14 @@ export class PluginController {
   async getById(req, res) {
     try {
       const { id } = req.params;
+
+      // Validate plugin ID to prevent path traversal
+      if (!validatePluginId(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plugin ID format'
+        });
+      }
 
       const plugin = await this.db.plugin.findUnique({
         where: { id },
@@ -238,6 +260,14 @@ export class PluginController {
       const { id } = req.params;
       const { name, description, type, trigger, nodes, edges, enabled, options, compiled: providedCompiled } = req.body;
 
+      // Validate plugin ID to prevent path traversal
+      if (!validatePluginId(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plugin ID format'
+        });
+      }
+
       // Check if plugin exists
       const existing = await this.db.plugin.findUnique({
         where: { id }
@@ -358,6 +388,14 @@ export class PluginController {
       const { id } = req.params;
       const { enabled } = req.body;
 
+      // Validate plugin ID to prevent path traversal
+      if (!validatePluginId(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plugin ID format'
+        });
+      }
+
       // Validate input
       if (typeof enabled !== 'boolean') {
         return res.status(400).json({
@@ -423,6 +461,14 @@ export class PluginController {
   async delete(req, res) {
     try {
       const { id } = req.params;
+
+      // Validate plugin ID to prevent path traversal
+      if (!validatePluginId(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid plugin ID format'
+        });
+      }
 
       const plugin = await this.db.plugin.findUnique({
         where: { id }

@@ -11,6 +11,7 @@ import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
+import { csrf } from 'lusca';
 import { createAuthRoutes } from '../../packages/api/src/routes/auth.js';
 import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
 
@@ -55,8 +56,14 @@ describe('Access Request Flow', () => {
     app.use(session({
       secret: 'test-secret',
       resave: false,
-      saveUninitialized: false
+      saveUninitialized: false,
+      cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
+      }
     }));
+    app.use(csrf());
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
 

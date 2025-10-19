@@ -52,11 +52,13 @@ const IconEditor = ({
     }
   }, [value]);
   
-  // URL validation function
+  // URL validation function with scheme validation to prevent XSS
   const isValidUrl = (url) => {
     try {
-      new URL(url);
-      return true;
+      const urlObj = new URL(url);
+      // Only allow safe schemes to prevent XSS
+      const allowedSchemes = ['http:', 'https:', 'data:'];
+      return allowedSchemes.includes(urlObj.protocol);
     } catch {
       return false;
     }
