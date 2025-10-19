@@ -60,11 +60,41 @@ export function createBotRoutes(_db) {
 
   /**
    * Get guild count statistics (read-only, requires auth)
+   * Fetches actual bot guild count from Discord API
    * @date 2025-01-27
    */
   router.get('/guild-count', requireAuth, async (req, res) => {
     try {
-      const guildCount = await getPrisma().guild.count();
+      const botToken = process.env.DISCORD_BOT_TOKEN;
+      let guildCount = 0;
+
+      if (botToken) {
+        try {
+          // Fetch actual bot guilds from Discord API
+          const response = await fetch('https://discord.com/api/users/@me/guilds', {
+            headers: {
+              'Authorization': `Bot ${botToken}`,
+            },
+          });
+
+          if (response.ok) {
+            const botGuilds = await response.json();
+            guildCount = botGuilds.length;
+          } else {
+            console.warn(`Discord API error for bot guilds: ${response.status}, falling back to database count`);
+            // Fallback to database count if Discord API fails
+            guildCount = await getPrisma().guild.count();
+          }
+        } catch (apiError) {
+          console.warn('Failed to fetch bot guilds from Discord API, falling back to database count:', apiError);
+          // Fallback to database count if Discord API fails
+          guildCount = await getPrisma().guild.count();
+        }
+      } else {
+        console.warn('DISCORD_BOT_TOKEN not found, using database count');
+        // Fallback to database count if bot token not available
+        guildCount = await getPrisma().guild.count();
+      }
 
       res.json({
         success: true,
