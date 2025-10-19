@@ -49,7 +49,7 @@ jobs:
         DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test
         
     - name: Run database migrations
-      run: npx prisma db push
+      run: npx prisma db push --accept-data-loss
       env:
         CI: true
         DATABASE_URL: postgresql://dismodular:password@localhost:5432/dismodular_test

@@ -58,7 +58,7 @@ export class TestDatabase {
         const schemaFile = TEST_DATABASE_URL.startsWith('file:') 
           ? 'prisma/schema.test.prisma' 
           : 'prisma/schema.prisma';
-        execSync(`npx prisma db push --schema=${schemaFile}`, {
+        execSync(`npx prisma db push --accept-data-loss --schema=${schemaFile}`, {
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit'
         });

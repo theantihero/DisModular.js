@@ -102,12 +102,24 @@ describe('Access Request Flow', () => {
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
 
-    // Add middleware to automatically authenticate requests for testing
+    // Add authentication helper methods and auto-authenticate for testing
     app.use((req, res, next) => {
+      // Set authentication helper methods
+      req.isAuthenticated = () => !!req.user;
+      req.login = (user, callback) => {
+        req.user = user;
+        if (callback) callback();
+      };
+      req.logout = (callback) => {
+        req.user = null;
+        if (callback) callback();
+      };
+      
       // For testing, automatically set user if not already set
       if (!req.user) {
         req.user = { id: testUserId, username: 'testuser', is_admin: false };
       }
+      
       next();
     });
 
@@ -231,6 +243,21 @@ describe('Access Request Flow', () => {
       appUnauth.use(lusca.csrf());
       appUnauth.use(mockPassport.initialize());
       appUnauth.use(mockPassport.session());
+      
+      // Add authentication helper methods (but don't auto-authenticate)
+      appUnauth.use((req, res, next) => {
+        req.isAuthenticated = () => !!req.user;
+        req.login = (user, callback) => {
+          req.user = user;
+          if (callback) callback();
+        };
+        req.logout = (callback) => {
+          req.user = null;
+          if (callback) callback();
+        };
+        next();
+      });
+      
       appUnauth.use('/auth', createAuthRoutes());
 
       const response = await request(appUnauth)
