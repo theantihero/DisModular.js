@@ -559,7 +559,13 @@ describe('Access Request Flow', () => {
       expect(response.body.error).toContain('Authentication required');
     });
 
+  });
+
+  // Separate describe block for access status test to avoid beforeEach interference
+  describe('User Access Status', () => {
     it('should get user access status', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Simply update the existing user to pending status
       await prisma.user.update({
         where: { id: testUserId },
