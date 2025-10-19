@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prepare": "echo 'Prepare script completed'",
     "dev": "concurrently \"npm run dev:bot\" \"npm run dev:api\" \"npm run dev:dashboard\"",
     "dev:bot": "npm run dev --workspace=@dismodular/bot",
     "dev:api": "npm run dev --workspace=@dismodular/api",
