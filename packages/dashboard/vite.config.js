@@ -30,7 +30,8 @@ export default defineConfig({
     }
   },
   define: {
-    'import.meta.env.VITE_DISCORD_CLIENT_ID': JSON.stringify(process.env.DISCORD_CLIENT_ID || 'your_client_id_here')
+    'import.meta.env.VITE_DISCORD_CLIENT_ID': JSON.stringify(process.env.DISCORD_CLIENT_ID || 'your_client_id_here'),
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:3002')
   }
 });
 
