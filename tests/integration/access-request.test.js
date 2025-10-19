@@ -222,8 +222,12 @@ describe('Access Request Flow', () => {
       if (!req.user) {
         // Use admin user for admin routes, regular user for other routes
         const isAdminRoute = req.path.startsWith('/admin');
+        
+        // Get the current user IDs (they get updated in beforeEach)
+        const currentUserId = isAdminRoute ? adminUserId : testUserId;
+        
         req.user = { 
-          id: isAdminRoute ? adminUserId : testUserId, 
+          id: currentUserId, 
           username: isAdminRoute ? 'adminuser' : 'testuser', 
           is_admin: isAdminRoute,
           access_status: isAdminRoute ? 'approved' : 'denied'
@@ -375,9 +379,42 @@ describe('Access Request Flow', () => {
     it('should allow user to request access with message', async () => {
       if (skipIfNoDatabase()) return;
       
+      // Ensure we have the correct user ID for this test
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!user) {
+        throw new Error('Test user not found in database');
+      }
+      
       const requestMessage = 'I want to use this platform for my community server';
 
-      const response = await request(app)
+      // Create a custom app for this test with correct user ID
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set up authentication for this specific test
+      testApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id, 
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
+        next();
+      });
+      
+      testApp.use('/auth', createAuthRoutes());
+
+      const response = await request(testApp)
         .post('/auth/request-access')
         .send({ message: requestMessage })
         .expect(200);
@@ -386,12 +423,13 @@ describe('Access Request Flow', () => {
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { id: testUserId }
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: user.id }
       });
 
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_requested_at).toBeTruthy();
+      expect(updatedUser.access_request_message).toBe(requestMessage);
+      expect(updatedUser.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
