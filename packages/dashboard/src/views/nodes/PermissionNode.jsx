@@ -5,7 +5,7 @@
  * @date 2025-10-15
  */
 
-import { _Handle, Position } from 'reactflow';
+import { Handle, Position } from 'reactflow';
 
 /**
  * Permission Node

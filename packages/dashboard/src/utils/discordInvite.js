@@ -123,7 +123,6 @@ export function getBotInviteUrl() {
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
   
   if (!clientId || clientId === 'your_client_id_here') {
-    console.warn('Discord client ID not found in environment variables');
     return '#';
   }
 

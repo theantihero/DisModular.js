@@ -7,11 +7,11 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import _ReactFlow, {
+import ReactFlow, {
   addEdge,
-  _Background,
-  _Controls,
-  _MiniMap,
+  Background,
+  Controls,
+  MiniMap,
   useNodesState,
   useEdgesState
 } from 'reactflow';
@@ -19,10 +19,10 @@ import 'reactflow/dist/style.css';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useTheme } from '../hooks/useTheme';
-import { _ToastContainer } from '../components/Toast';
-import { _ContextMenu } from '../components/ContextMenu';
-import { _NodeConfigPanel } from '../components/NodeConfigPanel';
-import { _CommandOptionsManager } from '../components/CommandOptionsManager';
+import { ToastContainer } from '../components/Toast';
+import { ContextMenu } from '../components/ContextMenu';
+import { NodeConfigPanel } from '../components/NodeConfigPanel';
+import { CommandOptionsManager } from '../components/CommandOptionsManager';
 import { CustomEdge } from '../components/CustomEdge';
 import { useToast } from '../hooks/useToast';
 import { getAutoLayout } from '../utils/layoutUtils';

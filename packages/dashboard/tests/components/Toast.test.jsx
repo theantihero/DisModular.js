@@ -7,8 +7,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
-import { _Toast, _ToastContainer } from '../../src/components/Toast';
-import { _ThemeProvider } from '../../src/contexts/ThemeContext';
+import { Toast, ToastContainer } from '../../src/components/Toast';
+import { ThemeProvider } from '../../src/contexts/ThemeContext';
 
 describe('Toast', () => {
   beforeEach(() => {

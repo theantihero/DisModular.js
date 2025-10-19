@@ -10,15 +10,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePluginStore } from '../viewmodels/PluginViewModel';
 import { useAppStore } from '../viewmodels/AppViewModel';
-import { _ToastContainer } from '../components/Toast';
+import { ToastContainer } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
-import _AdminPanel from '../components/AdminPanel';
-import _CryptoSupport from '../components/CryptoSupport';
-import _GuildSelector from '../components/GuildSelector';
-import _FloatingGuildSelector from '../components/FloatingGuildSelector';
-import _PaginatedPluginManager from '../components/PaginatedPluginManager';
-import _HeartbeatIcon from '../components/HeartbeatIcon';
+import AdminPanel from '../components/AdminPanel';
+import CryptoSupport from '../components/CryptoSupport';
+import GuildSelector from '../components/GuildSelector';
+import FloatingGuildSelector from '../components/FloatingGuildSelector';
+import PaginatedPluginManager from '../components/PaginatedPluginManager';
+import HeartbeatIcon from '../components/HeartbeatIcon';
 
 /**
  * Dashboard Component
@@ -313,41 +313,56 @@ export function Dashboard() {
                 </span>
               </div>
 
+              {/* GitHub Button */}
+              <a
+                href="https://github.com/theantihero/DisModular.js"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="macos-button flex items-center space-x-2 hover:bg-gray-700/50 transition-colors"
+                title="View on GitHub - Open Source Project"
+              >
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span className="text-white text-sm font-medium">GitHub</span>
+              </a>
+
               {/* User Menu */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 md:space-x-3">
                 {user?.data?.is_admin && (
                   <button
                     onClick={() => setShowAdminTools(!showAdminTools)}
-                    className="macos-button flex items-center space-x-2"
+                    className="macos-button flex items-center space-x-1 md:space-x-2 px-2 md:px-3 py-1.5"
                   >
-                    <span className="text-blue-400">👑</span>
-                    <span className="text-blue-400 text-sm font-medium">Admin</span>
+                    <span className="text-blue-400 text-sm md:text-base">👑</span>
+                    <span className="text-blue-400 text-xs md:text-sm font-medium hidden sm:inline">Admin</span>
                   </button>
                 )}
 
                 <button
                   onClick={() => setShowCryptoSupport(true)}
-                  className="macos-button flex items-center space-x-2 bg-gradient-to-r from-energy-green/20 to-hologram-500/20 hover:from-energy-green/30 hover:to-hologram-500/30"
+                  className="macos-button flex items-center space-x-1 md:space-x-2 bg-gradient-to-r from-energy-green/20 to-hologram-500/20 hover:from-energy-green/30 hover:to-hologram-500/30 px-2 md:px-3 py-1.5"
                 >
-                  <span className="text-energy-green">💎</span>
-                  <span className="text-energy-green text-sm font-medium">Support</span>
+                  <span className="text-energy-green text-sm md:text-base">💎</span>
+                  <span className="text-energy-green text-xs md:text-sm font-medium hidden sm:inline">Support</span>
                 </button>
 
-                <div className="macos-badge flex items-center space-x-2">
+                <div className="macos-badge flex items-center space-x-1 md:space-x-2 px-2 md:px-3 py-1.5">
                   <img 
                     src={user?.data?.avatar ? `https://cdn.discordapp.com/avatars/${user.data.discord_id}/${user.data.avatar}.png` : '/default-avatar.png'} 
                     alt={user?.data?.username || 'User'} 
-                    className="w-6 h-6 rounded-full"
+                    className="w-5 h-5 md:w-6 md:h-6 rounded-full"
                     onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiM2MzY2RjEiLz4KPHN2Zz4K'; }}
                   />
-                  <span className="text-white text-sm font-medium">{user?.data?.username || 'Loading...'}</span>
+                  <span className="text-white text-xs md:text-sm font-medium hidden sm:inline">{user?.data?.username || 'Loading...'}</span>
                 </div>
 
                 <button
                   onClick={logout}
-                  className="macos-button px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400"
+                  className="macos-button px-2 md:px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs md:text-sm"
                 >
-                  🚪 Logout
+                  <span className="hidden sm:inline">🚪 Logout</span>
+                  <span className="sm:hidden">🚪</span>
                 </button>
               </div>
             </div>
@@ -591,7 +606,7 @@ export function Dashboard() {
                 <button
                   onClick={() => navigate('/plugins/new')}
                   disabled={(selectedGuild && !selectedGuild.bot_present) || arePluginButtonsDisabled()}
-                  className={`macos-button px-6 py-3 font-medium flex items-center gap-2 transition-all duration-200 mx-auto ${
+                  className={`macos-button px-4 md:px-6 py-2 md:py-3 font-medium flex items-center gap-2 transition-all duration-200 mx-auto text-sm md:text-base ${
                     (selectedGuild && !selectedGuild.bot_present) || arePluginButtonsDisabled()
                       ? 'text-gray-500 cursor-not-allowed opacity-50'
                       : 'text-white hover:scale-105'
@@ -607,12 +622,12 @@ export function Dashboard() {
                   {arePluginButtonsDisabled() ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin"></div>
-                      <span>Loading...</span>
+                      <span className="text-sm md:text-base">Loading...</span>
                     </div>
                   ) : (
                     <>
-                      <span className="text-lg">🚀</span>
-                      <span>Create First Plugin</span>
+                      <span className="text-base md:text-lg">🚀</span>
+                      <span className="text-sm md:text-base">Create First Plugin</span>
                     </>
                   )}
                 </button>

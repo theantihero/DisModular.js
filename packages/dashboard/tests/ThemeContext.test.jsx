@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, _vi } from 'vitest';
 import { render, screen, fireEvent, _waitFor } from '@testing-library/react';
-import { _ThemeProvider, ThemeContext } from '../src/contexts/ThemeContext';
+import { ThemeProvider, ThemeContext } from '../src/contexts/ThemeContext';
 import { useContext } from 'react';
 
 // Mock localStorage

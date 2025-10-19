@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, _screen, _waitFor } from '@testing-library/react';
-import { _HUDOverlay } from '../src/components/HUDOverlay';
+import HUDOverlay from '../src/components/HUDOverlay';
 
 describe('HUDOverlay', () => {
   beforeEach(() => {

@@ -5,7 +5,7 @@
  * @date 2025-10-14
  */
 
-import { _Handle, Position } from 'reactflow';
+import { Handle, Position } from 'reactflow';
 
 /**
  * Data Node
