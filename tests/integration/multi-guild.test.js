@@ -88,8 +88,8 @@ describe('Multi-Guild Plugin System', () => {
     // Create plugin controller (only if database is available)
     pluginController = prisma ? new PluginController(prisma, './test-plugins') : null;
 
-    // Add routes - use mock in CI mode
-    if (process.env.CI || process.env.GITHUB_ACTIONS) {
+    // Add routes - use mock routes when database is not available
+    if (!prisma) {
       app.use('/guilds', createMockGuildRoutes());
     } else {
       app.use('/guilds', mockRequireAdmin, createGuildRoutes());
@@ -109,7 +109,30 @@ describe('Multi-Guild Plugin System', () => {
     
     // Only add plugin routes if controller is available and database is working
     if (pluginController && prisma) {
-      app.use('/plugins', mockPluginRoutes, createPluginRoutes(pluginController));
+      // Create plugin routes with mocked middleware
+      const pluginRoutes = createPluginRoutes(pluginController);
+      
+      // Override the requireAuth and requireAdmin middleware for testing
+      pluginRoutes.stack.forEach((layer) => {
+        if (layer.route) {
+          layer.route.stack.forEach((routeLayer) => {
+            if (routeLayer.name === 'requireAuth' || routeLayer.name === 'requireAdmin') {
+              routeLayer.handle = (req, res, next) => {
+                // Mock authenticated user for all plugin routes
+                req.user = { 
+                  id: 'test-admin', 
+                  username: 'test-admin', 
+                  is_admin: true,
+                  access_status: 'approved'
+                };
+                next();
+              };
+            }
+          });
+        }
+      });
+      
+      app.use('/plugins', pluginRoutes);
     }
 
     // Create test data

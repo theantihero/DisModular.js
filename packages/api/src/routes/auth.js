@@ -453,7 +453,7 @@ export function createAuthRoutes() {
   /**
    * Get user access status
    */
-  router.get('/access-status', (req, res) => {
+  router.get('/access-status', async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({
         success: false,
@@ -461,15 +461,49 @@ export function createAuthRoutes() {
       });
     }
 
-    res.json({
-      success: true,
-      data: {
-        access_status: req.user.data?.access_status || req.user.access_status,
-        access_message: req.user.data?.access_message || req.user.access_message,
-        access_requested_at: req.user.data?.access_requested_at || req.user.access_requested_at,
-        access_request_message: req.user.data?.access_request_message || req.user.access_request_message,
-      },
-    });
+    try {
+      // Fetch fresh user data from database to ensure we have the latest info
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
+      const freshUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          access_status: true,
+          access_message: true,
+          access_requested_at: true,
+          access_request_message: true,
+        },
+      });
+
+      if (!freshUser) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          access_status: freshUser.access_status,
+          access_message: freshUser.access_message,
+          access_requested_at: freshUser.access_requested_at,
+          access_request_message: freshUser.access_request_message,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching user access status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch access status',
+      });
+    }
   });
 
   /**

@@ -158,7 +158,31 @@ describe('Access Request Flow', () => {
 
     // Add routes
     app.use('/auth', createAuthRoutes());
-    app.use('/admin', createAdminRoutes());
+    
+    // Create admin routes with mocked middleware
+    const adminRoutes = createAdminRoutes();
+    
+    // Override the requireAdmin middleware for testing
+    adminRoutes.stack.forEach((layer) => {
+      if (layer.route) {
+        layer.route.stack.forEach((routeLayer) => {
+          if (routeLayer.name === 'requireAdmin') {
+            routeLayer.handle = (req, res, next) => {
+              // Mock admin user for all admin routes
+              req.user = { 
+                id: adminUserId, 
+                username: 'adminuser', 
+                is_admin: true,
+                access_status: 'approved'
+              };
+              next();
+            };
+          }
+        });
+      }
+    });
+    
+    app.use('/admin', adminRoutes);
 
     // Create test users
     if (prisma) {
@@ -232,224 +256,30 @@ describe('Access Request Flow', () => {
         next();
       });
       
-      // Create custom admin routes that bypass requireAdmin middleware
-      const adminRouter = express.Router();
+      // Use the real admin routes with mocked middleware
+      const adminRoutes = createAdminRoutes();
       
-      // Mock admin routes for testing
-      adminRouter.get('/access-requests', async (req, res) => {
-        try {
-          if (!prisma) {
-            return res.status(500).json({
-              success: false,
-              error: 'Database not available'
-            });
-          }
-          
-          const pendingUsers = await prisma.user.findMany({
-            where: { access_status: 'pending' },
-            select: {
-              id: true,
-              username: true,
-              access_requested_at: true,
-              access_request_message: true
+      // Override the requireAdmin middleware for testing
+      adminRoutes.stack.forEach((layer) => {
+        if (layer.route) {
+          layer.route.stack.forEach((routeLayer) => {
+            if (routeLayer.name === 'requireAdmin') {
+              routeLayer.handle = (req, res, next) => {
+                // Mock admin user for all admin routes
+                req.user = { 
+                  id: adminUserId, 
+                  username: 'adminuser', 
+                  is_admin: true,
+                  access_status: 'approved'
+                };
+                next();
+              };
             }
-          });
-          
-          res.json({
-            success: true,
-            data: pendingUsers
-          });
-        } catch (error) {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to fetch access requests'
           });
         }
       });
       
-      adminRouter.post('/access-requests/:userId/approve', async (req, res) => {
-        try {
-          if (!prisma) {
-            return res.status(500).json({
-              success: false,
-              error: 'Database not available'
-            });
-          }
-          
-          const { userId } = req.params;
-          const { message } = req.body;
-          
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              access_status: 'approved',
-              access_message: message || 'Access approved'
-            }
-          });
-
-          // Create audit log
-          await prisma.auditLog.create({
-            data: {
-              user_id: adminUserId,
-              action: 'APPROVE_ACCESS',
-              resource_type: 'user',
-              resource_id: userId,
-              details: { message: message || 'Access approved' }
-            }
-          });
-          
-          res.json({
-            success: true,
-            message: 'Access request approved successfully'
-          });
-        } catch (error) {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to approve access request'
-          });
-        }
-      });
-      
-      adminRouter.post('/access-requests/:userId/deny', async (req, res) => {
-        try {
-          if (!prisma) {
-            return res.status(500).json({
-              success: false,
-              error: 'Database not available'
-            });
-          }
-          
-          const { userId } = req.params;
-          const { message } = req.body;
-          
-          if (!message) {
-            return res.status(400).json({
-              success: false,
-              error: 'Denial message is required'
-            });
-          }
-          
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              access_status: 'denied',
-              access_message: message
-            }
-          });
-
-          // Create audit log
-          await prisma.auditLog.create({
-            data: {
-              user_id: adminUserId,
-              action: 'DENY_ACCESS',
-              resource_type: 'user',
-              resource_id: userId,
-              details: { message }
-            }
-          });
-          
-          res.json({
-            success: true,
-            message: 'Access request denied successfully'
-          });
-        } catch (error) {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to deny access request'
-          });
-        }
-      });
-      
-      adminRouter.post('/users/:userId/revoke-access', async (req, res) => {
-        try {
-          if (!prisma) {
-            return res.status(500).json({
-              success: false,
-              error: 'Database not available'
-            });
-          }
-          
-          const { userId } = req.params;
-          const { reason } = req.body;
-          
-          if (!reason) {
-            return res.status(400).json({
-              success: false,
-              error: 'Revocation reason is required'
-            });
-          }
-          
-          const user = await prisma.user.findUnique({
-            where: { id: userId }
-          });
-          
-          if (!user) {
-            return res.status(404).json({
-              success: false,
-              error: 'User not found'
-            });
-          }
-          
-          if (user.is_admin) {
-            return res.status(400).json({
-              success: false,
-              error: 'Cannot revoke access from admin users'
-            });
-          }
-          
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              access_status: 'denied',
-              access_message: `Access revoked: ${reason}`
-            }
-          });
-          
-          res.json({
-            success: true,
-            message: 'Access revoked successfully'
-          });
-        } catch (error) {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to revoke access'
-          });
-        }
-      });
-      
-      adminRouter.post('/users/:userId/grant-access', async (req, res) => {
-        try {
-          if (!prisma) {
-            return res.status(500).json({
-              success: false,
-              error: 'Database not available'
-            });
-          }
-          
-          const { userId } = req.params;
-          const { message } = req.body;
-          
-          await prisma.user.update({
-            where: { id: userId },
-            data: {
-              access_status: 'approved',
-              access_message: message || 'Access granted'
-            }
-          });
-          
-          res.json({
-            success: true,
-            message: 'Access granted successfully'
-          });
-        } catch (error) {
-          res.status(500).json({
-            success: false,
-            error: 'Failed to grant access'
-          });
-        }
-      });
-      
-      adminApp.use('/admin', adminRouter);
+      adminApp.use('/admin', adminRoutes);
       return adminApp;
     };
   });
@@ -526,6 +356,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should allow user to request access without message', async () => {
+      if (skipIfNoDatabase()) return;
+      
       const response = await request(app)
         .post('/auth/request-access')
         .send({})
@@ -669,6 +501,8 @@ describe('Access Request Flow', () => {
 
   describe('Admin Access Management', () => {
     it('should list pending access requests', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Debug: Check if admin user exists in database
       const adminUser = await prisma.user.findUnique({
         where: { id: adminUserId }
@@ -696,6 +530,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should approve access request with message', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Set up pending user
       await prisma.user.update({
         where: { id: testUserId },
@@ -738,6 +574,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should deny access request with message', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Set up pending user
       await prisma.user.update({
         where: { id: testUserId },
@@ -780,6 +618,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should require denial message', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Set up pending user for denial test
       await prisma.user.update({
         where: { id: testUserId },
@@ -801,6 +641,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should revoke access from approved user', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Debug: Check if admin user exists in database
       const adminUser = await prisma.user.findUnique({
         where: { id: adminUserId }
@@ -837,6 +679,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should grant access to user', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Set up denied user
       await prisma.user.update({
         where: { id: testUserId },
@@ -867,6 +711,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should prevent revoking access from admin users', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Debug: Check if admin user exists and has admin status
       const adminUser = await prisma.user.findUnique({
         where: { id: adminUserId }
@@ -900,6 +746,8 @@ describe('Access Request Flow', () => {
     });
 
     it('should require revocation reason', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Ensure test user exists
       await prisma.user.upsert({
         where: { id: testUserId },
@@ -927,6 +775,8 @@ describe('Access Request Flow', () => {
 
   describe('Complete Access Flow', () => {
     it('should handle complete access request workflow', async () => {
+      if (skipIfNoDatabase()) return;
+      
       // Ensure test user has denied status so they can request access
       await prisma.user.upsert({
         where: { id: testUserId },
