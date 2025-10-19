@@ -161,11 +161,11 @@ app.use('/admin', requireAdmin, expensiveOperationLimiter, createAdminRoutes());
 app.use('/guilds', requireAdmin, expensiveOperationLimiter, createGuildRoutes());
 // Routes registered successfully
 
-// Serve static dashboard files
-app.use(express.static(config.dashboardDir));
+// Serve static dashboard files with rate limiting
+app.use('/', apiLimiter, express.static(config.dashboardDir));
 
-// Serve assets (wallet images, etc.)
-app.use('/assets', express.static(join(workspaceRoot, 'assets')));
+// Serve assets (wallet images, etc.) with rate limiting
+app.use('/assets', apiLimiter, express.static(join(workspaceRoot, 'assets')));
 
 // API info route (after static files)
 app.get('/api', (req, res) => {
