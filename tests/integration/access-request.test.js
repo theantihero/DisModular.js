@@ -315,12 +315,22 @@ describe('Access Request Flow', () => {
 
     it('should get user access status', async () => {
       // Set up user with access request
-      await prisma.user.update({
-        where: { id: testUserId },
-        data: {
+      await prisma.user.upsert({
+        where: { discord_id: '111111111' },
+        update: {
           access_status: 'pending',
           access_requested_at: new Date(),
           access_request_message: 'Test request message'
+        },
+        create: {
+          id: testUserId,
+          discord_id: '111111111',
+          username: 'testuser',
+          discriminator: '1234',
+          access_status: 'pending',
+          access_requested_at: new Date(),
+          access_request_message: 'Test request message',
+          is_admin: false
         }
       });
 
@@ -335,9 +345,8 @@ describe('Access Request Flow', () => {
     });
   });
 
-  describe('Admin Access Management', () => {
-    // Helper function to create admin app instance
-    const createAdminApp = () => {
+  // Helper function to create admin app instance
+  const createAdminApp = () => {
       const adminApp = express();
       adminApp.use(express.json());
       adminApp.use(session({
@@ -401,6 +410,17 @@ describe('Access Request Flow', () => {
               access_message: message || 'Access approved'
             }
           });
+
+          // Create audit log
+          await prisma.auditLog.create({
+            data: {
+              user_id: adminUserId,
+              action: 'APPROVE_ACCESS',
+              resource_type: 'user',
+              resource_id: userId,
+              details: { message: message || 'Access approved' }
+            }
+          });
           
           res.json({
             success: true,
@@ -431,6 +451,17 @@ describe('Access Request Flow', () => {
             data: {
               access_status: 'denied',
               access_message: message
+            }
+          });
+
+          // Create audit log
+          await prisma.auditLog.create({
+            data: {
+              user_id: adminUserId,
+              action: 'DENY_ACCESS',
+              resource_type: 'user',
+              resource_id: userId,
+              details: { message }
             }
           });
           
@@ -525,6 +556,7 @@ describe('Access Request Flow', () => {
       return adminApp;
     };
 
+  describe('Admin Access Management', () => {
     it('should list pending access requests', async () => {
       // Debug: Check if admin user exists in database
       const adminUser = await prisma.user.findUnique({
@@ -690,7 +722,7 @@ describe('Access Request Flow', () => {
       });
 
       expect(user.access_status).toBe('denied');
-      expect(user.access_message).toBe(revocationReason);
+      expect(user.access_message).toBe(`Access revoked: ${revocationReason}`);
     });
 
     it('should grant access to user', async () => {

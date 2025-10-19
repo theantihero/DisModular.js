@@ -106,8 +106,8 @@ describe('Multi-Guild Plugin System', () => {
       next();
     };
     
-    // Only add plugin routes if controller is available
-    if (pluginController) {
+    // Only add plugin routes if controller is available and database is working
+    if (pluginController && prisma) {
       app.use('/plugins', mockPluginRoutes, createPluginRoutes(pluginController));
     }
 
@@ -194,6 +194,15 @@ describe('Multi-Guild Plugin System', () => {
   });
 
   afterAll(async () => {
+    // Clean up test plugin
+    if (prisma) {
+      await prisma.plugin.deleteMany({
+        where: {
+          id: testPluginId
+        }
+      });
+    }
+    
     if (testDb) {
       await testDb.close();
     }
