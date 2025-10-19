@@ -7,7 +7,7 @@
 
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { Logger } from '@dismodular/shared';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import PluginModel from '../models/PluginModel.js';
 import PluginManager from '../plugins/PluginManager.js';
 import PluginLoader from '../plugins/PluginLoader.js';
@@ -21,7 +21,7 @@ export class BotClient {
    */
   constructor(config) {
     this.config = config;
-    this.prisma = new PrismaClient();
+    this.prisma = null; // Will be initialized lazily
     
     // Default intents (non-privileged)
     const intents = [
@@ -53,6 +53,17 @@ export class BotClient {
 
     // Setup event handlers
     this.setupEventHandlers();
+  }
+
+  /**
+   * Get Prisma client instance (lazy initialization)
+   * @returns {PrismaClient|null} Prisma client instance or null if not available
+   */
+  getPrisma() {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient(this.config.databaseUrl);
+    }
+    return this.prisma;
   }
 
   /**
@@ -282,7 +293,7 @@ export class BotClient {
         return;
       }
 
-      await this.prisma.guild.upsert({
+      await this.getPrisma().guild.upsert({
         where: { id: guildId },
         update: {
           name: guild.name,
@@ -309,7 +320,7 @@ export class BotClient {
    */
   async getEnabledPluginsForGuild(guildId) {
     try {
-      const guildPlugins = await this.prisma.guildPlugin.findMany({
+      const guildPlugins = await this.getPrisma().guildPlugin.findMany({
         where: {
           guild_id: guildId,
           enabled: true,
@@ -397,7 +408,7 @@ export class BotClient {
       logger.info(`Left guild: ${guild.name} (${guild.id})`);
       
       // Mark guild as disabled in database
-      await this.prisma.guild.update({
+      await this.getPrisma().guild.update({
         where: { id: guild.id },
         data: { enabled: false },
       });

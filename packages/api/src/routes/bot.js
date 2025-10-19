@@ -6,10 +6,17 @@
 
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import axios from 'axios';
 
-const prisma = new PrismaClient();
+// Helper function to get Prisma client with error handling
+function getPrisma() {
+  const prisma = getPrismaClient();
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  return prisma;
+}
 
 /**
  * Create bot routes
@@ -26,8 +33,8 @@ export function createBotRoutes(_db) {
     try {
       // Get plugin statistics from database
       const [totalPlugins, enabledPlugins] = await Promise.all([
-        prisma.plugin.count(),
-        prisma.plugin.count({ where: { enabled: true } }),
+        getPrisma().plugin.count(),
+        getPrisma().plugin.count({ where: { enabled: true } }),
       ]);
 
       res.json({
@@ -75,7 +82,7 @@ export function createBotRoutes(_db) {
         });
       } catch (botError) {
         // Check if bot is actually running by checking guild count in database
-        const guildCount = await prisma.guild.count();
+        const guildCount = await getPrisma().guild.count();
         
         if (guildCount > 0) {
           // Bot is likely online if there are guilds in the database
@@ -118,7 +125,7 @@ export function createBotRoutes(_db) {
    */
   router.get('/config', requireAuth, async (req, res) => {
     try {
-      const configs = await prisma.botConfig.findMany();
+      const configs = await getPrisma().botConfig.findMany();
       
       const configObj = {};
       for (const config of configs) {
@@ -151,7 +158,7 @@ export function createBotRoutes(_db) {
         });
       }
 
-      await prisma.botConfig.upsert({
+      await getPrisma().botConfig.upsert({
         where: { key },
         update: { value },
         create: { key, value },
@@ -177,7 +184,7 @@ export function createBotRoutes(_db) {
   router.get('/audit', requireAdmin, async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 50;
-      const logs = await prisma.auditLog.findMany({
+      const logs = await getPrisma().auditLog.findMany({
         take: limit,
         orderBy: {
           created_at: 'desc',

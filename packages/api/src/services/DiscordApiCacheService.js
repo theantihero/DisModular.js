@@ -5,9 +5,7 @@
  * @date 2025-01-27
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getPrismaClient } from './PrismaService.js';
 
 /**
  * Discord API Cache Service
@@ -23,6 +21,9 @@ export class DiscordApiCacheService {
    */
   static async get(cacheKey, cacheType, _userId = null) {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) return null; // Skip if Prisma not available
+      
       const cache = await prisma.discordApiCache.findUnique({
         where: { cache_key: cacheKey },
       });
@@ -64,6 +65,9 @@ export class DiscordApiCacheService {
    */
   static async set(cacheKey, cacheType, data, ttlMinutes = 5, userId = null) {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) return; // Skip if Prisma not available
+      
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + ttlMinutes);
 
@@ -95,6 +99,9 @@ export class DiscordApiCacheService {
    */
   static async clearByType(cacheType, userId = null) {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) return; // Skip if Prisma not available
+      
       await prisma.discordApiCache.deleteMany({
         where: {
           cache_type: cacheType,
@@ -112,6 +119,9 @@ export class DiscordApiCacheService {
    */
   static async clearExpired() {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) return 0; // Skip if Prisma not available
+      
       const result = await prisma.discordApiCache.deleteMany({
         where: {
           expires_at: {
@@ -132,6 +142,9 @@ export class DiscordApiCacheService {
    */
   static async getStats() {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) return { total: 0, expired: 0, active: 0 }; // Skip if Prisma not available
+      
       const [total, expired] = await Promise.all([
         prisma.discordApiCache.count(),
         prisma.discordApiCache.count({

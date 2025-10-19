@@ -6,10 +6,8 @@
 
 import { Router } from 'express';
 import passport from 'passport';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import DiscordApiCacheService, { generateCacheKey, CACHE_TTL } from '../services/DiscordApiCacheService.js';
-
-const prisma = new PrismaClient();
 
 // Cache for bot guild IDs (5 minute TTL)
 const botGuildCache = {
@@ -35,6 +33,8 @@ async function getBotGuildIds() {
     const botToken = process.env.DISCORD_BOT_TOKEN;
     if (!botToken) {
       console.warn('DISCORD_BOT_TOKEN not found, falling back to database check');
+      const prisma = getPrismaClient();
+      if (!prisma) return new Set(); // Skip if Prisma not available
       const botGuilds = await prisma.guild.findMany({ select: { id: true } });
       const guildSet = new Set(botGuilds.map(g => g.id));
       
@@ -52,6 +52,8 @@ async function getBotGuildIds() {
 
     if (!response.ok) {
       console.warn(`Discord API error for bot guilds: ${response.status}, falling back to database check`);
+      const prisma = getPrismaClient();
+      if (!prisma) return new Set(); // Skip if Prisma not available
       const botGuilds = await prisma.guild.findMany({ select: { id: true } });
       const guildSet = new Set(botGuilds.map(g => g.id));
       
@@ -70,6 +72,8 @@ async function getBotGuildIds() {
     return guildSet;
   } catch (error) {
     console.warn('Error fetching bot guilds:', error.message, 'falling back to database check');
+    const prisma = getPrismaClient();
+    if (!prisma) return new Set(); // Skip if Prisma not available
     const botGuilds = await prisma.guild.findMany({ select: { id: true } });
     const guildSet = new Set(botGuilds.map(g => g.id));
     
@@ -145,6 +149,13 @@ export function createAuthRoutes() {
 
     try {
       // Get user's access token
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
       const user = await prisma.user.findUnique({
         where: { id: req.user.id },
       });
@@ -300,6 +311,13 @@ export function createAuthRoutes() {
     if (req.isAuthenticated()) {
       try {
         // Refresh user data from database to ensure we have the latest info
+        const prisma = getPrismaClient();
+        if (!prisma) {
+          return res.json({
+            success: true,
+            user: req.user,
+          });
+        }
         const freshUser = await prisma.user.findUnique({
           where: { id: req.user.id },
         });
@@ -390,6 +408,13 @@ export function createAuthRoutes() {
       }
 
       // Check if user already has a pending request
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
       const existingUser = await prisma.user.findUnique({
         where: { id: req.user.id },
         select: { access_status: true, access_requested_at: true },

@@ -6,19 +6,27 @@
  */
 
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import axios from 'axios';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+// Helper function to get Prisma client with error handling
+function getPrisma() {
+  const prisma = getPrismaClient();
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  return prisma;
+}
 
 /**
  * Helper function to verify guild admin permissions with caching
  */
 async function verifyGuildAdminPermission(userId, guildId, accessToken) {
   // Check cached guild permissions first
-  const cachedPermission = await prisma.userGuildPermission.findFirst({
+  const cachedPermission = await getPrisma().userGuildPermission.findFirst({
     where: {
       user_id: userId,
       guild_id: guildId,
@@ -51,7 +59,7 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
           hasAdminPermission = (targetGuild.permissions & 0x8) === 0x8;
           
           // Update cache
-          await prisma.userGuildPermission.upsert({
+          await getPrisma().userGuildPermission.upsert({
             where: {
               user_id_guild_id: {
                 user_id: userId,
@@ -102,7 +110,7 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
       hasAdminPermission = (targetGuild.permissions & 0x8) === 0x8;
       
       // Cache the result
-      await prisma.userGuildPermission.create({
+      await getPrisma().userGuildPermission.create({
         data: {
           user_id: userId,
           guild_id: guildId,
@@ -131,7 +139,7 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
  */
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const guilds = await prisma.guild.findMany({
+    const guilds = await getPrisma().guild.findMany({
       orderBy: { created_at: 'desc' },
       include: {
         guild_plugins: {
@@ -179,7 +187,7 @@ router.get('/:guildId/plugins', requireAdmin, async (req, res) => {
   try {
     const { guildId } = req.params;
 
-    const guildPlugins = await prisma.guildPlugin.findMany({
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
       where: { guild_id: guildId },
       include: {
         plugin: true,
@@ -254,12 +262,12 @@ router.get('/:guildId/plugins/all', requireAuth, async (req, res) => {
     }
 
     // Get all plugins
-    const allPlugins = await prisma.plugin.findMany({
+    const allPlugins = await getPrisma().plugin.findMany({
       orderBy: { created_at: 'desc' },
     });
 
     // Get guild-specific plugin settings
-    const guildPlugins = await prisma.guildPlugin.findMany({
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
       where: { guild_id: guildId },
     });
 
@@ -341,7 +349,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
     }
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
     });
 
@@ -353,7 +361,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
     }
 
     // Ensure plugin exists
-    const plugin = await prisma.plugin.findUnique({
+    const plugin = await getPrisma().plugin.findUnique({
       where: { id: pluginId },
     });
 
@@ -365,7 +373,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
     }
 
     // Upsert guild plugin relationship
-    const guildPlugin = await prisma.guildPlugin.upsert({
+    const guildPlugin = await getPrisma().guildPlugin.upsert({
       where: {
         guild_id_plugin_id: {
           guild_id: guildId,
@@ -385,7 +393,7 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, async (req, res) => {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
+    await getPrisma().auditLog.create({
       data: {
         user_id: req.user.id,
         action: enabled ? 'ENABLE_GUILD_PLUGIN' : 'DISABLE_GUILD_PLUGIN',
@@ -423,7 +431,7 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
     const { guildId } = req.params;
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
     });
 
@@ -446,7 +454,7 @@ router.post('/:guildId/sync', requireAdmin, async (req, res) => {
 
       if (response.data.success) {
         // Create audit log
-        await prisma.auditLog.create({
+        await getPrisma().auditLog.create({
           data: {
             user_id: req.user.id,
             action: 'SYNC_GUILD_COMMANDS',
@@ -495,7 +503,7 @@ router.get('/:guildId', requireAdmin, async (req, res) => {
   try {
     const { guildId } = req.params;
 
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
       include: {
         guild_plugins: {
@@ -596,7 +604,7 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
     }
 
     // Ensure guild exists
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
     });
 
@@ -608,7 +616,7 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
     }
 
     // Update guild settings
-    const updatedGuild = await prisma.guild.update({
+    const updatedGuild = await getPrisma().guild.update({
       where: { id: guildId },
       data: {
         settings: settings,
@@ -617,7 +625,7 @@ router.put('/:guildId/settings', requireAuth, async (req, res) => {
     });
 
     // Create audit log
-    await prisma.auditLog.create({
+    await getPrisma().auditLog.create({
       data: {
         user_id: req.user.id,
         action: 'UPDATE_GUILD_SETTINGS',
@@ -687,7 +695,7 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
       }
     }
 
-    const guild = await prisma.guild.findUnique({
+    const guild = await getPrisma().guild.findUnique({
       where: { id: guildId },
       select: {
         id: true,
@@ -717,7 +725,7 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
       }
 
       // Create the guild with default settings
-      const newGuild = await prisma.guild.create({
+      const newGuild = await getPrisma().guild.create({
         data: {
           id: guildId,
           name: guildName,

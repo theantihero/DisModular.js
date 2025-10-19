@@ -7,10 +7,9 @@
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import { Logger } from '@dismodular/shared';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 
 const logger = new Logger('AuthMiddleware');
-const prisma = new PrismaClient();
 
 /**
  * Initialize Passport with Discord OAuth
@@ -25,6 +24,11 @@ export function initializePassport(config) {
   // Deserialize user from session
   passport.deserializeUser(async (id, done) => {
     try {
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        logger.warn('Prisma client not available for user deserialization');
+        return done(null, null);
+      }
       const user = await prisma.user.findUnique({
         where: { id },
       });
@@ -49,6 +53,12 @@ export function initializePassport(config) {
           // Check if this is the initial admin
           const initialAdminId = process.env.INITIAL_ADMIN_DISCORD_ID;
           const isInitialAdmin = initialAdminId && profile.id === initialAdminId;
+
+          const prisma = getPrismaClient();
+          if (!prisma) {
+            logger.warn('Prisma client not available for user authentication');
+            return done(new Error('Database not available'), null);
+          }
 
           // Use upsert to handle both create and update cases
           const user = await prisma.user.upsert({

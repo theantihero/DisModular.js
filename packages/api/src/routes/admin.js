@@ -7,9 +7,16 @@
 
 import express from 'express';
 import { requireAdmin } from '../middleware/auth.js';
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 
-const prisma = new PrismaClient();
+// Helper function to get Prisma client with error handling
+function getPrisma() {
+  const prisma = getPrismaClient();
+  if (!prisma) {
+    throw new Error('Database not available');
+  }
+  return prisma;
+}
 
 /**
  * Create admin routes
@@ -26,7 +33,7 @@ export function createAdminRoutes() {
       const { id } = req.params;
       const { is_admin, admin_notes } = req.body;
       
-      await prisma.user.update({
+      await getPrisma().user.update({
         where: { discord_id: id },
         data: {
           is_admin: is_admin,
@@ -72,7 +79,7 @@ export function createAdminRoutes() {
       }
 
       // Use upsert to handle both create and update cases
-      await prisma.user.upsert({
+      await getPrisma().user.upsert({
         where: { discord_id },
         update: {
           is_admin: true,
@@ -116,11 +123,11 @@ export function createAdminRoutes() {
         activePlugins,
         recentLogins,
       ] = await Promise.all([
-        prisma.user.count(),
-        prisma.user.count({ where: { is_admin: true } }),
-        prisma.plugin.count(),
-        prisma.plugin.count({ where: { enabled: true } }),
-        prisma.user.count({
+        getPrisma().user.count(),
+        getPrisma().user.count({ where: { is_admin: true } }),
+        getPrisma().plugin.count(),
+        getPrisma().plugin.count({ where: { enabled: true } }),
+        getPrisma().user.count({
           where: {
             last_login: {
               gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
@@ -157,15 +164,15 @@ export function createAdminRoutes() {
   router.get('/analytics', requireAdmin, async (req, res) => {
     try {
       // Total commands executed
-      const totalCommands = await prisma.commandExecution.count();
-      const commands24h = await prisma.commandExecution.count({
+      const totalCommands = await getPrisma().commandExecution.count();
+      const commands24h = await getPrisma().commandExecution.count({
         where: {
           created_at: {
             gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
           },
         },
       });
-      const commands7d = await prisma.commandExecution.count({
+      const commands7d = await getPrisma().commandExecution.count({
         where: {
           created_at: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -174,7 +181,7 @@ export function createAdminRoutes() {
       });
 
       // Unique users
-      const totalUsers = await prisma.commandExecution.groupBy({
+      const totalUsers = await getPrisma().commandExecution.groupBy({
         by: ['user_id'],
         where: {
           user_id: {
@@ -182,7 +189,7 @@ export function createAdminRoutes() {
           },
         },
       }).then(result => result.length);
-      const users24h = await prisma.commandExecution.groupBy({
+      const users24h = await getPrisma().commandExecution.groupBy({
         by: ['user_id'],
         where: {
           created_at: {
@@ -193,7 +200,7 @@ export function createAdminRoutes() {
           },
         },
       }).then(result => result.length);
-      const users7d = await prisma.commandExecution.groupBy({
+      const users7d = await getPrisma().commandExecution.groupBy({
         by: ['user_id'],
         where: {
           created_at: {
@@ -206,7 +213,7 @@ export function createAdminRoutes() {
       }).then(result => result.length);
 
       // Success rate
-      const successCount = await prisma.commandExecution.count({
+      const successCount = await getPrisma().commandExecution.count({
         where: {
           success: true,
         },
@@ -214,7 +221,7 @@ export function createAdminRoutes() {
       const successRate = totalCommands > 0 ? (successCount / totalCommands * 100).toFixed(1) : 0;
 
       // Average execution time
-      const avgTimeResult = await prisma.commandExecution.aggregate({
+      const avgTimeResult = await getPrisma().commandExecution.aggregate({
         _avg: {
           execution_time_ms: true,
         },
@@ -227,7 +234,7 @@ export function createAdminRoutes() {
       const avgTime = avgTimeResult._avg.execution_time_ms || 0;
 
       // Top 5 plugins by usage
-      const topPlugins = await prisma.commandExecution.groupBy({
+      const topPlugins = await getPrisma().commandExecution.groupBy({
         by: ['plugin_id'],
         _count: {
           id: true,
@@ -241,7 +248,7 @@ export function createAdminRoutes() {
       });
 
       // Recent activity (last 50 executions)
-      const recentActivity = await prisma.commandExecution.findMany({
+      const recentActivity = await getPrisma().commandExecution.findMany({
         take: 50,
         orderBy: {
           created_at: 'desc',
@@ -261,7 +268,7 @@ export function createAdminRoutes() {
       });
 
       // Hourly usage for last 24 hours
-      const hourlyUsage = await prisma.commandExecution.groupBy({
+      const hourlyUsage = await getPrisma().commandExecution.groupBy({
         by: ['created_at'],
         _count: {
           id: true,
@@ -300,7 +307,7 @@ export function createAdminRoutes() {
    */
   router.get('/access-requests', requireAdmin, async (req, res) => {
     try {
-      const pendingUsers = await prisma.user.findMany({
+      const pendingUsers = await getPrisma().user.findMany({
         where: {
           access_status: 'pending',
           is_admin: false,
@@ -343,7 +350,7 @@ export function createAdminRoutes() {
       const { userId } = req.params;
       const { message } = req.body;
 
-      await prisma.user.update({
+      await getPrisma().user.update({
         where: { id: userId },
         data: {
           access_status: 'approved',
@@ -352,7 +359,7 @@ export function createAdminRoutes() {
       });
 
       // Create audit log
-      await prisma.auditLog.create({
+      await getPrisma().auditLog.create({
         data: {
           user_id: req.user.id,
           action: 'APPROVE_ACCESS',
@@ -391,7 +398,7 @@ export function createAdminRoutes() {
         });
       }
 
-      await prisma.user.update({
+      await getPrisma().user.update({
         where: { id: userId },
         data: {
           access_status: 'denied',
@@ -400,7 +407,7 @@ export function createAdminRoutes() {
       });
 
       // Create audit log
-      await prisma.auditLog.create({
+      await getPrisma().auditLog.create({
         data: {
           user_id: req.user.id,
           action: 'DENY_ACCESS',
@@ -440,7 +447,7 @@ export function createAdminRoutes() {
       }
 
       // Check if user exists and is not an admin
-      const user = await prisma.user.findUnique({
+      const user = await getPrisma().user.findUnique({
         where: { id: userId },
       });
 
@@ -459,7 +466,7 @@ export function createAdminRoutes() {
       }
 
       // Update user access status to denied
-      await prisma.user.update({
+      await getPrisma().user.update({
         where: { id: userId },
         data: {
           access_status: 'denied',
@@ -468,17 +475,17 @@ export function createAdminRoutes() {
       });
 
       // Revoke all guild permissions for this user (bot access denial)
-      await prisma.userGuildPermission.deleteMany({
+      await getPrisma().userGuildPermission.deleteMany({
         where: { user_id: userId },
       });
 
       // Clear any cached Discord API data for this user
-      await prisma.discordApiCache.deleteMany({
+      await getPrisma().discordApiCache.deleteMany({
         where: { user_id: user.discord_id },
       });
 
       // Log the action
-      await prisma.auditLog.create({
+      await getPrisma().auditLog.create({
         data: {
           user_id: req.user.id,
           action: 'REVOKE_ACCESS',
@@ -516,7 +523,7 @@ export function createAdminRoutes() {
       const { message } = req.body;
 
       // Check if user exists
-      const user = await prisma.user.findUnique({
+      const user = await getPrisma().user.findUnique({
         where: { id: userId },
       });
 
@@ -528,7 +535,7 @@ export function createAdminRoutes() {
       }
 
       // Update user access status to approved
-      await prisma.user.update({
+      await getPrisma().user.update({
         where: { id: userId },
         data: {
           access_status: 'approved',
@@ -537,7 +544,7 @@ export function createAdminRoutes() {
       });
 
       // Log the action
-      await prisma.auditLog.create({
+      await getPrisma().auditLog.create({
         data: {
           user_id: req.user.id,
           action: 'GRANT_ACCESS',
@@ -566,7 +573,7 @@ export function createAdminRoutes() {
    */
   router.get('/users', requireAdmin, async (req, res) => {
     try {
-      const users = await prisma.user.findMany({
+      const users = await getPrisma().user.findMany({
         select: {
           id: true,
           discord_id: true,
@@ -607,7 +614,7 @@ export function createAdminRoutes() {
           // Get user's guild permissions (which guilds they have admin access to)
           let userGuildPermissions = [];
           try {
-            userGuildPermissions = await prisma.userGuildPermission.findMany({
+            userGuildPermissions = await getPrisma().userGuildPermission.findMany({
               where: { user_id: user.id },
               select: {
                 guild_id: true,
@@ -629,7 +636,7 @@ export function createAdminRoutes() {
           // Count total commands executed (from audit logs)
           let commandCount = 0;
           try {
-            commandCount = await prisma.auditLog.count({
+            commandCount = await getPrisma().auditLog.count({
               where: {
                 user_id: user.id,
                 action: {
@@ -644,7 +651,7 @@ export function createAdminRoutes() {
           // Get recent activity
           let recentActivity = [];
           try {
-            recentActivity = await prisma.auditLog.findMany({
+            recentActivity = await getPrisma().auditLog.findMany({
               where: { user_id: user.id },
               orderBy: { created_at: 'desc' },
               take: 5,

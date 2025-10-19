@@ -5,7 +5,7 @@
  * @date 2025-01-27
  */
 
-import { PrismaClient } from '@prisma/client';
+import { getPrismaClient } from '../services/PrismaService.js';
 import { Logger, safeStringify } from '@dismodular/shared';
 
 const logger = new Logger('PluginModel');
@@ -16,12 +16,20 @@ export class PluginModel {
    * @param {string} databaseUrl - Optional database URL override
    */
   constructor(databaseUrl = null) {
-    this.prisma = new PrismaClient({
-      datasources: databaseUrl ? {
-        db: { url: databaseUrl },
-      } : undefined,
-    });
-    logger.info('PluginModel initialized with Prisma');
+    this.databaseUrl = databaseUrl;
+    this.prisma = null; // Will be initialized lazily
+    logger.info('PluginModel initialized');
+  }
+
+  /**
+   * Get Prisma client instance (lazy initialization)
+   * @returns {PrismaClient|null} Prisma client instance or null if not available
+   */
+  getPrisma() {
+    if (!this.prisma) {
+      this.prisma = getPrismaClient(this.databaseUrl);
+    }
+    return this.prisma;
   }
 
   /**
@@ -33,7 +41,7 @@ export class PluginModel {
     try {
       const where = enabledOnly ? { enabled: true } : {};
       
-      const plugins = await this.prisma.plugin.findMany({
+      const plugins = await this.getPrisma().plugin.findMany({
         where,
         orderBy: { created_at: 'desc' },
       });
@@ -65,7 +73,7 @@ export class PluginModel {
    */
   async getById(id) {
     try {
-      const plugin = await this.prisma.plugin.findUnique({
+      const plugin = await this.getPrisma().plugin.findUnique({
         where: { id },
       });
       
@@ -98,7 +106,7 @@ export class PluginModel {
    */
   async upsert(pluginData) {
     try {
-      await this.prisma.plugin.upsert({
+      await this.getPrisma().plugin.upsert({
         where: { id: pluginData.id },
         update: {
           name: pluginData.name,
@@ -155,7 +163,7 @@ export class PluginModel {
    */
   async delete(id) {
     try {
-      await this.prisma.plugin.delete({
+      await this.getPrisma().plugin.delete({
         where: { id },
       });
       logger.success(`Plugin ${id} deleted successfully`);
@@ -174,7 +182,7 @@ export class PluginModel {
    */
   async setState(pluginId, key, value) {
     try {
-      await this.prisma.pluginState.upsert({
+      await this.getPrisma().pluginState.upsert({
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
@@ -213,7 +221,7 @@ export class PluginModel {
    */
   async getState(pluginId, key) {
     try {
-      const result = await this.prisma.pluginState.findUnique({
+      const result = await this.getPrisma().pluginState.findUnique({
         where: {
           plugin_id_key: {
             plugin_id: pluginId,
@@ -251,7 +259,7 @@ export class PluginModel {
    */
   async getGuildPlugin(guildId, pluginId) {
     try {
-      const guildPlugin = await this.prisma.guildPlugin.findUnique({
+      const guildPlugin = await this.getPrisma().guildPlugin.findUnique({
         where: {
           guild_id_plugin_id: {
             guild_id: guildId,
@@ -263,7 +271,7 @@ export class PluginModel {
       // If no guild-specific record exists, return a default enabled state
       // This allows plugins to inherit the global enabled status
       if (!guildPlugin) {
-        const plugin = await this.prisma.plugin.findUnique({
+        const plugin = await this.getPrisma().plugin.findUnique({
           where: { id: pluginId },
           select: { enabled: true },
         });
@@ -282,7 +290,7 @@ export class PluginModel {
    * Close database connection
    */
   async close() {
-    await this.prisma.$disconnect();
+    await this.getPrisma().$disconnect();
     logger.info('PluginModel database connection closed');
   }
 }
