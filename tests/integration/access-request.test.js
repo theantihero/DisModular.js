@@ -206,7 +206,7 @@ describe('Access Request Flow', () => {
     }
 
     // Add authentication helper methods and auto-authenticate for testing
-    app.use((req, res, next) => {
+    app.use(async (req, res, next) => {
       // Set authentication helper methods
       req.isAuthenticated = () => !!req.user;
       req.login = (user, callback) => {
@@ -223,27 +223,25 @@ describe('Access Request Flow', () => {
         // Use admin user for admin routes, regular user for other routes
         const isAdminRoute = req.path.startsWith('/admin');
         
-        // Get the current user IDs (they get updated in beforeEach)
-        const currentUserId = isAdminRoute ? adminUserId : testUserId;
-        
-        // Set user if we have a valid ID (number) or if we're in a test environment
-        // In test environment, we'll use the discord_id to look up the user
-        if (currentUserId && typeof currentUserId === 'number') {
-          req.user = { 
-            id: currentUserId, 
-            username: isAdminRoute ? 'adminuser' : 'testuser', 
-            is_admin: isAdminRoute,
-            access_status: isAdminRoute ? 'approved' : 'denied'
-          };
-        } else if (process.env.NODE_ENV === 'test') {
-          // For test environment, create a mock user with the expected discord_id
-          req.user = { 
-            id: 999999, // Temporary ID for testing
-            username: isAdminRoute ? 'adminuser' : 'testuser', 
-            is_admin: isAdminRoute,
-            access_status: isAdminRoute ? 'approved' : 'denied',
-            discord_id: isAdminRoute ? '222222222' : '111111111'
-          };
+        // In test environment, look up the user from database dynamically
+        if (process.env.NODE_ENV === 'test' && prisma) {
+          try {
+            const discordId = isAdminRoute ? '222222222' : '111111111';
+            const user = await prisma.user.findUnique({
+              where: { discord_id: discordId }
+            });
+            
+            if (user) {
+              req.user = { 
+                id: user.id, 
+                username: user.username, 
+                is_admin: user.is_admin,
+                access_status: user.access_status
+              };
+            }
+          } catch (error) {
+            console.warn('Error looking up user in test middleware:', error.message);
+          }
         }
       }
       
@@ -392,123 +390,30 @@ describe('Access Request Flow', () => {
     it('should allow user to request access with message', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Get the actual user from database to ensure we have the correct ID
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
-      });
-      
-      if (!user) {
-        throw new Error('Test user not found in database');
-      }
-      
       const requestMessage = 'I want to use this platform for my community server';
-
-      // Test the database operation directly first
-      const beforeUser = await prisma.user.findUnique({
-        where: { id: user.id }
-      });
       
-      console.log('User before request:', {
-        id: beforeUser.id,
-        access_status: beforeUser.access_status,
-        access_requested_at: beforeUser.access_requested_at
-      });
-
-      // Create a custom app for this test with the correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
-      
-      // Set up authentication for this specific test with correct user ID
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, // Use the actual database ID
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
-        next();
-      });
-      
-      // Ensure PrismaService uses test database
-      process.env.NODE_ENV = 'test';
-      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
-      
-      testApp.use('/auth', createAuthRoutes());
-
-      const response = await request(testApp)
+      const response = await request(app)
         .post('/auth/request-access')
-        .send({ message: requestMessage });
+        .send({ message: requestMessage })
+        .expect(200);
 
-      console.log('Response status:', response.status);
-      console.log('Response body:', response.body);
-      
-      if (response.status !== 200) {
-        console.error('Request failed with status:', response.status);
-        console.error('Response body:', response.body);
-      }
-      
-      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
       // Verify the request was stored
-      const updatedUser = await prisma.user.findUnique({
-        where: { id: user.id }
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
       });
 
-      expect(updatedUser.access_requested_at).toBeTruthy();
-      expect(updatedUser.access_request_message).toBe(requestMessage);
-      expect(updatedUser.access_status).toBe('pending');
+      expect(user.access_requested_at).toBeTruthy();
+      expect(user.access_request_message).toBe(requestMessage);
+      expect(user.access_status).toBe('pending');
     });
 
     it('should allow user to request access without message', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Get the actual user from database to ensure we have the correct ID
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
-      });
-      
-      if (!user) {
-        throw new Error('Test user not found in database');
-      }
-      
-      // Create a custom app for this test with the correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
-      
-      // Set up authentication for this specific test with correct user ID
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, // Use the actual database ID
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
-        next();
-      });
-      
-      // Ensure PrismaService uses test database
-      process.env.NODE_ENV = 'test';
-      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
-      
-      testApp.use('/auth', createAuthRoutes());
-
-      const response = await request(testApp)
+      const response = await request(app)
         .post('/auth/request-access')
         .send({})
         .expect(200);
@@ -516,12 +421,12 @@ describe('Access Request Flow', () => {
       expect(response.body.success).toBe(true);
 
       // Verify the request was stored
-      const updatedUser = await prisma.user.findUnique({
-        where: { id: user.id }
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
       });
 
-      expect(updatedUser.access_requested_at).toBeTruthy();
-      expect(updatedUser.access_request_message).toBeNull();
+      expect(user.access_requested_at).toBeTruthy();
+      expect(user.access_request_message).toBeNull();
     });
 
     it('should reject request with message too long', async () => {
@@ -951,18 +856,9 @@ describe('Access Request Flow', () => {
     it('should handle complete access request workflow', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Get the actual user from database to ensure we have the correct ID
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
-      });
-      
-      if (!user) {
-        throw new Error('Test user not found in database');
-      }
-      
       // Ensure test user has denied status so they can request access
       await prisma.user.update({
-        where: { id: user.id },
+        where: { discord_id: '111111111' },
         data: {
           access_status: 'denied',
           access_requested_at: null,
@@ -973,35 +869,7 @@ describe('Access Request Flow', () => {
       // 1. User requests access with message
       const requestMessage = 'I want to use this platform for my community server';
       
-      // Create a custom app for this test with the correct user ID
-      const testApp = express();
-      testApp.use(express.json());
-      testApp.use(session({
-        secret: 'test-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-      }));
-      
-      // Set up authentication for this specific test with correct user ID
-      testApp.use((req, res, next) => {
-        req.isAuthenticated = () => true;
-        req.user = { 
-          id: user.id, // Use the actual database ID
-          username: 'testuser', 
-          is_admin: false,
-          access_status: 'denied'
-        };
-        next();
-      });
-      
-      // Ensure PrismaService uses test database
-      process.env.NODE_ENV = 'test';
-      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
-      
-      testApp.use('/auth', createAuthRoutes());
-      
-      await request(testApp)
+      await request(app)
         .post('/auth/request-access')
         .send({ message: requestMessage })
         .expect(200);
@@ -1015,6 +883,11 @@ describe('Access Request Flow', () => {
       expect(requestsResponse.body.data).toHaveLength(1);
       expect(requestsResponse.body.data[0].access_request_message).toBe(requestMessage);
 
+      // Get the user ID for admin operations
+      const user = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+
       // 3. Admin approves the request
       const approvalMessage = 'Welcome to the platform!';
       
@@ -1024,7 +897,7 @@ describe('Access Request Flow', () => {
         .expect(200);
 
       // 4. User checks their status
-      const statusResponse = await request(testApp)
+      const statusResponse = await request(app)
         .get('/auth/access-status')
         .expect(200);
 
@@ -1040,7 +913,7 @@ describe('Access Request Flow', () => {
         .expect(200);
 
       // 6. User status shows denied
-      const finalStatusResponse = await request(testApp)
+      const finalStatusResponse = await request(app)
         .get('/auth/access-status')
         .expect(200);
 
