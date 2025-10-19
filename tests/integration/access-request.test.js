@@ -223,32 +223,18 @@ describe('Access Request Flow', () => {
         // Use admin user for admin routes, regular user for other routes
         const isAdminRoute = req.path.startsWith('/admin');
         
-        // Get user ID from database dynamically
-        const getUserFromDatabase = async () => {
-          if (prisma) {
-            try {
-              const user = await prisma.user.findUnique({
-                where: { discord_id: isAdminRoute ? '222222222' : '111111111' }
-              });
-              return user?.id;
-            } catch (error) {
-              console.warn('Error getting user ID from database:', error.message);
-              return null;
-            }
-          }
-          return null;
-        };
-        
-        // For synchronous middleware, we need to use the current variables
-        // but we'll update them in beforeEach to ensure they're correct
+        // Get the current user IDs (they get updated in beforeEach)
         const currentUserId = isAdminRoute ? adminUserId : testUserId;
         
-        req.user = { 
-          id: currentUserId, 
-          username: isAdminRoute ? 'adminuser' : 'testuser', 
-          is_admin: isAdminRoute,
-          access_status: isAdminRoute ? 'approved' : 'denied'
-        };
+        // Only set user if we have a valid ID (not the initial string values)
+        if (currentUserId && typeof currentUserId === 'number') {
+          req.user = { 
+            id: currentUserId, 
+            username: isAdminRoute ? 'adminuser' : 'testuser', 
+            is_admin: isAdminRoute,
+            access_status: isAdminRoute ? 'approved' : 'denied'
+          };
+        }
       }
       
       next();
@@ -407,6 +393,17 @@ describe('Access Request Flow', () => {
       
       const requestMessage = 'I want to use this platform for my community server';
 
+      // Test the database operation directly first
+      const beforeUser = await prisma.user.findUnique({
+        where: { id: user.id }
+      });
+      
+      console.log('User before request:', {
+        id: beforeUser.id,
+        access_status: beforeUser.access_status,
+        access_requested_at: beforeUser.access_requested_at
+      });
+
       // Create a custom app for this test with the correct user ID
       const testApp = express();
       testApp.use(express.json());
@@ -437,9 +434,17 @@ describe('Access Request Flow', () => {
 
       const response = await request(testApp)
         .post('/auth/request-access')
-        .send({ message: requestMessage })
-        .expect(200);
+        .send({ message: requestMessage });
 
+      console.log('Response status:', response.status);
+      console.log('Response body:', response.body);
+      
+      if (response.status !== 200) {
+        console.error('Request failed with status:', response.status);
+        console.error('Response body:', response.body);
+      }
+      
+      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
