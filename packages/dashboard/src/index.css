@@ -10,6 +10,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure space background always stays behind content */
+canvas {
+  z-index: -1 !important;
+}
+
+.min-h-screen canvas {
+  z-index: -1 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Ensure login content is above space background */
+.min-h-screen > .max-w-md {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.absolute.top-4.right-4 {
+  z-index: 20 !important;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -545,7 +567,7 @@ body {
     z-index: 50 !important;
   }
   
-  .z-\\[100\\] {
+  .z-100 {
     z-index: 100 !important;
   }
   
@@ -587,9 +609,9 @@ body {
       font-size: 0.75rem !important;
     }
     
-    /* Ensure text is visible */
-    .hidden.sm\\:inline {
-      display: none !important; /* Hide text on very small screens to save space */
+    /* Ensure text is visible - but don't hide login content */
+    .hidden.sm\\:inline:not(.max-w-md *) {
+      display: none !important; /* Hide text on very small screens to save space, but not in login content */
     }
   }
   
@@ -606,7 +628,8 @@ body {
       font-size: 0.625rem !important;
     }
     
-    .p-6 {
+    .macos-card .p-6,
+    .rounded-xl .p-6 {
       padding: 0.75rem !important;
     }
     
@@ -615,11 +638,56 @@ body {
     }
   }
   
+  /* General mobile login fixes - ensure content is always visible */
+  @media (max-width: 768px) {
+    /* Force main container to be visible and properly positioned */
+    .min-h-screen {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 1rem !important;
+      min-height: 100vh !important;
+    }
+    
+    /* Ensure login content container is visible */
+    .min-h-screen > .max-w-md {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: relative !important;
+      z-index: 20 !important;
+      width: 100% !important;
+      max-width: 28rem !important;
+      margin: 0 auto !important;
+    }
+    
+    /* Ensure buttons are visible and positioned correctly */
+    .absolute.top-4.right-4 {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 50 !important;
+      position: absolute !important;
+      top: 1rem !important;
+      right: 1rem !important;
+    }
+    
+    /* Ensure space background doesn't interfere with login content */
+    .min-h-screen > div:not(.max-w-md):not(.absolute) {
+      z-index: 1 !important;
+    }
+    
+    /* Force space background to stay behind everything */
+    .min-h-screen canvas {
+      z-index: -1 !important;
+    }
+  }
+  
   /* Login page specific mobile fixes */
   @media (max-width: 768px) {
     /* Ensure login container is visible */
     .min-h-screen > .max-w-md {
-      margin: 1rem auto;
+      margin: 2rem auto;
       padding: 0 1rem;
     }
     
@@ -627,17 +695,103 @@ body {
     .max-w-md > .rounded-3xl {
       display: block !important;
       visibility: visible !important;
+      opacity: 1 !important;
     }
     
-    /* Ensure GitHub button is visible */
-    .absolute.top-4.right-4 a[href*="github"] {
-      display: flex !important;
+    /* Ensure login content container is visible */
+    .max-w-md {
+      display: block !important;
       visibility: visible !important;
+      opacity: 1 !important;
     }
     
     /* Ensure all top buttons are above login content */
     .absolute.top-4.right-4 {
-      z-index: 100 !important;
+      z-index: 50 !important;
+    }
+  }
+  
+  /* Extra small screens - ensure login content is always visible */
+  @media (max-width: 400px) {
+    /* Force login content to be visible */
+    .min-h-screen > .max-w-md {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      margin: 1rem auto !important;
+      position: relative !important;
+      z-index: 20 !important;
+    }
+    
+    /* Ensure login card is visible */
+    .max-w-md > .rounded-3xl {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: relative !important;
+    }
+    
+    /* Ensure buttons are visible */
+    .absolute.top-4.right-4 {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 50 !important;
+      position: absolute !important;
+    }
+    
+    /* Override any hiding rules that might affect login content */
+    .min-h-screen .max-w-md,
+    .min-h-screen .max-w-md * {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    /* Ensure flex containers maintain their layout */
+    .min-h-screen .max-w-md .flex {
+      display: flex !important;
+    }
+    
+    /* Force main container to show content */
+    .min-h-screen {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 1rem !important;
+    }
+  }
+  
+  /* Even more aggressive fixes for very small screens */
+  @media (max-width: 360px) {
+    /* Override everything to ensure login is visible */
+    .min-h-screen {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0.5rem !important;
+      min-height: 100vh !important;
+    }
+    
+    .min-h-screen > .max-w-md {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      position: relative !important;
+      z-index: 20 !important;
+    }
+    
+    .absolute.top-4.right-4 {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 50 !important;
+      position: absolute !important;
+      top: 1rem !important;
+      right: 1rem !important;
     }
   }
 }

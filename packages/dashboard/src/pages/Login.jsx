@@ -32,11 +32,11 @@ export function Login() {
   const getBackgroundClass = () => {
     switch (theme) {
       case 'space':
-        return 'min-h-screen bg-transparent flex flex-col items-center justify-center px-4 relative overflow-hidden';
+        return 'min-h-screen bg-transparent flex items-center justify-center p-4 relative overflow-hidden';
       case 'light':
-        return 'min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 flex flex-col items-center justify-center px-4';
+        return 'min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 flex items-center justify-center p-4';
       default:
-        return 'min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col items-center justify-center px-4';
+        return 'min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4';
     }
   };
 
@@ -46,7 +46,7 @@ export function Login() {
       {theme === 'space' && <SpaceBackground />}
       
       {/* Theme Toggle and Support Button */}
-      <div className="absolute top-4 right-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 z-[100]">
+      <div className="absolute top-4 right-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 z-50">
         {/* GitHub Link */}
         <a
           href="https://github.com/theantihero/DisModular.js"
@@ -79,23 +79,9 @@ export function Login() {
           <span className="text-energy-green text-sm font-medium">Support</span>
         </button>
 
-        {/* Discord Invite Button */}
-        <a
-          href="https://discord.gg/exqNpFWjJP"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
-            theme === 'space'
-              ? 'holographic-glow bg-gradient-to-r from-hologram-500 to-nebula-purple'
-              : 'bg-gray-800/80 backdrop-blur-lg border border-gray-700/50'
-          }`}
-          title="Join our Discord server"
-        >
-          <span className="text-white text-sm sm:text-base">🚀</span>
-        </a>
       </div>
 
-      <div className="max-w-md w-full relative z-10">
+      <div className="max-w-md w-full relative z-20">
         {/* Background Elements */}
         {theme === 'space' && (
           <>
@@ -242,6 +228,19 @@ export function Login() {
               }`}
             >
               View on GitHub
+            </a>
+            <span className={`text-xs ${
+              theme === 'space' ? 'text-gray-600' : theme === 'light' ? 'text-gray-400' : 'text-gray-500'
+            }`}>•</span>
+            <a
+              href="https://discord.gg/exqNpFWjJP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-xs hover:underline transition-colors ${
+                theme === 'space' ? 'text-gray-400 hover:text-gray-300' : theme === 'light' ? 'text-gray-500 hover:text-gray-700' : 'text-gray-500 hover:text-gray-400'
+              }`}
+            >
+              Join Discord
             </a>
           </div>
         </div>
