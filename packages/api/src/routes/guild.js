@@ -721,9 +721,7 @@ router.get('/:guildId/settings', requireAuth, async (req, res) => {
           id: guildId,
           name: guildName,
           settings: {
-            botPrefix: '!',
-            welcomeMessage: '',
-            autoModeration: false
+            botPrefix: '!'
           }
         },
         select: {

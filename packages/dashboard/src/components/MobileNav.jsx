@@ -88,12 +88,12 @@ export function MobileNav() {
             <div className="flex items-center space-x-3">
               <img 
                 src={user?.data?.avatar ? `https://cdn.discordapp.com/avatars/${user.data.discord_id}/${user.data.avatar}.png` : '/default-avatar.png'} 
-                alt={user?.data?.username} 
+                alt={user?.data?.username || 'User'} 
                 className="w-12 h-12 rounded-full"
                 onError={(e) => { e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiM2MzY2RjEiLz4KPHN2Zz4K'; }}
               />
               <div>
-                <p className="text-white font-medium">{user?.data?.username}</p>
+                <p className="text-white font-medium">{user?.data?.username || 'Loading...'}</p>
                 <p className="text-gray-400 text-sm">👑 Administrator</p>
               </div>
             </div>

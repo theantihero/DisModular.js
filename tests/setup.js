@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Test database URL
-const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
 
 // Global test configuration
 global.testConfig = {

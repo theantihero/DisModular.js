@@ -69,6 +69,9 @@ const db = database.getInstance();
 // Initialize Express app
 const app = express();
 
+// Trust proxy for rate limiting (trust only the first proxy - Traefik)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false // Allow embedding for development

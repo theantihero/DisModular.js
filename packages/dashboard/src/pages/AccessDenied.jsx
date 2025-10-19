@@ -8,12 +8,15 @@
 import { useState } from 'react';
 import { useAppStore } from '../viewmodels/AppViewModel';
 import { api } from '../services/api';
+import { useTheme } from '../hooks/useTheme';
+import { SpaceBackground } from '../components/SpaceBackground';
 
 /**
  * AccessDenied Component
  */
 export function AccessDenied() {
   const { user, logout } = useAppStore();
+  const { theme } = useTheme();
   const [requestMessage, setRequestMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -39,6 +42,17 @@ export function AccessDenied() {
   };
 
   const accessInfo = getAccessMessage();
+
+  const getBackgroundClass = () => {
+    switch (theme) {
+      case 'space':
+        return 'min-h-screen bg-transparent flex items-center justify-center p-4 relative overflow-hidden';
+      case 'light':
+        return 'min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 flex items-center justify-center p-4';
+      default:
+        return 'min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4';
+    }
+  };
 
   /**
    * Handle access request submission
@@ -70,43 +84,70 @@ export function AccessDenied() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className={getBackgroundClass()}>
+      {theme === 'space' && <SpaceBackground />}
+      <div className="max-w-md w-full relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-red-600 rounded-full mb-4">
+          <div className={`inline-block p-4 rounded-full mb-4 ${
+            theme === 'space' 
+              ? 'bg-red-600/80 backdrop-blur-sm' 
+              : 'bg-red-600'
+          }`}>
             <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className={`text-4xl font-bold mb-2 ${
+            theme === 'space' ? 'text-white' : theme === 'light' ? 'text-gray-900' : 'text-white'
+          }`}>
             {accessInfo.title}
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className={`text-lg ${
+            theme === 'space' ? 'text-gray-300' : theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+          }`}>
             {accessInfo.subtitle}
           </p>
         </div>
 
-        <div className="bg-gray-800 rounded-lg shadow-2xl p-8 border border-gray-700">
+        <div className={`rounded-lg shadow-2xl p-8 ${
+          theme === 'space' 
+            ? 'bg-gray-900/80 backdrop-blur-lg border border-gray-700/50' 
+            : theme === 'light'
+            ? 'bg-white/90 backdrop-blur-lg border border-gray-200/50'
+            : 'bg-gray-800 border border-gray-700'
+        }`}>
           <div className="mb-6">
-            <p className="text-gray-300 mb-4">
+            <p className={`mb-4 ${
+              theme === 'space' ? 'text-gray-300' : theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+            }`}>
               {accessInfo.message}
             </p>
             
             {accessInfo.showReason && user?.data?.access_message && (
               <div className="bg-red-900/50 border border-red-500 rounded-lg p-4 mb-4">
                 <h3 className="text-red-400 font-semibold mb-2">Reason:</h3>
-                <p className="text-gray-300 text-sm">{user.data.access_message}</p>
+                <p className={`text-sm ${
+                  theme === 'space' ? 'text-gray-300' : theme === 'light' ? 'text-gray-700' : 'text-gray-300'
+                }`}>{user.data.access_message}</p>
               </div>
             )}
             
             {user && (
-              <div className="bg-gray-700 rounded-lg p-4 mb-4">
-                <p className="text-gray-400 text-sm mb-1">Logged in as:</p>
-                <p className="text-white font-semibold">{user.data.username}#{user.data.discriminator}</p>
+              <div className={`rounded-lg p-4 mb-4 ${
+                theme === 'space' ? 'bg-gray-800/50 backdrop-blur-sm' : theme === 'light' ? 'bg-gray-100' : 'bg-gray-700'
+              }`}>
+                <p className={`text-sm mb-1 ${
+                  theme === 'space' ? 'text-gray-400' : theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+                }`}>Logged in as:</p>
+                <p className={`font-semibold ${
+                  theme === 'space' ? 'text-white' : theme === 'light' ? 'text-gray-900' : 'text-white'
+                }`}>{user?.data?.username || 'User'}#{user?.data?.discriminator || '0000'}</p>
               </div>
             )}
             
-            <p className="text-gray-400 text-sm mb-6">
+            <p className={`text-sm mb-6 ${
+              theme === 'space' ? 'text-gray-400' : theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+            }`}>
               {user?.data?.access_status === 'denied' 
                 ? 'If you believe this is an error, you can request access again or contact the bot administrator.'
                 : 'If you believe this is an error, please contact the bot administrator to grant you access.'

@@ -25,7 +25,7 @@ export function Login() {
   }, [isAuthenticated, navigate]);
 
   const handleDiscordLogin = () => {
-    const discordAuthUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/api/auth/discord`;
+    const discordAuthUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3002'}/auth/discord`;
     window.location.href = discordAuthUrl;
   };
 

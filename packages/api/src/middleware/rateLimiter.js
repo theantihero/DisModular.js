@@ -5,7 +5,7 @@
  * @date 2025-10-18
  */
 
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * Authentication rate limiter
@@ -23,6 +23,12 @@ export const authLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
@@ -42,6 +48,12 @@ export const apiLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
@@ -61,6 +73,12 @@ export const pluginLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
@@ -80,6 +98,12 @@ export const adminLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
@@ -99,6 +123,12 @@ export const guildLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
@@ -118,6 +148,12 @@ export const templateLimiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting for admin users
     return req.user && req.user.is_admin;
+  },
+  keyGenerator: (req) => {
+    // Use proper IPv6 handling with user agent for better identification
+    const ip = ipKeyGenerator(req);
+    const userAgent = req.get('User-Agent') || 'unknown';
+    return `${ip}-${userAgent}`;
   }
 });
 
