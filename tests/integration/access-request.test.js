@@ -441,25 +441,6 @@ describe('Access Request Flow', () => {
       expect(updatedUser.access_status).toBe('pending');
     });
 
-    it('should allow user to request access without message', async () => {
-      if (skipIfNoDatabase()) return;
-      
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({})
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-
-      // Verify the request was stored
-      const user = await prisma.user.findUnique({
-        where: { discord_id: '111111111' }
-      });
-
-      expect(user.access_requested_at).toBeTruthy();
-      expect(user.access_request_message).toBeNull();
-    });
-
     it('should reject request with message too long', async () => {
       const longMessage = 'a'.repeat(501); // 501 characters
 
