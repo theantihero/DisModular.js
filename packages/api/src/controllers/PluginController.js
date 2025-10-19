@@ -51,6 +51,36 @@ function validatePluginPath(pluginId, pluginsDir) {
 }
 
 /**
+ * Get safe plugin directory path with explicit validation
+ * @param {string} pluginId - Plugin ID
+ * @param {string} pluginsDir - Base plugins directory
+ * @returns {string} Safe plugin directory path
+ * @throws {Error} If path is unsafe
+ */
+function getSafePluginPath(pluginId, pluginsDir) {
+  // Explicit validation before any path operations
+  if (!validatePluginPath(pluginId, pluginsDir)) {
+    throw new Error('Invalid plugin ID format or path traversal detected');
+  }
+  
+  // Additional explicit checks
+  if (pluginId.includes('..') || pluginId.includes('\\') || pluginId.includes('/')) {
+    throw new Error('Path traversal characters detected');
+  }
+  
+  // Use resolve for canonical path
+  const safePath = resolve(pluginsDir, pluginId);
+  
+  // Double-check the resolved path is still within the base directory
+  const baseDir = resolve(pluginsDir);
+  if (!safePath.startsWith(baseDir + '/') && safePath !== baseDir) {
+    throw new Error('Resolved path outside base directory');
+  }
+  
+  return safePath;
+}
+
+/**
  * Sanitize string input to prevent injection attacks
  * @param {string} str - String to sanitize
  * @returns {string} Sanitized string
@@ -995,12 +1025,7 @@ export class PluginController {
 
       // Delete plugin folder from filesystem
       try {
-        // Validate plugin ID with path canonicalization
-        if (!validatePluginPath(id, this.pluginsDir)) {
-          throw new Error('Invalid plugin ID format or path traversal detected');
-        }
-        
-        const pluginDir = resolve(this.pluginsDir, id);
+        const pluginDir = getSafePluginPath(id, this.pluginsDir);
         await rm(pluginDir, { recursive: true, force: true });
         logger.debug(`Plugin folder deleted: ${pluginDir}`);
       } catch (fsError) {
@@ -1093,10 +1118,8 @@ export class PluginController {
    */
   async writePluginFile(pluginId, pluginData) {
     try {
-      // Validate plugin ID with path canonicalization to prevent path traversal
-      if (!validatePluginPath(pluginId, this.pluginsDir)) {
-        throw new Error('Invalid plugin ID format or path traversal detected');
-      }
+      // Get safe plugin path with explicit validation
+      const pluginDir = getSafePluginPath(pluginId, this.pluginsDir);
 
       // Validate plugin data structure
       if (!pluginData || typeof pluginData !== 'object') {
@@ -1113,8 +1136,7 @@ export class PluginController {
         throw new Error(`Plugin file too large (max ${MAX_FILE_SIZE} bytes)`);
       }
 
-      // Use path.resolve for canonical path resolution
-      const pluginDir = resolve(this.pluginsDir, pluginId);
+      // Use safe path for file operations
       const pluginFile = join(pluginDir, 'plugin.json');
 
       // Create directory if it doesn't exist

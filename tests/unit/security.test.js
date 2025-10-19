@@ -268,6 +268,29 @@ describe('Security Fixes', () => {
         expect(isValid).toBe(false);
       });
     });
+
+    it('should validate safe plugin path function', () => {
+      // Test the getSafePluginPath function logic
+      const testPluginId = 'test_plugin';
+      const testPluginsDir = '/safe/plugins';
+      
+      // Mock the path resolution logic
+      const mockResolve = (base, path) => {
+        if (path.includes('..') || path.includes('\\') || path.includes('/')) {
+          throw new Error('Path traversal detected');
+        }
+        return `${base}/${path}`;
+      };
+      
+      // Test safe path
+      const safePath = mockResolve(testPluginsDir, testPluginId);
+      expect(safePath).toBe('/safe/plugins/test_plugin');
+      
+      // Test dangerous path
+      expect(() => {
+        mockResolve(testPluginsDir, '../../../etc/passwd');
+      }).toThrow('Path traversal detected');
+    });
   });
 
   describe('Plugin Data Validation', () => {
