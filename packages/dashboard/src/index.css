@@ -415,7 +415,8 @@ body {
   
   /* Fix login page mobile layout */
   .max-w-md {
-    margin-top: 4rem !important;
+    margin-top: 5rem !important;
+    padding: 0 1rem;
   }
   
   /* Ensure login content is visible on mobile */
@@ -554,6 +555,27 @@ body {
   /* Fix mobile plugin grid */
   .grid.grid-cols-1.gap-3 {
     gap: 1rem;
+  }
+  
+  /* Ensure login page buttons are always on top */
+  .z-50 {
+    z-index: 50 !important;
+  }
+  
+  /* Fix mobile login content visibility */
+  .relative.z-20 {
+    z-index: 20 !important;
+  }
+  
+  /* Better mobile login spacing */
+  .mt-20 {
+    margin-top: 5rem !important;
+  }
+  
+  /* Ensure mobile login content is not cut off */
+  .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
   }
 }
 

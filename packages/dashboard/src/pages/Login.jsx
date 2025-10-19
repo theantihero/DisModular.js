@@ -46,7 +46,7 @@ export function Login() {
       {theme === 'space' && <SpaceBackground />}
       
       {/* Theme Toggle and Support Button */}
-      <div className="absolute top-4 right-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 z-10">
+      <div className="absolute top-4 right-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 z-50">
         {/* GitHub Link */}
         <a
           href="https://github.com/theantihero/DisModular.js"
@@ -95,7 +95,7 @@ export function Login() {
         </a>
       </div>
 
-      <div className="max-w-md w-full relative z-10 mt-16 md:mt-0">
+      <div className="max-w-md w-full relative z-20 mt-20 sm:mt-16 md:mt-0 px-4">
         {/* Background Elements */}
         {theme === 'space' && (
           <>
