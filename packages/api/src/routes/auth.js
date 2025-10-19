@@ -224,7 +224,14 @@ export function createAuthRoutes() {
       );
 
       // Get actual bot guilds from Discord API
-      const botGuildIds = await getBotGuildIds();
+      let botGuildIds;
+      try {
+        botGuildIds = await getBotGuildIds();
+      } catch (error) {
+        console.error('Failed to get bot guild IDs:', error);
+        // Fallback to empty set if bot guild fetching fails
+        botGuildIds = new Set();
+      }
 
       // Generate bot invite URL
       const clientId = process.env.DISCORD_CLIENT_ID;
@@ -317,7 +324,14 @@ export function createAuthRoutes() {
       );
 
       // Get actual bot guilds from Discord API
-      const botGuildIds = await getBotGuildIds();
+      let botGuildIds;
+      try {
+        botGuildIds = await getBotGuildIds();
+      } catch (error) {
+        console.error('Failed to get bot guild IDs:', error);
+        // Fallback to empty set if bot guild fetching fails
+        botGuildIds = new Set();
+      }
 
       // Generate bot invite URL
       const clientId = process.env.DISCORD_CLIENT_ID;
@@ -343,9 +357,19 @@ export function createAuthRoutes() {
       });
     } catch (error) {
       console.error('Error refreshing user guilds:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to refresh Discord guilds';
+      if (error.message.includes('Discord API error')) {
+        errorMessage = 'Discord API is currently unavailable. Please try again later.';
+      } else if (error.message.includes('rate limit') || error.message.includes('429')) {
+        errorMessage = 'Discord API rate limit exceeded. Please wait a moment and try again.';
+      }
+      
       res.status(500).json({
         success: false,
-        error: 'Failed to refresh Discord guilds',
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   });

@@ -363,13 +363,21 @@ export class BotClient {
       // Ensure guild exists in database
       await this.ensureGuildExists(guildId);
 
-      // Get all slash commands from plugin manager (not just guild-specific ones)
-      // This ensures all available commands are registered during startup
-      // The guild-specific enablement is checked during command execution
+      // Get all slash commands from plugin manager
+      // Register ALL slash plugins as commands, regardless of global enabled status
+      // Guild-specific enablement is checked during command execution
       const allPlugins = Array.from(this.pluginManager.plugins.values());
       const slashPlugins = allPlugins.filter(
-        p => (p.type === 'slash' || p.type === 'both') && p.enabled !== false,
+        p => (p.type === 'slash' || p.type === 'both'),
       );
+
+      logger.debug(`Found ${slashPlugins.length} slash plugins to register:`, slashPlugins.map(p => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        globalEnabled: p.enabled,
+        command: p.trigger_command || p.trigger?.command
+      })));
 
       if (slashPlugins.length === 0) {
         logger.debug(`No slash commands to register for guild ${guild.name} (${guildId})`);
