@@ -421,13 +421,39 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
-      // Use the main app but ensure the user is properly authenticated
-      // The authentication middleware should pick up the user from beforeEach
-      const response = await request(app)
-        .post('/auth/request-access')
-        .send({ message: requestMessage });
+      // Create a custom app for this test with the correct user ID
+      const testApp = express();
+      testApp.use(express.json());
+      testApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+      }));
+      
+      // Set up authentication for this specific test with correct user ID
+      testApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id, // Use the actual database ID
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
+        next();
+      });
+      
+      // Ensure PrismaService uses test database
+      process.env.NODE_ENV = 'test';
+      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+      
+      testApp.use('/auth', createAuthRoutes());
 
-      expect(response.status).toBe(200);
+      const response = await request(testApp)
+        .post('/auth/request-access')
+        .send({ message: requestMessage })
+        .expect(200);
+
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('submitted successfully');
 
@@ -507,15 +533,14 @@ describe('Access Request Flow', () => {
       const statusTestUserId = 'status-test-user-123';
       
       // Create user with pending status
-      await prisma.user.upsert({
-        where: { id: statusTestUserId },
+      const statusUser = await prisma.user.upsert({
+        where: { discord_id: '444444444' },
         update: {
           access_status: 'pending',
           access_requested_at: new Date(),
           access_request_message: 'Test request message'
         },
         create: {
-          id: statusTestUserId,
           discord_id: '444444444',
           username: 'statustestuser',
           discriminator: '4444',
@@ -543,7 +568,7 @@ describe('Access Request Flow', () => {
       statusApp.use((req, res, next) => {
         req.isAuthenticated = () => true;
         req.user = { 
-          id: statusTestUserId,
+          id: statusUser.id, // Use the actual database ID
           username: 'statustestuser',
           is_admin: false,
           access_status: 'pending'
