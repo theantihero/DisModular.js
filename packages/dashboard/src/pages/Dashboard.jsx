@@ -297,19 +297,19 @@ export function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Guild Count */}
-              <div className="macos-badge flex items-center space-x-2">
-                <span className="text-sm">🏠</span>
-                <span className="text-sm font-medium text-white">
-                  {guildCount?.guild_count || 0} Guilds
-                </span>
-              </div>
-
               {/* Bot Status */}
               <div className="macos-badge flex items-center space-x-2">
                 <HeartbeatIcon status={botStatus?.bot_status} size="sm" />
                 <span className={`text-sm font-medium ${getStatusColor(botStatus?.bot_status)}`}>
                   Bot
+                </span>
+              </div>
+
+              {/* API Status */}
+              <div className="macos-badge flex items-center space-x-2">
+                <HeartbeatIcon status={apiStatus?.api_status} size="sm" />
+                <span className={`text-sm font-medium ${getStatusColor(apiStatus?.api_status)}`}>
+                  API
                 </span>
               </div>
 
