@@ -395,12 +395,17 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     }
 
     // Upsert guild plugin relationship
-    console.log(`Toggling plugin ${pluginId} for guild ${guildId}:`, {
-      enabled,
-      settings,
-      pluginName: plugin.name,
-      globalEnabled: plugin.enabled
-    });
+    console.log(
+      "Toggling plugin %s for guild %s:",
+      pluginId,
+      guildId,
+      {
+        enabled,
+        settings,
+        pluginName: plugin.name,
+        globalEnabled: plugin.enabled
+      }
+    );
     
     const guildPlugin = await getPrisma().guildPlugin.upsert({
       where: {
