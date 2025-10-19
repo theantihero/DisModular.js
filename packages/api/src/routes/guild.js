@@ -75,7 +75,8 @@ async function verifyGuildAdminPermission(userId, guildId, accessToken) {
         // If Discord API fails, use cached permission as fallback
         if (cachedPermission) {
           hasAdminPermission = cachedPermission.is_admin;
-          console.warn('Discord API failed for guild %s, using cached permission:', guildId, discordError.message);
+          const safeGuildId = String(guildId).replace(/[\r\n]/g, "");
+          console.warn('Discord API failed for guild %s, using cached permission:', safeGuildId, discordError.message);
         } else {
           throw new Error('Unable to verify guild permissions. Please try again later.');
         }
