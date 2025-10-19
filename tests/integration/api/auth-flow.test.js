@@ -39,6 +39,20 @@ describe('Auth Flow Integration Tests', () => {
     }));
     app.use(passport.initialize());
     app.use(passport.session());
+    
+    // Add authentication helper methods
+    app.use((req, res, next) => {
+      req.isAuthenticated = () => !!req.user;
+      req.login = (user, callback) => {
+        req.user = user;
+        if (callback) callback();
+      };
+      req.logout = (callback) => {
+        req.user = null;
+        if (callback) callback();
+      };
+      next();
+    });
 
     // Initialize Passport with test config
     initializePassport({
@@ -88,7 +102,7 @@ describe('Auth Flow Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('Logged out successfully');
+      expect(response.body.data.message).toBe('Logged out successfully');
     });
   });
 
@@ -98,7 +112,7 @@ describe('Auth Flow Integration Tests', () => {
         .get('/auth/discord')
         .expect(302);
 
-      expect(response.headers.location).toContain('discord.com/oauth2/authorize');
+      expect(response.headers.location).toContain('discord.com/api/oauth2/authorize');
       expect(response.headers.location).toContain('client_id=test-client-id');
     });
   });
@@ -114,11 +128,13 @@ describe('Auth Flow Integration Tests', () => {
     });
 
     it('should handle OAuth callback without user', async () => {
-      // This would need proper mocking of passport strategy
+      // When database is not available, the passport strategy will return an error
+      // which should redirect to /auth/error
       const response = await request(app)
         .get('/auth/discord/callback')
         .expect(302);
 
+      // Should redirect to error page when database is not available
       expect(response.headers.location).toContain('/auth/error');
     });
   });

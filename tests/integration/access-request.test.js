@@ -49,7 +49,18 @@ function skipIfNoDatabase() {
 
 // Mock passport for testing
 const mockPassport = {
-  initialize: () => (req, res, next) => next(),
+  initialize: () => (req, res, next) => {
+    req.isAuthenticated = () => !!req.user;
+    req.login = (user, callback) => {
+      req.user = user;
+      if (callback) callback();
+    };
+    req.logout = (callback) => {
+      req.user = null;
+      if (callback) callback();
+    };
+    next();
+  },
   session: () => (req, res, next) => next(),
   authenticate: (strategy) => (req, res, next) => {
     req.user = { id: 'test-user', username: 'testuser', is_admin: false };

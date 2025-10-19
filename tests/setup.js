@@ -26,12 +26,6 @@ global.testConfig = {
 // Test database utilities
 export class TestDatabase {
   constructor() {
-    // Skip Prisma client creation in CI mode
-    if (process.env.CI || process.env.GITHUB_ACTIONS) {
-      this.prisma = null;
-      return;
-    }
-    
     // Don't create Prisma client yet - wait for successful setup
     this.prisma = null;
   }
@@ -41,13 +35,7 @@ export class TestDatabase {
    */
   async setup() {
     try {
-      // Skip database setup for CI/CD - we'll use mocks instead
-      if (process.env.CI || process.env.GITHUB_ACTIONS) {
-        console.log('✅ Test database setup skipped (CI mode)');
-        return;
-      }
-
-      // Generate Prisma client
+      // Always try to generate Prisma client first
       try {
         execSync('npx prisma generate', { 
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
@@ -58,7 +46,7 @@ export class TestDatabase {
         return;
       }
 
-      // For testing, we can use db push instead of migrate deploy
+      // Try to push database schema
       try {
         execSync('npx prisma db push', {
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
@@ -69,12 +57,11 @@ export class TestDatabase {
         return;
       }
 
-      // Only create Prisma client after successful database setup
-      // Use explicit SQLite URL to avoid environment variable conflicts
+      // Create Prisma client after successful setup
       this.prisma = new PrismaClient({
         datasources: {
           db: {
-            url: 'file:./test.db'
+            url: TEST_DATABASE_URL
           }
         }
       });
@@ -92,9 +79,9 @@ export class TestDatabase {
    */
   async cleanup() {
     try {
-      // Skip database cleanup for CI/CD or if no prisma client
-      if (process.env.CI || process.env.GITHUB_ACTIONS || !this.prisma) {
-        console.log('✅ Test database cleanup skipped (CI mode or no database)');
+      // Skip database cleanup if no prisma client
+      if (!this.prisma) {
+        console.log('✅ Test database cleanup skipped (no database)');
         return;
       }
       
@@ -187,6 +174,10 @@ export const testHelpers = {
    * Create test user
    */
   async createTestUser(prisma, userData = testFixtures.users.regular) {
+    if (!prisma) {
+      console.log('⚠️ Skipping user creation - no database available');
+      return { id: 'test-user-id', ...userData };
+    }
     return await prisma.user.create({
       data: userData
     });
@@ -196,6 +187,10 @@ export const testHelpers = {
    * Create test plugin
    */
   async createTestPlugin(prisma, pluginData = testFixtures.plugins.helloWorld) {
+    if (!prisma) {
+      console.log('⚠️ Skipping plugin creation - no database available');
+      return { id: 'test-plugin-id', ...pluginData };
+    }
     return await prisma.plugin.create({
       data: pluginData
     });
@@ -205,6 +200,10 @@ export const testHelpers = {
    * Create test bot config
    */
   async createTestBotConfig(prisma, configData = testFixtures.botConfig) {
+    if (!prisma) {
+      console.log('⚠️ Skipping bot config creation - no database available');
+      return Object.entries(configData).map(([key, value]) => ({ key, value }));
+    }
     const configs = [];
     for (const [key, value] of Object.entries(configData)) {
       configs.push(

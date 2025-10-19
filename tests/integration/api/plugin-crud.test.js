@@ -41,6 +41,20 @@ describe('Plugin CRUD Integration Tests', () => {
     }));
     app.use(passport.initialize());
     app.use(passport.session());
+    
+    // Add authentication helper methods
+    app.use((req, res, next) => {
+      req.isAuthenticated = () => !!req.user;
+      req.login = (user, callback) => {
+        req.user = user;
+        if (callback) callback();
+      };
+      req.logout = (callback) => {
+        req.user = null;
+        if (callback) callback();
+      };
+      next();
+    });
 
     // Initialize plugin controller
     pluginController = new PluginController(prisma, './test-plugins');
