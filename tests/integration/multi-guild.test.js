@@ -72,21 +72,18 @@ describe('Multi-Guild Plugin System', () => {
   let testPluginId = 'test-plugin-123';
 
   beforeAll(async () => {
-    // Setup test database - skip in CI mode
-    if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
-      testDb = new TestDatabase();
-      await testDb.setup();
-      await testDb.cleanup();
-    } else {
-      testDb = null; // No database needed in CI mode
-    }
+    // Setup test database
+    testDb = new TestDatabase();
+    await testDb.setup();
+    const testPrisma = testDb.getClient();
+    await testDb.cleanup();
 
     // Create test app
     app = express();
     app.use(express.json());
 
     // Create plugin controller
-    const pluginController = new PluginController(prisma, './test-plugins');
+    const pluginController = new PluginController(testPrisma, './test-plugins');
 
     // Add routes - use mock in CI mode
     if (process.env.CI || process.env.GITHUB_ACTIONS) {
@@ -124,9 +121,9 @@ describe('Multi-Guild Plugin System', () => {
       });
     }
 
-    // Skip database operations in CI mode
-    if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
-      await prisma.plugin.create({
+    // Create test plugin
+    if (testPrisma) {
+      await testPrisma.plugin.create({
         data: {
           id: testPluginId,
           name: 'Test Plugin',
@@ -152,8 +149,9 @@ describe('Multi-Guild Plugin System', () => {
   });
 
   beforeEach(async () => {
-    // Clean up guild plugins before each test - skip in CI mode
-    if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+    // Clean up guild plugins before each test
+    const prisma = testDb.getClient();
+    if (prisma) {
       await prisma.guildPlugin.deleteMany({
         where: {
           guild_id: { in: [testGuildId1, testGuildId2] }
@@ -289,9 +287,10 @@ describe('Multi-Guild Plugin System', () => {
     let templatePluginId;
 
     beforeAll(async () => {
-      // Create a template plugin - skip in CI mode
+      // Create a template plugin
       templatePluginId = 'template-plugin-123';
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      const prisma = testDb.getClient();
+      if (prisma) {
         await prisma.plugin.create({
           data: {
             id: templatePluginId,
@@ -313,7 +312,8 @@ describe('Multi-Guild Plugin System', () => {
     });
 
     afterAll(async () => {
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      const prisma = testDb.getClient();
+      if (prisma) {
         await prisma.plugin.deleteMany({
           where: {
             id: templatePluginId
