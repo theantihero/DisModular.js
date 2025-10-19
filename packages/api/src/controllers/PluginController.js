@@ -372,8 +372,9 @@ function validateEmoji(emoji) {
     }
   }
   
-  // Allow Unicode emojis, Discord emoji format (:emoji:), and basic characters
-  const isValidEmoji = /^[\p{Emoji}\p{Emoji_Modifier_Sequence}\p{Emoji_Presentation}\p{Emoji_Modifier_Base}:a-zA-Z0-9_-]+$/u.test(emoji);
+  // Allow basic characters, Discord emoji format (:emoji:), and common emoji ranges
+  // Using a simple regex that's compatible across all environments
+  const isValidEmoji = /^[a-zA-Z0-9_:-\s\u2600-\u26FF\u2700-\u27BF\uD83C-\uDBFF\uDC00-\uDFFF]+$/.test(emoji);
   if (!isValidEmoji) {
     return { valid: false, error: 'Invalid emoji format' };
   }
