@@ -37,7 +37,7 @@ describe('Plugin CRUD Integration Tests', () => {
       secret: 'test-secret',
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: true }
+      cookie: { secure: false } // Set to false for testing
     }));
     app.use(passport.initialize());
     app.use(passport.session());
@@ -133,13 +133,12 @@ describe('Plugin CRUD Integration Tests', () => {
     it('should create new plugin successfully', async () => {
       const pluginData = {
         name: 'New Test Plugin',
-        version: '1.0.0',
         description: 'A new test plugin',
-        author: 'Test Author',
         type: 'command',
-        enabled: true,
-        trigger_type: 'command',
-        trigger_command: 'test',
+        trigger: {
+          type: 'command',
+          command: 'test'
+        },
         options: [],
         nodes: [
           {
@@ -149,8 +148,7 @@ describe('Plugin CRUD Integration Tests', () => {
             data: { label: 'Test Command' }
           }
         ],
-        edges: [],
-        compiled: 'module.exports = { name: "New Test Plugin" };'
+        edges: []
       };
 
       const response = await request(app)
@@ -311,17 +309,22 @@ describe('Plugin CRUD Integration Tests', () => {
       // Create plugin
       const pluginData = {
         name: 'Consistency Test Plugin',
-        version: '1.0.0',
         description: 'Test plugin for data consistency',
-        author: 'Test Author',
         type: 'command',
-        enabled: true,
-        trigger_type: 'command',
-        trigger_command: 'consistency',
+        trigger: {
+          type: 'command',
+          command: 'consistency'
+        },
         options: [],
-        nodes: [],
-        edges: [],
-        compiled: 'module.exports = {};'
+        nodes: [
+          {
+            id: 'start',
+            type: 'trigger',
+            position: { x: 100, y: 100 },
+            data: { label: 'Consistency Command' }
+          }
+        ],
+        edges: []
       };
 
       const createResponse = await request(app)

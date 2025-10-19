@@ -33,16 +33,8 @@ if (!process.env.SESSION_SECRET) {
   process.env.SESSION_SECRET = 'test_session_secret';
 }
 
-// Skip database operations in CI mode
+// Use test database from setup
 let prisma = null;
-if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
-  const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
-  prisma = new PrismaClient({
-    datasources: {
-      db: { url: TEST_DATABASE_URL }
-    }
-  });
-}
 
 // Helper function to skip database operations in CI mode
 function skipIfNoDatabase() {
@@ -75,7 +67,7 @@ describe('Multi-Guild Plugin System', () => {
     // Setup test database
     testDb = new TestDatabase();
     await testDb.setup();
-    const testPrisma = testDb.getClient();
+    prisma = testDb.getClient();
     await testDb.cleanup();
 
     // Create test app
@@ -83,7 +75,7 @@ describe('Multi-Guild Plugin System', () => {
     app.use(express.json());
 
     // Create plugin controller
-    const pluginController = new PluginController(testPrisma, './test-plugins');
+    const pluginController = new PluginController(prisma, './test-plugins');
 
     // Add routes - use mock in CI mode
     if (process.env.CI || process.env.GITHUB_ACTIONS) {
@@ -101,8 +93,9 @@ describe('Multi-Guild Plugin System', () => {
     
     app.use('/plugins', mockPluginRoutes, createPluginRoutes(pluginController));
 
-    // Create test data - skip in CI mode
-    if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+    // Create test data
+    if (prisma) {
+      // Create test guilds
       await prisma.guild.createMany({
         data: [
           {
@@ -119,11 +112,9 @@ describe('Multi-Guild Plugin System', () => {
           }
         ]
       });
-    }
 
-    // Create test plugin
-    if (testPrisma) {
-      await testPrisma.plugin.create({
+      // Create test plugin
+      await prisma.plugin.create({
         data: {
           id: testPluginId,
           name: 'Test Plugin',
@@ -150,7 +141,6 @@ describe('Multi-Guild Plugin System', () => {
 
   beforeEach(async () => {
     // Clean up guild plugins before each test
-    const prisma = testDb.getClient();
     if (prisma) {
       await prisma.guildPlugin.deleteMany({
         where: {
@@ -204,8 +194,8 @@ describe('Multi-Guild Plugin System', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('enabled');
 
-      // Verify the plugin is enabled for the guild - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Verify the plugin is enabled for the guild
+      if (prisma) {
         const guildPlugins = await prisma.guildPlugin.findMany({
           where: {
             guild_id: testGuildId1,
@@ -223,8 +213,8 @@ describe('Multi-Guild Plugin System', () => {
     });
 
     it('should disable a plugin for a guild', async () => {
-      // First enable the plugin - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // First enable the plugin
+      if (prisma) {
         await prisma.guildPlugin.create({
           data: {
             guild_id: testGuildId1,
@@ -243,8 +233,8 @@ describe('Multi-Guild Plugin System', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('disabled');
 
-      // Verify the plugin is disabled for the guild - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Verify the plugin is disabled for the guild
+      if (prisma) {
         const guildPlugin = await prisma.guildPlugin.findUnique({
           where: {
             guild_id_plugin_id: {
@@ -347,8 +337,8 @@ describe('Multi-Guild Plugin System', () => {
       expect(response.body.data.name).toBe('Cloned Plugin');
       expect(response.body.data.is_template).toBe(false);
 
-      // Verify the plugin was created - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Verify the plugin was created
+      if (prisma) {
         const clonedPlugin = await prisma.plugin.findFirst({
           where: {
             name: 'Cloned Plugin',
@@ -376,8 +366,8 @@ describe('Multi-Guild Plugin System', () => {
 
   describe('Guild Plugin Execution Context', () => {
     it('should check guild plugin status before execution', async () => {
-      // Create a guild plugin relationship - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Create a guild plugin relationship
+      if (prisma) {
         await prisma.guildPlugin.create({
           data: {
             guild_id: testGuildId1,
@@ -395,8 +385,8 @@ describe('Multi-Guild Plugin System', () => {
       };
 
       // This would be tested with actual plugin execution
-      // For now, we verify the guild plugin relationship exists - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // For now, we verify the guild plugin relationship exists
+      if (prisma) {
         const guildPlugin = await prisma.guildPlugin.findUnique({
           where: {
             guild_id_plugin_id: {
@@ -416,8 +406,8 @@ describe('Multi-Guild Plugin System', () => {
     });
 
     it('should prevent execution when plugin is disabled for guild', async () => {
-      // Create a disabled guild plugin relationship - skip in CI mode
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Create a disabled guild plugin relationship
+      if (prisma) {
         await prisma.guildPlugin.create({
           data: {
             guild_id: testGuildId1,
@@ -434,8 +424,8 @@ describe('Multi-Guild Plugin System', () => {
         interaction: { commandName: 'test' }
       };
 
-      // In CI mode, just verify the context is properly set up
-      if (!process.env.CI && !process.env.GITHUB_ACTIONS) {
+      // Verify the context is properly set up
+      if (prisma) {
         const guildPlugin = await prisma.guildPlugin.findUnique({
           where: {
             guild_id_plugin_id: {
