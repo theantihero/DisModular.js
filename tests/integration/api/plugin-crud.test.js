@@ -33,7 +33,7 @@ describe('Plugin CRUD Integration Tests', () => {
       secret: 'test-secret',
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false }
+      cookie: { secure: true }
     }));
     app.use(passport.initialize());
     app.use(passport.session());
