@@ -13,7 +13,7 @@ import { TestDatabase, testFixtures, testHelpers } from '../../setup.js';
 
 // Set test database URL
 const TEST_DATABASE_URL = process.env.CI 
-  ? 'file:./test.db' 
+  ? 'postgresql://dismodular:password@localhost:5432/dismodular_test'
   : (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test');
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 import createAuthRoutes from '../../../packages/api/src/routes/auth.js';

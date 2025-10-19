@@ -39,7 +39,10 @@ export class TestDatabase {
     try {
       // Always try to generate Prisma client first
       try {
-        const schemaFile = process.env.CI ? 'prisma/schema.test.prisma' : 'prisma/schema.prisma';
+        // Use main schema for PostgreSQL, test schema for SQLite
+        const schemaFile = process.env.CI && TEST_DATABASE_URL.startsWith('file:') 
+          ? 'prisma/schema.test.prisma' 
+          : 'prisma/schema.prisma';
         execSync(`npx prisma generate --schema=${schemaFile}`, { 
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit' 
@@ -51,7 +54,10 @@ export class TestDatabase {
 
       // Try to push database schema
       try {
-        const schemaFile = process.env.CI ? 'prisma/schema.test.prisma' : 'prisma/schema.prisma';
+        // Use main schema for PostgreSQL, test schema for SQLite
+        const schemaFile = process.env.CI && TEST_DATABASE_URL.startsWith('file:') 
+          ? 'prisma/schema.test.prisma' 
+          : 'prisma/schema.prisma';
         execSync(`npx prisma db push --schema=${schemaFile}`, {
           env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
           stdio: 'inherit'
