@@ -290,15 +290,17 @@ export class BotClient {
       // Ensure guild exists in database
       await this.ensureGuildExists(guildId);
 
-      // Get enabled plugins for this guild
-      const enabledPlugins = await this.getEnabledPluginsForGuild(guildId);
-      const slashPlugins = enabledPlugins.filter(
-        p => p.type === 'slash' || p.type === 'both',
+      // Get all slash commands from plugin manager (not just guild-specific ones)
+      // This ensures all available commands are registered during startup
+      // The guild-specific enablement is checked during command execution
+      const allPlugins = Array.from(this.pluginManager.plugins.values());
+      const slashPlugins = allPlugins.filter(
+        p => (p.type === 'slash' || p.type === 'both') && p.enabled !== false,
       );
 
       if (slashPlugins.length === 0) {
         logger.debug(`No slash commands to register for guild ${guild.name} (${guildId})`);
-        // Clear existing commands if no plugins are enabled
+        // Clear existing commands if no plugins are available
         const rest = new REST({ version: '10' }).setToken(this.config.token);
         await rest.put(
           Routes.applicationGuildCommands(this.config.clientId, guildId),
@@ -407,6 +409,7 @@ export class BotClient {
       return [];
     }
   }
+
 
   /**
    * Start the bot
