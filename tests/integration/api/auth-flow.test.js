@@ -41,7 +41,7 @@ describe('Auth Flow Integration Tests', () => {
     app.use(passport.session());
     
     // Add authentication helper methods
-    app.use((req, res, next) => {
+    app.use(async (req, res, next) => {
       req.isAuthenticated = () => !!req.user;
       req.login = (user, callback) => {
         req.user = user;
@@ -54,12 +54,46 @@ describe('Auth Flow Integration Tests', () => {
       
       // For testing, automatically set user if not already set
       if (!req.user) {
-        req.user = { 
-          id: 'test-user', 
-          username: 'testuser', 
-          is_admin: true,
-          access_status: 'approved'
-        };
+        // Try to get the user from the database first
+        if (prisma) {
+          try {
+            const dbUser = await prisma.user.findFirst({
+              where: { is_admin: true }
+            });
+            if (dbUser) {
+              req.user = {
+                id: dbUser.id,
+                username: dbUser.username,
+                is_admin: dbUser.is_admin,
+                access_status: dbUser.access_status || 'approved'
+              };
+            } else {
+              // Fallback to default test user
+              req.user = { 
+                id: 'test-user', 
+                username: 'testuser', 
+                is_admin: true,
+                access_status: 'approved'
+              };
+            }
+          } catch (error) {
+            // Fallback to default test user if database query fails
+            req.user = { 
+              id: 'test-user', 
+              username: 'testuser', 
+              is_admin: true,
+              access_status: 'approved'
+            };
+          }
+        } else {
+          // Fallback to default test user if no database
+          req.user = { 
+            id: 'test-user', 
+            username: 'testuser', 
+            is_admin: true,
+            access_status: 'approved'
+          };
+        }
       }
       
       next();
@@ -114,9 +148,13 @@ describe('Auth Flow Integration Tests', () => {
         .get('/auth/me')
         .expect(200);
 
-      // Note: This test would need proper session mocking to work fully
-      // For now, we're testing the route structure
+      // Verify response structure
       expect(response.body).toBeDefined();
+      expect(response.body.success).toBe(true);
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.id).toBe(user.id);
+      expect(response.body.user.username).toBe(user.username);
+      expect(response.body.user.is_admin).toBe(true);
     });
   });
 

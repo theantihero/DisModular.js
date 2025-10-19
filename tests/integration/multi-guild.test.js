@@ -146,6 +146,30 @@ describe('Multi-Guild Plugin System', () => {
         }
       });
 
+      // Create test user
+      try {
+        await prisma.user.upsert({
+          where: { id: 'test-admin' },
+          update: {
+            username: 'test-admin',
+            access_status: 'approved',
+            is_admin: true
+          },
+          create: {
+            id: 'test-admin',
+            discord_id: '123456789',
+            username: 'test-admin',
+            discriminator: '1234',
+            access_status: 'approved',
+            is_admin: true
+          }
+        });
+        console.log('Test admin user created/updated successfully');
+      } catch (error) {
+        console.error('Failed to create test admin user:', error);
+        throw error;
+      }
+
       // Create user guild permissions
       await prisma.userGuildPermission.createMany({
         data: [
