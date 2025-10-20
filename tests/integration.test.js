@@ -16,8 +16,8 @@ if (existsSync(envPath)) {
   config({ path: envPath });
 }
 
-import { describe, it, beforeAll, afterAll } from 'vitest';
-import { expect } from 'vitest';
+import { describe, it, before, after } from 'node:test';
+import { strict as assert } from 'node:assert';
 import { PluginModel } from '../packages/bot/src/models/PluginModel.js';
 import { PluginManager } from '../packages/bot/src/plugins/PluginManager.js';
 import { NodeCompiler } from '../packages/api/src/services/NodeCompiler.js';
@@ -34,7 +34,7 @@ describe('Integration Tests', () => {
   let compiler;
   let testDb;
 
-  beforeAll(async () => {
+  before(async () => {
     // Initialize components - use mock in CI mode
     if (process.env.CI || process.env.GITHUB_ACTIONS) {
       pluginModel = new MockPluginModel();
@@ -50,7 +50,7 @@ describe('Integration Tests', () => {
     compiler = new NodeCompiler();
   });
 
-  afterAll(async () => {
+  after(async () => {
     // Cleanup
     await pluginModel.close();
     if (testDb) {
@@ -86,11 +86,11 @@ describe('Integration Tests', () => {
 
       // 2. Validate node graph
       const validation = compiler.validate(nodes, edges);
-      expect(validation.valid).toBe(true);
+      assert.strictEqual(validation.valid, true);
 
       // 3. Compile to JavaScript
       const compiled = compiler.compile(nodes, edges);
-      expect(compiled).toContain('__resolve');
+      assert.ok(compiled.includes('__resolve'));
 
       // 4. Create plugin data
       const pluginData = {
@@ -107,16 +107,16 @@ describe('Integration Tests', () => {
 
       // 5. Save to database
       const saved = await pluginModel.upsert(pluginData);
-      expect(saved).toBe(true);
+      assert.strictEqual(saved, true);
 
       // 6. Register with plugin manager
       const registered = pluginManager.register(pluginData);
-      expect(registered).toBe(true);
+      assert.strictEqual(registered, true);
 
       // 7. Verify plugin is accessible
       const plugin = pluginManager.getPluginByCommand('hello', 'slash');
-      expect(plugin).not.toBeNull();
-      expect(plugin.name).toBe('Test Hello');
+      assert.notStrictEqual(plugin, null);
+      assert.strictEqual(plugin.name, 'Test Hello');
     });
 
     it('should handle complex plugin with variables and conditions', async () => {
@@ -168,12 +168,12 @@ describe('Integration Tests', () => {
       ];
 
       const validation = compiler.validate(nodes, edges);
-      expect(validation.valid).toBe(true);
+      assert.strictEqual(validation.valid, true);
 
       const compiled = compiler.compile(nodes, edges);
-      expect(compiled).toContain('if (');
-      expect(compiled).toContain('} else {');
-      expect(compiled).toContain('variables["username"]');
+      assert.ok(compiled.includes('if ('));
+      assert.ok(compiled.includes('} else {'));
+      assert.ok(compiled.includes('variables["username"]'));
 
       const pluginData = {
         id: 'test-greet',
@@ -189,7 +189,7 @@ describe('Integration Tests', () => {
 
       await pluginModel.upsert(pluginData);
       const registered = pluginManager.register(pluginData);
-      expect(registered).toBe(true);
+      assert.strictEqual(registered, true);
     });
   });
 
@@ -219,8 +219,8 @@ describe('Integration Tests', () => {
       const counter = await pluginModel.getState(pluginId, 'counter');
       const name = await pluginModel.getState(pluginId, 'name');
 
-      expect(counter).toBe(42);
-      expect(name).toBe('TestPlugin');
+      assert.strictEqual(counter, 42);
+      assert.strictEqual(name, 'TestPlugin');
     });
 
     it('should update existing state', async () => {
@@ -240,15 +240,15 @@ describe('Integration Tests', () => {
       await pluginModel.upsert(pluginData);
 
       await pluginModel.setState(pluginId, 'value', 10);
-      expect(await pluginModel.getState(pluginId, 'value')).toBe(10);
+      assert.strictEqual(await pluginModel.getState(pluginId, 'value'), 10);
 
       await pluginModel.setState(pluginId, 'value', 20);
-      expect(await pluginModel.getState(pluginId, 'value')).toBe(20);
+      assert.strictEqual(await pluginModel.getState(pluginId, 'value'), 20);
     });
 
     it('should return null for non-existent state', async () => {
       const result = await pluginModel.getState('non-existent', 'key');
-      expect(result).toBeNull();
+      assert.strictEqual(result, null);
     });
   });
 
@@ -276,17 +276,17 @@ describe('Integration Tests', () => {
 
       // Plugin starts enabled
       let plugin = pluginManager.plugins.get('test-lifecycle');
-      expect(plugin.enabled).toBe(true);
+      assert.strictEqual(plugin.enabled, true);
 
       // Disable plugin
       pluginManager.disablePlugin('test-lifecycle');
       plugin = pluginManager.plugins.get('test-lifecycle');
-      expect(plugin.enabled).toBe(false);
+      assert.strictEqual(plugin.enabled, false);
 
       // Enable plugin
       pluginManager.enablePlugin('test-lifecycle');
       plugin = pluginManager.plugins.get('test-lifecycle');
-      expect(plugin.enabled).toBe(true);
+      assert.strictEqual(plugin.enabled, true);
     });
 
     it('should unregister and re-register plugins', async () => {
@@ -310,13 +310,13 @@ describe('Integration Tests', () => {
       await pluginModel.upsert(pluginData);
       pluginManager.register(pluginData);
 
-      expect(pluginManager.plugins.has('test-reload')).toBe(true);
+      assert.strictEqual(pluginManager.plugins.has('test-reload'), true);
 
       pluginManager.unregister('test-reload');
-      expect(pluginManager.plugins.has('test-reload')).toBe(false);
+      assert.strictEqual(pluginManager.plugins.has('test-reload'), false);
 
       pluginManager.register(pluginData);
-      expect(pluginManager.plugins.has('test-reload')).toBe(true);
+      assert.strictEqual(pluginManager.plugins.has('test-reload'), true);
     });
   });
 
@@ -345,7 +345,7 @@ describe('Integration Tests', () => {
         };
 
         const result = pluginManager.register(pluginData);
-        expect(result).toBe(false);
+        assert.strictEqual(result, false);
       }
     });
 
@@ -370,7 +370,7 @@ describe('Integration Tests', () => {
         };
 
         const result = pluginManager.register(pluginData);
-        expect(result).toBe(true);
+        assert.strictEqual(result, true);
       }
     });
   });
@@ -378,16 +378,16 @@ describe('Integration Tests', () => {
   describe('Database Operations', () => {
     it('should retrieve all plugins from database', async () => {
       const plugins = await pluginModel.getAll();
-      expect(Array.isArray(plugins)).toBe(true);
-      expect(plugins.length).toBeGreaterThan(0);
+      assert.strictEqual(Array.isArray(plugins), true);
+      assert.ok(plugins.length > 0);
     });
 
     it('should retrieve only enabled plugins', async () => {
       const allPlugins = await pluginModel.getAll(false);
       const enabledPlugins = await pluginModel.getAll(true);
 
-      expect(enabledPlugins.length).toBeLessThanOrEqual(allPlugins.length);
-      expect(enabledPlugins.every(p => p.enabled === true)).toBe(true);
+      assert.ok(enabledPlugins.length <= allPlugins.length);
+      assert.strictEqual(enabledPlugins.every(p => p.enabled === true), true);
     });
 
     it('should retrieve plugin by ID', async () => {
@@ -396,15 +396,15 @@ describe('Integration Tests', () => {
         const firstPlugin = plugins[0];
         const retrieved = await pluginModel.getById(firstPlugin.id);
         
-        expect(retrieved).not.toBeNull();
-        expect(retrieved.id).toBe(firstPlugin.id);
-        expect(retrieved.name).toBe(firstPlugin.name);
+        assert.notStrictEqual(retrieved, null);
+        assert.strictEqual(retrieved.id, firstPlugin.id);
+        assert.strictEqual(retrieved.name, firstPlugin.name);
       }
     });
 
     it('should return null for non-existent plugin', async () => {
       const plugin = await pluginModel.getById('non-existent-id');
-      expect(plugin).toBeNull();
+      assert.strictEqual(plugin, null);
     });
 
     it('should delete plugin from database', async () => {
@@ -421,10 +421,10 @@ describe('Integration Tests', () => {
       };
 
       await pluginModel.upsert(pluginData);
-      expect(await pluginModel.getById('test-delete')).not.toBeNull();
+      assert.notStrictEqual(await pluginModel.getById('test-delete'), null);
 
       await pluginModel.delete('test-delete');
-      expect(await pluginModel.getById('test-delete')).toBeNull();
+      assert.strictEqual(await pluginModel.getById('test-delete'), null);
     });
   });
 
@@ -432,14 +432,14 @@ describe('Integration Tests', () => {
     it('should calculate correct statistics', () => {
       const stats = pluginManager.getStatistics();
 
-      expect(typeof stats.total).toBe('number');
-      expect(typeof stats.enabled).toBe('number');
-      expect(typeof stats.disabled).toBe('number');
-      expect(typeof stats.byType).toBe('object');
-      expect(typeof stats.byType.slash).toBe('number');
-      expect(typeof stats.byType.text).toBe('number');
+      assert.strictEqual(typeof stats.total, 'number');
+      assert.strictEqual(typeof stats.enabled, 'number');
+      assert.strictEqual(typeof stats.disabled, 'number');
+      assert.strictEqual(typeof stats.byType, 'object');
+      assert.strictEqual(typeof stats.byType.slash, 'number');
+      assert.strictEqual(typeof stats.byType.text, 'number');
 
-      expect(stats.total).toBe(stats.enabled + stats.disabled);
+      assert.strictEqual(stats.total, stats.enabled + stats.disabled);
     });
   });
 });
