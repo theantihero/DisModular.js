@@ -140,6 +140,7 @@ describe('Access Request Flow', () => {
     if (prisma) {
       // Set environment variables for PrismaService
       process.env.NODE_ENV = 'test';
+      process.env.CI = 'true'; // Explicitly set CI flag
       process.env.DATABASE_URL = TEST_DATABASE_URL;
       process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
       
@@ -149,8 +150,16 @@ describe('Access Request Flow', () => {
       console.log('Test Prisma client stored globally for PrismaService');
       console.log('Environment variables:', {
         NODE_ENV: process.env.NODE_ENV,
+        CI: process.env.CI,
         DATABASE_URL: process.env.DATABASE_URL,
         TEST_DATABASE_URL: process.env.TEST_DATABASE_URL
+      });
+      
+      // Verify the global client is accessible
+      console.log('Global test client verification:', {
+        exists: !!global.testPrismaClient,
+        type: typeof global.testPrismaClient,
+        hasUser: !!global.testPrismaClient?.user
       });
     }
 
