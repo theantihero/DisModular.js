@@ -15,7 +15,7 @@ import { useToast } from '../hooks/useToast';
 import { useTheme } from '../hooks/useTheme';
 import AdminPanel from '../components/AdminPanel';
 import CryptoSupport from '../components/CryptoSupport';
-import GuildSelector from '../components/GuildSelector';
+
 import FloatingGuildSelector from '../components/FloatingGuildSelector';
 import PaginatedPluginManager from '../components/PaginatedPluginManager';
 import HeartbeatIcon from '../components/HeartbeatIcon';
