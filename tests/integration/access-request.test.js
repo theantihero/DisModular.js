@@ -357,16 +357,18 @@ describe('Access Request Flow', () => {
         // Update testUserId to use the actual database ID
         testUserId = user.id;
         
-        // Reset user access status
-        await prisma.user.update({
-          where: { id: testUserId },
-          data: {
-            access_status: 'denied', // Reset to denied so user can request access
-            access_requested_at: null,
-            access_request_message: null,
-            access_message: null
-          }
-        });
+        // Reset user access status (only if user exists)
+        if (user) {
+          await prisma.user.update({
+            where: { id: testUserId },
+            data: {
+              access_status: 'denied', // Reset to denied so user can request access
+              access_requested_at: null,
+              access_request_message: null,
+              access_message: null
+            }
+          });
+        }
       } catch (error) {
         console.error('Error in beforeEach:', error);
         throw error;
@@ -421,28 +423,39 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
-      // Use the main app but temporarily override the authentication middleware
-      // to ensure the user is properly authenticated
-      const originalMiddleware = app._router.stack.find(layer => 
-        layer.name === 'middleware' && layer.regexp.test('/')
-      );
-      
-      // Create a temporary middleware that sets the user correctly
-      app.use((req, res, next) => {
-        // Only override if this is our test request
-        if (req.path === '/auth/request-access' && req.method === 'POST') {
-          req.isAuthenticated = () => true;
-          req.user = { 
-            id: user.id,
-            username: 'testuser', 
-            is_admin: false,
-            access_status: 'denied'
-          };
+      // Create a separate app instance for this test (following the pattern of working tests)
+      const messageTestApp = express();
+      messageTestApp.use(express.json());
+      messageTestApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          sameSite: 'lax'
         }
+      }));
+      
+      messageTestApp.use(mockPassport.initialize());
+      messageTestApp.use(mockPassport.session());
+      
+      // Set up authentication middleware BEFORE registering routes
+      messageTestApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id,
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
         next();
       });
+      
+      // Register auth routes AFTER setting up authentication
+      messageTestApp.use('/auth', createAuthRoutes());
 
-      const response = await request(app)
+      const response = await request(messageTestApp)
         .post('/auth/request-access')
         .send({ message: requestMessage });
 
@@ -643,9 +656,21 @@ describe('Access Request Flow', () => {
         where: { id: adminUserId }
       });
       console.log('Admin user in database:', adminUser);
-      // Set up pending user
+      
+      // Ensure test user exists and get the actual ID
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
+      console.log('Test user in database:', testUser);
+      
+      // Set up pending user using the actual database ID
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -660,7 +685,7 @@ describe('Access Request Flow', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].id).toBe(testUserId);
+      expect(response.body.data[0].id).toBe(testUser.id);
       expect(response.body.data[0].access_request_message).toBe('I need access for my server');
     });
 
@@ -765,12 +790,22 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Ensure test user exists and is in pending status
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        // Create test user if it doesn't exist
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'pending',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for deny test:', testUser);
       }
       
       // Ensure admin user exists
