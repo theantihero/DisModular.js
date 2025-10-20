@@ -468,7 +468,7 @@ export function createAuthRoutes() {
           path: '/',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax'
+          sameSite: 'lax',
         });
 
         res.json({
