@@ -530,8 +530,8 @@ describe('Plugin CRUD Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.compiled).toBeDefined();
-      expect(typeof response.body.data.compiled).toBe('string');
+      expect(response.body.compiled).toBeDefined();
+      expect(typeof response.body.compiled).toBe('string');
     });
 
     it('should return 400 for invalid compilation data', async () => {
