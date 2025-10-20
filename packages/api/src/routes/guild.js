@@ -407,10 +407,13 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     }
 
     // Upsert guild plugin relationship
+    // Sanitize user input before logging to prevent log injection
+    const sanitizedGuildId = guildId.replace(/\r?\n/g, "");
+    const sanitizedPluginId = pluginId.replace(/\r?\n/g, "");
     console.log(
       "Toggling plugin %s for guild %s:",
-      pluginId,
-      guildId,
+      sanitizedPluginId,
+      sanitizedGuildId,
       {
         enabled,
         settings,
