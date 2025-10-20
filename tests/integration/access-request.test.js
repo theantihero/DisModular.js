@@ -453,6 +453,15 @@ describe('Access Request Flow', () => {
       });
       
       // Register auth routes AFTER setting up authentication
+      // Import the PrismaService to ensure it uses the test database
+      const { resetPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
+      
+      // Reset the Prisma client to force it to use the test database
+      resetPrismaClient();
+      
+      // Set the test database URL for the PrismaService
+      process.env.DATABASE_URL = TEST_DATABASE_URL;
+      
       messageTestApp.use('/auth', createAuthRoutes());
 
       const response = await request(messageTestApp)
