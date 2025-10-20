@@ -443,22 +443,42 @@ describe('Access Request Flow', () => {
         testUserId = user.id;
         adminUserId = adminUser.id;
         
-        // Reset user access status
-        const updatedUser = await prisma.user.update({
-          where: { id: testUserId },
-          data: {
-            access_status: 'denied', // Reset to denied so user can request access
-            access_requested_at: null,
-            access_request_message: null,
-            access_message: null
-          }
+        // Verify the user exists before attempting update
+        const existingUser = await prisma.user.findUnique({
+          where: { id: testUserId }
         });
         
-        console.log('Users reset in beforeEach:', { 
-          testUserId, 
-          adminUserId, 
-          updatedUser: updatedUser.id 
-        });
+        if (!existingUser) {
+          console.error('User not found for update, creating new one');
+          const newUser = await prisma.user.create({
+            data: {
+              discord_id: '111111111',
+              username: 'testuser',
+              discriminator: '1234',
+              access_status: 'denied',
+              is_admin: false
+            }
+          });
+          testUserId = newUser.id;
+          console.log('Created new user in beforeEach:', newUser);
+        } else {
+          // Reset user access status
+          const updatedUser = await prisma.user.update({
+            where: { id: testUserId },
+            data: {
+              access_status: 'denied', // Reset to denied so user can request access
+              access_requested_at: null,
+              access_request_message: null,
+              access_message: null
+            }
+          });
+          
+          console.log('Users reset in beforeEach:', { 
+            testUserId, 
+            adminUserId, 
+            updatedUser: updatedUser.id 
+          });
+        }
       } catch (error) {
         console.error('Error in beforeEach:', error);
         throw error;
