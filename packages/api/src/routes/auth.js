@@ -438,19 +438,44 @@ export function createAuthRoutes() {
    * Logout
    */
   router.post('/logout', (req, res) => {
+    // Check if user is actually logged in
+    if (!req.user) {
+      return res.json({
+        success: true,
+        data: {
+          message: 'Already logged out',
+        },
+      });
+    }
+
+    // Destroy the session and logout
     req.logout((err) => {
       if (err) {
+        console.error('Logout error:', err);
         return res.status(500).json({
           success: false,
           error: 'Failed to logout',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined,
         });
       }
       
-      res.json({
-        success: true,
-        data: {
-          message: 'Logged out successfully',
-        },
+      // Destroy the session completely
+      req.session.destroy((sessionErr) => {
+        if (sessionErr) {
+          console.error('Session destroy error:', sessionErr);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to destroy session',
+            details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
+          });
+        }
+        
+        res.json({
+          success: true,
+          data: {
+            message: 'Logged out successfully',
+          },
+        });
       });
     });
   });
