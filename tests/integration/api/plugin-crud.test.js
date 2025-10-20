@@ -33,10 +33,22 @@ describe('Plugin CRUD Integration Tests', () => {
     
     // Additional cleanup to ensure no plugins exist (including templates)
     if (prisma) {
+      // Delete all plugins first
       await prisma.plugin.deleteMany({});
+      
       // Also clean up any template plugins that might persist from other tests
       await prisma.plugin.deleteMany({
         where: { is_template: true }
+      });
+      
+      // Clean up any plugins with specific test IDs that might persist
+      await prisma.plugin.deleteMany({
+        where: { 
+          OR: [
+            { id: 'test-plugin-123' },
+            { id: { startsWith: 'test-' } }
+          ]
+        }
       });
     }
 
