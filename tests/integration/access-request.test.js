@@ -86,13 +86,15 @@ describe('Access Request Flow', () => {
 
     // Ensure PrismaService uses the same client as the test setup
     if (prisma) {
+      // Set environment variables for PrismaService
+      process.env.NODE_ENV = 'test';
+      process.env.DATABASE_URL = TEST_DATABASE_URL;
+      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+      
       const { resetPrismaClient, getPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
       
       // Reset the Prisma client to force it to use the test database
       resetPrismaClient();
-      
-      // Set the test database URL for the PrismaService
-      process.env.DATABASE_URL = TEST_DATABASE_URL;
       
       // Force Prisma client initialization with test database
       const testPrismaClient = getPrismaClient();
@@ -101,6 +103,11 @@ describe('Access Request Flow', () => {
       }
       
       console.log('PrismaService synchronized with test database');
+      console.log('Environment variables:', {
+        NODE_ENV: process.env.NODE_ENV,
+        DATABASE_URL: process.env.DATABASE_URL,
+        TEST_DATABASE_URL: process.env.TEST_DATABASE_URL
+      });
     }
 
     // Create admin user in database
