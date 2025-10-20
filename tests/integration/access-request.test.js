@@ -895,9 +895,18 @@ describe('Access Request Flow', () => {
     it('should require denial message', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Set up pending user for denial test
+      // Ensure test user exists and get the actual ID
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
+      // Set up pending user for denial test using the actual database ID
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -907,7 +916,7 @@ describe('Access Request Flow', () => {
 
       const adminApp = createAdminApp();
       const response = await request(adminApp)
-        .post(`/admin/access-requests/${testUserId}/deny`)
+        .post(`/admin/access-requests/${testUser.id}/deny`)
         .send({})
         .expect(400);
 
