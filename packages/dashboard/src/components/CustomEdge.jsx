@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, getSmoothStepPath } from 'reactflow';
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from 'reactflow';
 
 /**
  * Custom Edge with hover highlighting
