@@ -261,7 +261,7 @@ describe('Access Request Flow', () => {
     app.use('/auth', createAuthRoutes());
 
     // Define createAdminApp function with access to prisma
-    createAdminApp = () => {
+    createAdminApp = async () => {
       const adminApp = express();
       adminApp.use(express.json());
       adminApp.use(session({
@@ -298,6 +298,21 @@ describe('Access Request Flow', () => {
       });
       
       // Use the real admin routes with mocked middleware
+      // Ensure PrismaService uses the test database for admin routes
+      const { resetPrismaClient, getPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
+      
+      // Reset the Prisma client to force it to use the test database
+      resetPrismaClient();
+      
+      // Set the test database URL for the PrismaService
+      process.env.DATABASE_URL = TEST_DATABASE_URL;
+      
+      // Force Prisma client initialization with test database
+      const testPrismaClient = getPrismaClient();
+      if (!testPrismaClient) {
+        throw new Error('Failed to initialize Prisma client with test database for admin routes');
+      }
+      
       const adminRoutes = createAdminRoutes();
       
       // Override the requireAdmin middleware for testing
@@ -693,7 +708,7 @@ describe('Access Request Flow', () => {
         }
       });
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .get('/admin/access-requests')
         .expect(200);
@@ -920,7 +935,7 @@ describe('Access Request Flow', () => {
         }
       });
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .post(`/admin/access-requests/${testUser.id}/deny`)
         .send({})
@@ -959,7 +974,7 @@ describe('Access Request Flow', () => {
 
       const revocationReason = 'Violation of terms of service';
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .post(`/admin/users/${testUser.id}/revoke-access`)
         .send({ reason: revocationReason })
@@ -1000,7 +1015,7 @@ describe('Access Request Flow', () => {
 
       const grantMessage = 'Access has been granted. Welcome!';
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .post(`/admin/users/${testUser.id}/grant-access`)
         .send({ message: grantMessage })
@@ -1043,7 +1058,7 @@ describe('Access Request Flow', () => {
         });
       }
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .post(`/admin/users/${adminUserId}/revoke-access`)
         .send({ reason: 'Test revocation' })
@@ -1075,7 +1090,7 @@ describe('Access Request Flow', () => {
       // Update testUserId to use the actual generated ID
       testUserId = testUser.id;
 
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const response = await request(adminApp)
         .post(`/admin/users/${testUserId}/revoke-access`)
         .send({})
@@ -1109,7 +1124,7 @@ describe('Access Request Flow', () => {
         .expect(200);
 
       // 2. Admin sees the request
-      const adminApp = createAdminApp();
+      const adminApp = await createAdminApp();
       const requestsResponse = await request(adminApp)
         .get('/admin/access-requests')
         .expect(200);
