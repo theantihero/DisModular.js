@@ -449,33 +449,42 @@ export function createAuthRoutes() {
         });
       }
 
-      // Clear the user from the request
-      req.user = null;
-
-      // Destroy the session
-      req.session.destroy((err) => {
+      // Destroy the session and logout
+      req.logout((err) => {
         if (err) {
-          console.error('Session destroy error:', err);
+          console.error('Logout error:', err);
           return res.status(500).json({
             success: false,
-            error: 'Failed to destroy session',
+            error: 'Failed to logout',
             details: process.env.NODE_ENV === 'development' ? err.message : undefined,
           });
         }
+        
+        // Destroy the session completely
+        req.session.destroy((sessionErr) => {
+          if (sessionErr) {
+            console.error('Session destroy error:', sessionErr);
+            return res.status(500).json({
+              success: false,
+              error: 'Failed to destroy session',
+              details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
+            });
+          }
 
-        // Clear the session cookie
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-        });
+          // Clear the session cookie
+          res.clearCookie('connect.sid', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+          });
 
-        res.json({
-          success: true,
-          data: {
-            message: 'Logged out successfully',
-          },
+          res.json({
+            success: true,
+            data: {
+              message: 'Logged out successfully',
+            },
+          });
         });
       });
     } catch (error) {
