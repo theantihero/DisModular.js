@@ -143,23 +143,10 @@ describe('Access Request Flow', () => {
       process.env.DATABASE_URL = TEST_DATABASE_URL;
       process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
       
-      // Import PrismaService and override it to use our test client
-      const PrismaServiceModule = await import('../../packages/api/src/services/PrismaService.js');
+      // Store the test client globally so PrismaService can use it
+      global.testPrismaClient = prisma;
       
-      // Reset the Prisma client
-      PrismaServiceModule.resetPrismaClient();
-      
-      // Override the getPrismaClient function to return our test client
-      const originalGetPrismaClient = PrismaServiceModule.getPrismaClient;
-      PrismaServiceModule.getPrismaClient = () => {
-        console.log('Using test database client in PrismaService');
-        return prisma;
-      };
-      
-      // Store the original function for cleanup if needed
-      PrismaServiceModule._originalGetPrismaClient = originalGetPrismaClient;
-      
-      console.log('PrismaService overridden to use test database client');
+      console.log('Test Prisma client stored globally for PrismaService');
       console.log('Environment variables:', {
         NODE_ENV: process.env.NODE_ENV,
         DATABASE_URL: process.env.DATABASE_URL,

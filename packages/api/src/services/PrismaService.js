@@ -15,6 +15,12 @@ let prismaClient = null;
  * @returns {PrismaClient} Prisma client instance
  */
 export function getPrismaClient() {
+  // Check if there's a global test client available (for testing)
+  if (global.testPrismaClient) {
+    console.log('Using global test Prisma client');
+    return global.testPrismaClient;
+  }
+  
   if (!prismaClient) {
     try {
       // Check if we're in test mode and use test database URL if available
