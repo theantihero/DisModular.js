@@ -45,6 +45,58 @@ function skipIfNoDatabase() {
   return false;
 }
 
+// Helper function to get test user with fallback creation
+async function getTestUser() {
+  if (!prisma) {
+    throw new Error('Prisma client not available');
+  }
+  
+  let user = await prisma.user.findUnique({
+    where: { discord_id: '111111111' }
+  });
+  
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        discord_id: '111111111',
+        username: 'testuser',
+        discriminator: '1234',
+        access_status: 'denied',
+        is_admin: false
+      }
+    });
+    console.log('Test user created via helper:', user);
+  }
+  
+  return user;
+}
+
+// Helper function to get admin user with fallback creation
+async function getAdminUser() {
+  if (!prisma) {
+    throw new Error('Prisma client not available');
+  }
+  
+  let adminUser = await prisma.user.findUnique({
+    where: { discord_id: '222222222' }
+  });
+  
+  if (!adminUser) {
+    adminUser = await prisma.user.create({
+      data: {
+        discord_id: '222222222',
+        username: 'adminuser',
+        discriminator: '5678',
+        access_status: 'approved',
+        is_admin: true
+      }
+    });
+    console.log('Admin user created via helper:', adminUser);
+  }
+  
+  return adminUser;
+}
+
 // Helper function to create authenticated request
 function createAuthenticatedRequest(app, userId = 'test-user-123') {
   return request(app)
@@ -113,16 +165,14 @@ describe('Access Request Flow', () => {
     // Create admin user in database
     if (prisma) {
       try {
-        await prisma.user.upsert({
+        const adminUser = await prisma.user.upsert({
           where: { discord_id: '222222222' },
           update: {
-            id: adminUserId,
             username: 'adminuser',
             access_status: 'approved',
             is_admin: true
           },
           create: {
-            id: adminUserId,
             discord_id: '222222222',
             username: 'adminuser',
             discriminator: '5678',
@@ -130,7 +180,22 @@ describe('Access Request Flow', () => {
             is_admin: true
           }
         });
-        console.log('Admin user created/updated successfully');
+        
+        // Update adminUserId to use the actual database ID
+        adminUserId = adminUser.id;
+        
+        console.log('Admin user created/updated successfully:', adminUser);
+        
+        // Verify admin user exists
+        const verifyAdmin = await prisma.user.findUnique({
+          where: { id: adminUserId }
+        });
+        
+        if (!verifyAdmin) {
+          throw new Error('Admin user verification failed');
+        }
+        
+        console.log('Admin user verified:', verifyAdmin);
       } catch (error) {
         console.error('Failed to create admin user:', error);
         throw error;
@@ -362,63 +427,34 @@ describe('Access Request Flow', () => {
     // Reset user access status before each test
     if (prisma) {
       try {
-        // First, ensure the test user exists
-        let user = await prisma.user.findUnique({
-          where: { discord_id: '111111111' }
+        // Use helper functions to ensure users exist
+        const user = await getTestUser();
+        const adminUser = await getAdminUser();
+        
+        // Update IDs to use the actual database IDs
+        testUserId = user.id;
+        adminUserId = adminUser.id;
+        
+        // Reset user access status
+        const updatedUser = await prisma.user.update({
+          where: { id: testUserId },
+          data: {
+            access_status: 'denied', // Reset to denied so user can request access
+            access_requested_at: null,
+            access_request_message: null,
+            access_message: null
+          }
         });
         
-        if (!user) {
-          // Create the test user if it doesn't exist
-          user = await prisma.user.create({
-            data: {
-              discord_id: '111111111',
-              username: 'testuser',
-              discriminator: '1234',
-              access_status: 'denied',
-              is_admin: false
-            }
-          });
-        }
-        
-        // Update testUserId to use the actual database ID
-        testUserId = user.id;
-        
-        // Reset user access status (only if user exists)
-        if (user) {
-          await prisma.user.update({
-            where: { id: testUserId },
-            data: {
-              access_status: 'denied', // Reset to denied so user can request access
-              access_requested_at: null,
-              access_request_message: null,
-              access_message: null
-            }
-          });
-        }
+        console.log('Users reset in beforeEach:', { 
+          testUserId, 
+          adminUserId, 
+          updatedUser: updatedUser.id 
+        });
       } catch (error) {
         console.error('Error in beforeEach:', error);
         throw error;
       }
-      
-      // Ensure admin user exists
-      let adminUser = await prisma.user.findUnique({
-        where: { discord_id: '222222222' }
-      });
-      
-      if (!adminUser) {
-        adminUser = await prisma.user.create({
-          data: {
-            discord_id: '222222222',
-            username: 'adminuser',
-            discriminator: '5678',
-            access_status: 'approved',
-            is_admin: true
-          }
-        });
-      }
-      
-      // Update adminUserId to use the actual database ID
-      adminUserId = adminUser.id;
       
       // Clean up any existing access requests to prevent test conflicts
       await prisma.user.updateMany({
@@ -834,14 +870,8 @@ describe('Access Request Flow', () => {
         console.log('Created test user for deny test:', testUser);
       }
       
-      // Ensure admin user exists
-      const adminUser = await prisma.user.findUnique({
-        where: { discord_id: '222222222' }
-      });
-      
-      if (!adminUser) {
-        throw new Error('Admin user not found in database');
-      }
+      // Ensure admin user exists using helper function
+      const adminUser = await getAdminUser();
       
       // Set up pending user
       await prisma.user.update({
