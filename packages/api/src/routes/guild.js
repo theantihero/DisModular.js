@@ -387,15 +387,14 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
 
     if (!plugin) {
-      // Helper to sanitize user input for log output. Removes line breaks, control chars, quotes it.
+      // Helper to sanitize user input for log output.
+      // Only allow alphanumerics, dashes, and underscores. Remove everything else.
       function sanitizeForLog(input) {
         if (typeof input !== 'string') {
           input = String(input);
         }
-        // Remove all control chars (including \n, \r, tabs, etc.)
-        input = input.replace(/[\r\n\t\x00-\x1F\x7F]+/g, '');
-        // Escape any quotes (to avoid confusion in logs)
-        input = input.replace(/["']/g, '');
+        // Strict whitelist: allow only a-z, A-Z, 0-9, dash, underscore.
+        input = input.replace(/[^a-zA-Z0-9\-_]/g, '');
         return `"${input}"`;
       }
       const safePluginId = sanitizeForLog(pluginId);
