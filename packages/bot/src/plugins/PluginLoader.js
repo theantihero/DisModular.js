@@ -33,6 +33,7 @@ export class PluginLoader {
     this.pluginModel = pluginModel;
     this.watcher = null;
     this.onPluginChange = onPluginChange;
+    this.isInitialLoading = false; // Flag to prevent premature command registration
     this.compiler = new NodeCompiler();
   }
 
@@ -146,8 +147,13 @@ export class PluginLoader {
       if (registered) {
         logger.success(`Plugin loaded: ${pluginData.name} v${pluginData.version}`);
         
-        // Trigger plugin change callback (e.g., re-register slash commands)
-        if (this.onPluginChange) {
+        // Only trigger plugin change callback if not during initial loading
+        // This prevents premature command registration during startup
+        if (this.onPluginChange && !this.isInitialLoading) {
+          // Clear command cache to force re-registration on next sync
+          if (this.botClient && typeof this.botClient.clearCommandCache === 'function') {
+            this.botClient.clearCommandCache();
+          }
           await this.onPluginChange();
         }
       }
@@ -185,6 +191,8 @@ export class PluginLoader {
    */
   async loadAllFromDatabase() {
     try {
+      this.isInitialLoading = true; // Prevent premature command registration
+      
       const plugins = await this.pluginModel.getAll(true); // Only enabled
       
       logger.info(`Loading ${plugins.length} plugins from database...`);
@@ -197,8 +205,16 @@ export class PluginLoader {
       }
       
       logger.success(`Loaded ${loaded}/${plugins.length} plugins`);
+      
+      // Trigger plugin change callback after all plugins are loaded
+      if (this.onPluginChange) {
+        await this.onPluginChange();
+      }
+      
+      this.isInitialLoading = false; // Re-enable callback for future changes
     } catch (error) {
       logger.error('Failed to load plugins from database:', error);
+      this.isInitialLoading = false; // Reset flag on error
     }
   }
 
@@ -256,13 +272,18 @@ export class PluginLoader {
    */
   async loadAllFromFilesystem() {
     try {
+      this.isInitialLoading = true; // Prevent premature command registration
+      
       const pluginFiles = await this.scanPluginsDirectory();
 
       for (const pluginFile of pluginFiles) {
         await this.loadPluginFromFile(pluginFile);
       }
+      
+      this.isInitialLoading = false; // Re-enable callback for future changes
     } catch (error) {
       logger.error('Failed to load plugins from filesystem:', error);
+      this.isInitialLoading = false; // Reset flag on error
     }
   }
 

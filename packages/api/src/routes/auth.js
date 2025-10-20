@@ -67,9 +67,29 @@ async function getBotGuildIds() {
     }
 
     const botGuilds = await response.json();
-    console.log(`Discord API returned ${botGuilds.length} guilds:`, botGuilds.map(g => ({ id: g.id, name: g.name })));
+    console.log(`Discord API returned ${botGuilds.length} guilds:`, botGuilds.map(g => ({ 
+      id: g.id, 
+      name: g.name, 
+      permissions: g.permissions,
+      permissions_new: g.permissions_new 
+    })));
     
-    const guildSet = new Set(botGuilds.map(guild => guild.id));
+    // Filter out guilds where bot might not be active (check permissions)
+    const activeGuilds = botGuilds.filter(guild => {
+      // Check if bot has basic permissions (can read messages, send messages)
+      const permissions = BigInt(guild.permissions || 0);
+      const requiredPermissions = BigInt(0x400) | BigInt(0x800); // READ_MESSAGES | SEND_MESSAGES
+      const hasRequiredPermissions = (permissions & requiredPermissions) === requiredPermissions;
+      
+      console.log(`Guild ${guild.name} (${guild.id}): permissions=${permissions.toString()}, hasRequired=${hasRequiredPermissions}`);
+      
+      return hasRequiredPermissions;
+    });
+    
+    console.log(`Filtered to ${activeGuilds.length} active guilds (bot has required permissions)`);
+    console.log(`Active guild IDs:`, activeGuilds.map(g => g.id));
+    
+    const guildSet = new Set(activeGuilds.map(guild => guild.id));
     
     // Cache the successful response
     await DiscordApiCacheService.set(cacheKey, 'bot_guilds', { guildIds: Array.from(guildSet) }, CACHE_TTL.BOT_GUILDS);
@@ -204,7 +224,14 @@ export function createAuthRoutes() {
       );
 
       // Get actual bot guilds from Discord API
-      const botGuildIds = await getBotGuildIds();
+      let botGuildIds;
+      try {
+        botGuildIds = await getBotGuildIds();
+      } catch (error) {
+        console.error('Failed to get bot guild IDs:', error);
+        // Fallback to empty set if bot guild fetching fails
+        botGuildIds = new Set();
+      }
 
       // Generate bot invite URL
       const clientId = process.env.DISCORD_CLIENT_ID;
@@ -235,6 +262,25 @@ export function createAuthRoutes() {
   });
 
   /**
+   * Clear bot guild cache (for debugging)
+   */
+  router.post('/clear-bot-cache', async (req, res) => {
+    try {
+      clearBotGuildCache();
+      res.json({
+        success: true,
+        message: 'Bot guild cache cleared'
+      });
+    } catch (error) {
+      console.error('Error clearing bot guild cache:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to clear bot guild cache',
+      });
+    }
+  });
+
+  /**
    * Refresh user guilds (clear cache and fetch fresh data)
    */
   router.post('/refresh-guilds', async (req, res) => {
@@ -254,9 +300,10 @@ export function createAuthRoutes() {
         });
       }
 
-      // Clear user's guild cache
+      // Clear user's guild cache and bot guild cache
       const cacheKey = generateCacheKey('user_guilds', { userId: user.discord_id });
       await DiscordApiCacheService.clearByType('user_guilds', user.discord_id);
+      clearBotGuildCache(); // Also clear bot guild cache for fresh data
 
       // Fetch fresh guild data from Discord API
       const discordResponse = await fetch('https://discord.com/api/users/@me/guilds', {
@@ -277,7 +324,14 @@ export function createAuthRoutes() {
       );
 
       // Get actual bot guilds from Discord API
-      const botGuildIds = await getBotGuildIds();
+      let botGuildIds;
+      try {
+        botGuildIds = await getBotGuildIds();
+      } catch (error) {
+        console.error('Failed to get bot guild IDs:', error);
+        // Fallback to empty set if bot guild fetching fails
+        botGuildIds = new Set();
+      }
 
       // Generate bot invite URL
       const clientId = process.env.DISCORD_CLIENT_ID;
@@ -303,9 +357,19 @@ export function createAuthRoutes() {
       });
     } catch (error) {
       console.error('Error refreshing user guilds:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to refresh Discord guilds';
+      if (error.message.includes('Discord API error')) {
+        errorMessage = 'Discord API is currently unavailable. Please try again later.';
+      } else if (error.message.includes('rate limit') || error.message.includes('429')) {
+        errorMessage = 'Discord API rate limit exceeded. Please wait a moment and try again.';
+      }
+      
       res.status(500).json({
         success: false,
-        error: 'Failed to refresh Discord guilds',
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   });
@@ -374,19 +438,44 @@ export function createAuthRoutes() {
    * Logout
    */
   router.post('/logout', (req, res) => {
+    // Check if user is actually logged in
+    if (!req.user) {
+      return res.json({
+        success: true,
+        data: {
+          message: 'Already logged out',
+        },
+      });
+    }
+
+    // Destroy the session and logout
     req.logout((err) => {
       if (err) {
+        console.error('Logout error:', err);
         return res.status(500).json({
           success: false,
           error: 'Failed to logout',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined,
         });
       }
       
-      res.json({
-        success: true,
-        data: {
-          message: 'Logged out successfully',
-        },
+      // Destroy the session completely
+      req.session.destroy((sessionErr) => {
+        if (sessionErr) {
+          console.error('Session destroy error:', sessionErr);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to destroy session',
+            details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
+          });
+        }
+        
+        res.json({
+          success: true,
+          data: {
+            message: 'Logged out successfully',
+          },
+        });
       });
     });
   });

@@ -8,8 +8,28 @@
 import { Router } from 'express';
 import { getPrismaClient } from '../services/PrismaService.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
-import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
 import axios from 'axios';
+import { expensiveOperationLimiter } from '../middleware/rateLimiter.js';
+
+// Import getUserGuilds from auth routes
+async function getUserGuilds(accessToken) {
+  try {
+    const response = await fetch('https://discord.com/api/users/@me/guilds', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Discord API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user guilds:', error);
+    throw error;
+  }
+}
 
 const router = Router();
 
@@ -367,13 +387,21 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
 
     if (!plugin) {
+      console.error(`Plugin not found: ${pluginId}`);
       return res.status(404).json({
         success: false,
-        error: 'Plugin not found',
+        error: `Plugin '${pluginId}' not found. Please ensure the plugin is loaded in the database.`,
       });
     }
 
     // Upsert guild plugin relationship
+    console.log(`Toggling plugin ${pluginId} for guild ${guildId}:`, {
+      enabled,
+      settings,
+      pluginName: plugin.name,
+      globalEnabled: plugin.enabled
+    });
+    
     const guildPlugin = await getPrisma().guildPlugin.upsert({
       where: {
         guild_id_plugin_id: {
@@ -391,6 +419,13 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
         enabled: enabled !== undefined ? enabled : true,
         settings: settings || {},
       },
+    });
+    
+    console.log(`Guild plugin updated:`, {
+      guildId,
+      pluginId,
+      enabled: guildPlugin.enabled,
+      settings: guildPlugin.settings
     });
 
     // Create audit log
@@ -416,9 +451,223 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
   } catch (error) {
     console.error('Error updating guild plugin:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      guildId: req.params.guildId,
+      pluginId: req.params.pluginId,
+      enabled: req.body.enabled
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to update guild plugin',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * POST /api/guilds/:guildId/reregister-commands
+ * Force re-register commands for a guild (for debugging)
+ */
+router.post('/:guildId/reregister-commands', requireAuth, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Check if user has admin permissions in this guild
+    const userGuilds = await getUserGuilds(req.user.access_token);
+    const userGuild = userGuilds.find(g => g.id === guildId);
+    
+    if (!userGuild || !(userGuild.permissions & 0x8)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions for this guild',
+      });
+    }
+
+    // Clear bot guild cache to force fresh command registration
+    // This will make the bot re-fetch guild data and re-register commands
+    try {
+      // Import the clearBotGuildCache function from auth routes
+      const { clearBotGuildCache } = await import('../routes/auth.js');
+      clearBotGuildCache();
+      
+      res.json({
+        success: true,
+        message: 'Command re-registration triggered successfully',
+        data: {
+          guildId: guildId,
+          timestamp: new Date().toISOString(),
+          note: 'Bot guild cache cleared - commands will be re-registered on next sync'
+        }
+      });
+    } catch (error) {
+      console.error('Error triggering command re-registration:', error.message);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to trigger command re-registration',
+        details: error.message,
+      });
+    }
+  } catch (error) {
+    console.error('Error re-registering commands:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to re-register commands',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * GET /api/guilds/:guildId/plugins-status
+ * Get current plugin status for a guild
+ */
+router.get('/:guildId/plugins-status', requireAuth, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Check if user has admin permissions in this guild
+    const userGuilds = await getUserGuilds(req.user.access_token);
+    const userGuild = userGuilds.find(g => g.id === guildId);
+    
+    if (!userGuild || !(userGuild.permissions & 0x8)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions for this guild',
+      });
+    }
+
+    // Get all guild plugin settings
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
+      where: { guild_id: guildId },
+      include: {
+        plugin: {
+          select: {
+            id: true,
+            name: true,
+            enabled: true,
+            trigger_command: true,
+            type: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        guildId: guildId,
+        guildName: userGuild.name,
+        guildPlugins: guildPlugins.map(gp => ({
+          pluginId: gp.plugin_id,
+          pluginName: gp.plugin.name,
+          command: gp.plugin.trigger_command,
+          type: gp.plugin.type,
+          globalEnabled: gp.plugin.enabled,
+          guildEnabled: gp.enabled,
+          settings: gp.settings
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error getting guild plugins status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get guild plugins status',
+    });
+  }
+});
+
+/**
+ * GET /api/guilds/:guildId/debug-plugins
+ * Debug endpoint to show plugin enabling status
+ */
+router.get('/:guildId/debug-plugins', requireAuth, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    
+    // Check if user has admin permissions in this guild
+    const userGuilds = await getUserGuilds(req.user.access_token);
+    const userGuild = userGuilds.find(g => g.id === guildId);
+    
+    if (!userGuild || !(userGuild.permissions & 0x8)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions for this guild',
+      });
+    }
+
+    // Get all plugins from database
+    const allPlugins = await getPrisma().plugin.findMany({
+      select: {
+        id: true,
+        name: true,
+        enabled: true,
+        trigger_command: true,
+        type: true
+      }
+    });
+
+    // Get guild-specific plugin settings
+    const guildPlugins = await getPrisma().guildPlugin.findMany({
+      where: { guild_id: guildId },
+      select: {
+        plugin_id: true,
+        enabled: true,
+        plugin: {
+          select: {
+            id: true,
+            name: true,
+            enabled: true,
+            trigger_command: true,
+            type: true
+          }
+        }
+      }
+    });
+
+    // Create a map of guild plugin settings
+    const guildPluginMap = new Map(guildPlugins.map(gp => [gp.plugin_id, gp.enabled]));
+
+    // Analyze each plugin
+    const pluginAnalysis = allPlugins.map(plugin => {
+      const guildEnabled = guildPluginMap.get(plugin.id);
+      const effectiveEnabled = guildEnabled !== undefined ? guildEnabled : plugin.enabled;
+      
+      return {
+        id: plugin.id,
+        name: plugin.name,
+        command: plugin.trigger_command,
+        type: plugin.type,
+        globalEnabled: plugin.enabled,
+        guildEnabled: guildEnabled,
+        effectiveEnabled: effectiveEnabled,
+        hasGuildSetting: guildPluginMap.has(plugin.id)
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        guildId: guildId,
+        guildName: userGuild.name,
+        totalPlugins: allPlugins.length,
+        guildPluginSettings: guildPlugins.length,
+        plugins: pluginAnalysis,
+        summary: {
+          globallyEnabled: allPlugins.filter(p => p.enabled).length,
+          guildEnabled: guildPlugins.filter(gp => gp.enabled).length,
+          effectivelyEnabled: pluginAnalysis.filter(p => p.effectiveEnabled).length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error debugging plugins:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to debug plugins',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });

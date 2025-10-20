@@ -259,6 +259,25 @@ export class PluginModel {
    */
   async getGuildPlugin(guildId, pluginId) {
     try {
+      logger.debug(`Getting guild plugin for guild ${guildId}, plugin ${pluginId}`);
+      
+      // First, let's check if the plugin exists at all
+      const pluginExists = await this.getPrisma().plugin.findUnique({
+        where: { id: pluginId },
+        select: { id: true, name: true, enabled: true }
+      });
+      
+      logger.debug(`Plugin exists check:`, {
+        pluginId,
+        pluginExists,
+        globalEnabled: pluginExists?.enabled
+      });
+      
+      if (!pluginExists) {
+        logger.warn(`Plugin ${pluginId} does not exist in database`);
+        return { enabled: false };
+      }
+      
       const guildPlugin = await this.getPrisma().guildPlugin.findUnique({
         where: {
           guild_id_plugin_id: {
@@ -268,21 +287,33 @@ export class PluginModel {
         },
       });
 
+      logger.debug(`Guild plugin query result:`, {
+        guildId,
+        pluginId,
+        guildPlugin,
+        hasGuildPlugin: !!guildPlugin,
+        guildPluginEnabled: guildPlugin?.enabled
+      });
+
       // If no guild-specific record exists, return a default enabled state
       // This allows plugins to inherit the global enabled status
       if (!guildPlugin) {
-        const plugin = await this.getPrisma().plugin.findUnique({
-          where: { id: pluginId },
-          select: { enabled: true },
+        logger.debug(`No guild plugin found, falling back to global plugin:`, {
+          plugin: pluginExists,
+          globalEnabled: pluginExists.enabled
         });
         
-        return plugin ? { enabled: plugin.enabled } : { enabled: false };
+        return { enabled: pluginExists.enabled };
       }
+
+      logger.debug(`Returning guild-specific plugin setting:`, {
+        enabled: guildPlugin.enabled
+      });
 
       return guildPlugin;
     } catch (error) {
       logger.error('Failed to get guild plugin:', error);
-      return null;
+      return { enabled: false };
     }
   }
 

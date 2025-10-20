@@ -123,8 +123,17 @@ export class PluginManager {
       // Check if plugin is enabled for this guild (if guildId is provided)
       if (executionContext.guildId) {
         const guildPlugin = await this.pluginModel.getGuildPlugin(executionContext.guildId, pluginId);
+        logger.debug(`Guild plugin check for ${plugin.name} (${pluginId}) in guild ${executionContext.guildId}:`, {
+          guildPlugin,
+          enabled: guildPlugin?.enabled,
+          hasGuildPlugin: !!guildPlugin
+        });
+        
         if (!guildPlugin || !guildPlugin.enabled) {
-          logger.debug(`Plugin ${plugin.name} is disabled for guild ${executionContext.guildId}`);
+          logger.warn(`Plugin ${plugin.name} (${pluginId}) not enabled for guild ${executionContext.guildId}`, {
+            guildPlugin,
+            enabled: guildPlugin?.enabled
+          });
           return null;
         }
       }

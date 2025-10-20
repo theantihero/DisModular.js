@@ -26,6 +26,11 @@ export class DatabaseModel {
   getInstance() {
     if (!this.prisma) {
       this.prisma = getPrismaClient();
+      if (!this.prisma) {
+        logger.warn('Prisma client not available - database operations will fail');
+      } else {
+        logger.info('Prisma client initialized successfully');
+      }
     }
     return this.prisma;
   }

@@ -11,6 +11,7 @@ import { getPrismaClient } from '../services/PrismaService.js';
 import PluginModel from '../models/PluginModel.js';
 import PluginManager from '../plugins/PluginManager.js';
 import PluginLoader from '../plugins/PluginLoader.js';
+import crypto from 'crypto';
 
 const logger = new Logger('BotClient');
 
@@ -50,6 +51,13 @@ export class BotClient {
       this.pluginModel,
       () => this.registerSlashCommands(), // Re-register commands when plugins change
     );
+    
+    // Pass bot client reference to plugin loader for cache management
+    this.pluginLoader.botClient = this;
+
+    // Cache for registered commands to avoid unnecessary re-registration
+    this.registeredCommands = new Map(); // guildId -> Set of command names
+    this.commandHashes = new Map(); // guildId -> hash of command definitions
 
     // Setup event handlers
     this.setupEventHandlers();
@@ -104,19 +112,77 @@ export class BotClient {
   async onInteraction(interaction) {
     const startTime = Date.now();
     
-    if (!interaction.isChatInputCommand()) {return;}
+    if (!interaction.isChatInputCommand()) {
+      return;
+    }
+
+    // Add interaction tracking to detect duplicates
+    const interactionKey = `${interaction.id}-${interaction.commandName}`;
+    if (this.processingInteractions && this.processingInteractions.has(interactionKey)) {
+      logger.warn(`Duplicate interaction detected: ${interactionKey}, ignoring`);
+      return;
+    }
+    
+    if (!this.processingInteractions) {
+      this.processingInteractions = new Set();
+    }
+    this.processingInteractions.add(interactionKey);
+    
+    // Clean up old interactions after 5 seconds
+    setTimeout(() => {
+      this.processingInteractions.delete(interactionKey);
+    }, 5000);
+
+    // Check if interaction is too old (Discord has a 3-second limit)
+    const interactionAge = Date.now() - interaction.createdTimestamp;
+    if (interactionAge > 3000) { // 3 seconds - Discord's actual limit
+      logger.error(`Interaction too old: ${interactionAge}ms, ignoring`);
+      return;
+    }
+    
+    // Handle negative age (clock sync issues) - just log and continue
+    if (interactionAge < 0) {
+      logger.warn(`Negative interaction age detected: ${interactionAge}ms (clock sync issue)`);
+    }
+
+    // Log interaction details before attempting to defer
+    logger.debug(`Processing interaction: ${interaction.id}, command: /${interaction.commandName}, guild: ${interaction.guild?.name || 'DM'}, age: ${interactionAge}ms`);
 
     // Defer reply IMMEDIATELY - no logging or processing before this
     try {
       await interaction.deferReply();
       const deferTime = Date.now() - startTime;
-      logger.debug(`Slash command received: /${interaction.commandName} (deferred in ${deferTime}ms)`);
+      logger.debug(`Slash command received: /${interaction.commandName} (deferred in ${deferTime}ms, age: ${interactionAge}ms)`);
     } catch (deferError) {
       const errorTime = Date.now() - startTime;
       logger.error(`Failed to defer reply after ${errorTime}ms:`, deferError);
+      
+      // If it's an "Unknown interaction" error, the interaction might have been handled elsewhere
+      if (deferError.code === 10062) {
+        logger.warn(`Unknown interaction error - interaction may have been handled by another instance or expired`);
+        // Clean up interaction tracking
+        this.processingInteractions.delete(interactionKey);
+        return; // Don't try to process further
+      }
+      
       logger.warn(`Interaction created at: ${new Date(interaction.createdTimestamp).toISOString()}`);
       logger.warn(`Current time: ${new Date().toISOString()}`);
-      logger.warn(`Age: ${Date.now() - interaction.createdTimestamp}ms`);
+      logger.warn(`Age: ${interactionAge}ms`);
+      logger.warn(`Command: /${interaction.commandName}, Guild: ${interaction.guild?.name || 'DM'}`);
+      logger.warn(`Interaction ID: ${interaction.id}`);
+      logger.warn(`Bot user: ${this.client.user?.tag || 'Unknown'}`);
+      
+      // Try to send a follow-up message if defer failed
+      try {
+        await interaction.followUp({ 
+          content: '⚠️ Command timed out. Please try again.',
+          ephemeral: true 
+        });
+      } catch (followUpError) {
+        logger.error('Failed to send follow-up message:', followUpError);
+      }
+      // Clean up interaction tracking
+      this.processingInteractions.delete(interactionKey);
       return;
     }
 
@@ -128,10 +194,30 @@ export class BotClient {
       );
 
       if (!plugin) {
+        logger.warn(`Command /${interaction.commandName} not found in plugin manager`);
+        logger.debug(`Available commands: ${Array.from(this.pluginManager.plugins.keys()).join(', ')}`);
         await interaction.editReply({
-          content: 'Command not found.',
+          content: '⚠️ Command not found. Please contact an administrator.',
         });
         return;
+      }
+
+      // Check if plugin is enabled for this guild
+      if (interaction.guild) {
+        const guildPlugins = await this.getEnabledPluginsForGuild(interaction.guild.id);
+        const isEnabledForGuild = guildPlugins.some(gp => gp.id === plugin.id);
+        
+        logger.debug(`Guild ${interaction.guild.name} (${interaction.guild.id}):`);
+        logger.debug(`  Plugin ${plugin.name} (${plugin.id}): enabled=${isEnabledForGuild}`);
+        logger.debug(`  Guild enabled plugins: ${guildPlugins.map(gp => `${gp.name}(${gp.id})`).join(', ')}`);
+        
+        if (!isEnabledForGuild) {
+          logger.warn(`Plugin ${plugin.name} (${plugin.id}) not enabled for guild ${interaction.guild.name} (${interaction.guild.id})`);
+          await interaction.editReply({
+            content: '⚠️ This command is not enabled in this server.',
+          });
+          return;
+        }
       }
 
       // Execute plugin
@@ -150,8 +236,14 @@ export class BotClient {
       };
 
       await this.pluginManager.execute(plugin.id, context);
+      
+      // Clean up interaction tracking on success
+      this.processingInteractions.delete(interactionKey);
     } catch (error) {
       logger.error('Interaction error:', error);
+      
+      // Clean up interaction tracking on error
+      this.processingInteractions.delete(interactionKey);
       
       try {
         await interaction.editReply({
@@ -216,6 +308,62 @@ export class BotClient {
   }
 
   /**
+   * Generate a hash for command definitions to detect changes
+   * @param {Array} commands - Array of command objects
+   * @returns {string} Hash string
+   */
+  generateCommandHash(commands) {
+    const commandString = JSON.stringify(commands.map(cmd => ({
+      name: cmd.name,
+      description: cmd.description,
+      options: cmd.options || []
+    })));
+    return crypto.createHash('md5').update(commandString).digest('hex');
+  }
+
+  /**
+   * Compare two command arrays to see if they're different
+   * @param {Array} oldCommands - Previously registered commands
+   * @param {Array} newCommands - New commands to register
+   * @returns {boolean} True if commands have changed
+   */
+  commandsHaveChanged(oldCommands, newCommands) {
+    if (!oldCommands || !newCommands) return true;
+    if (oldCommands.length !== newCommands.length) return true;
+
+    const oldHash = this.generateCommandHash(oldCommands);
+    const newHash = this.generateCommandHash(newCommands);
+    
+    return oldHash !== newHash;
+  }
+
+  /**
+   * Clear command cache for a specific guild or all guilds
+   * @param {string} [guildId] - Specific guild ID, or undefined for all guilds
+   */
+  clearCommandCache(guildId = null) {
+    if (guildId) {
+      this.registeredCommands.delete(guildId);
+      this.commandHashes.delete(guildId);
+      logger.debug(`Cleared command cache for guild ${guildId}`);
+    } else {
+      this.registeredCommands.clear();
+      this.commandHashes.clear();
+      logger.debug('Cleared command cache for all guilds');
+    }
+  }
+
+  /**
+   * Force re-register commands for a specific guild (for debugging)
+   * @param {string} guildId - Discord guild ID
+   */
+  async forceReregisterCommands(guildId) {
+    logger.info(`Force re-registering commands for guild ${guildId}`);
+    this.clearCommandCache(guildId);
+    await this.registerGuildCommands(guildId);
+  }
+
+  /**
    * Register slash commands for all guilds
    */
   async registerSlashCommands() {
@@ -223,11 +371,17 @@ export class BotClient {
       const guilds = this.client.guilds.cache;
       logger.info(`Registering commands for ${guilds.size} guilds...`);
 
-      for (const [guildId] of guilds) {
-        await this.registerGuildCommands(guildId);
+      const registrationPromises = [];
+      for (const [guildId, guild] of guilds) {
+        registrationPromises.push(
+          this.registerGuildCommands(guildId).catch(error => {
+            logger.error(`Failed to register commands for guild ${guild.name} (${guildId}):`, error);
+          })
+        );
       }
 
-      logger.success('All guild commands registered');
+      await Promise.allSettled(registrationPromises);
+      logger.success('All guild commands registration attempted');
     } catch (error) {
       logger.error('Failed to register slash commands:', error);
     }
@@ -239,17 +393,46 @@ export class BotClient {
    */
   async registerGuildCommands(guildId) {
     try {
+      const guild = this.client.guilds.cache.get(guildId);
+      if (!guild) {
+        logger.warn(`Guild ${guildId} not found in cache, skipping command registration`);
+        return;
+      }
+
       // Ensure guild exists in database
       await this.ensureGuildExists(guildId);
 
-      // Get enabled plugins for this guild
-      const enabledPlugins = await this.getEnabledPluginsForGuild(guildId);
-      const slashPlugins = enabledPlugins.filter(
-        p => p.type === 'slash' || p.type === 'both',
+      // Get all slash commands from plugin manager
+      // Register ALL slash plugins as commands, regardless of global enabled status
+      // Guild-specific enablement is checked during command execution
+      const allPlugins = Array.from(this.pluginManager.plugins.values());
+      const slashPlugins = allPlugins.filter(
+        p => (p.type === 'slash' || p.type === 'both'),
       );
 
+      logger.debug(`Found ${slashPlugins.length} slash plugins to register:`, slashPlugins.map(p => ({
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        globalEnabled: p.enabled,
+        command: p.trigger_command || p.trigger?.command
+      })));
+
       if (slashPlugins.length === 0) {
-        logger.debug(`No slash commands to register for guild ${guildId}`);
+        logger.debug(`No slash commands to register for guild ${guild.name} (${guildId})`);
+        
+        // Check if we need to clear commands
+        const cachedCommands = this.registeredCommands.get(guildId);
+        if (cachedCommands && cachedCommands.size > 0) {
+          logger.info(`Clearing ${cachedCommands.size} commands for guild ${guild.name} (${guildId})`);
+          const rest = new REST({ version: '10' }).setToken(this.config.token);
+          await rest.put(
+            Routes.applicationGuildCommands(this.config.clientId, guildId),
+            { body: [] },
+          );
+          this.registeredCommands.set(guildId, new Set());
+          this.commandHashes.set(guildId, '');
+        }
         return;
       }
 
@@ -261,23 +444,126 @@ export class BotClient {
           return null;
         }
 
+        // Validate command name (Discord requirements)
+        const cleanCommandName = commandName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (cleanCommandName !== commandName.toLowerCase()) {
+          logger.warn(`Command name '${commandName}' cleaned to '${cleanCommandName}' for Discord compatibility`);
+        }
+
         return {
-          name: commandName.toLowerCase(),
-          description: plugin.description || `Execute ${plugin.name}`,
+          name: cleanCommandName,
+          description: (plugin.description || `Execute ${plugin.name}`).substring(0, 100), // Discord limit
           options: plugin.options || [],
         };
       }).filter(Boolean);
 
+      logger.debug(`Generated ${commands.length} commands for guild ${guild.name} (${guildId})`);
+
+      if (commands.length === 0) {
+        logger.info(`No commands to register for guild ${guild.name} (${guildId}) - skipping registration`);
+        return;
+      }
+
+      // Check if commands have changed
+      const cachedCommands = this.registeredCommands.get(guildId);
+      const cachedHash = this.commandHashes.get(guildId);
+      const newHash = this.generateCommandHash(commands);
+      
+      if (cachedHash === newHash && cachedCommands && cachedCommands.size === commands.length) {
+        logger.debug(`Commands unchanged for guild ${guild.name} (${guildId}), skipping registration`);
+        return;
+      }
+      
+      // Additional validation: check if we're trying to register the same commands
+      if (cachedCommands && commands.length > 0) {
+        const currentCommandNames = new Set(commands.map(cmd => cmd.name));
+        const commandsMatch = cachedCommands.size === currentCommandNames.size && 
+                             [...cachedCommands].every(name => currentCommandNames.has(name));
+        
+        if (commandsMatch && cachedHash === newHash) {
+          logger.debug(`Same commands already registered for guild ${guild.name} (${guildId}), skipping registration`);
+          return;
+        }
+      }
+
+      // Commands have changed, register them
+      logger.info(`Commands changed for guild ${guild.name} (${guildId}), registering ${commands.length} commands`);
+      
       const rest = new REST({ version: '10' }).setToken(this.config.token);
 
-      await rest.put(
+      logger.debug(`About to register commands for guild ${guildId}:`, commands.map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        options: cmd.options?.length || 0
+      })));
+
+      const response = await rest.put(
         Routes.applicationGuildCommands(this.config.clientId, guildId),
         { body: commands },
       );
 
-      logger.debug(`Registered ${commands.length} commands for guild ${guildId}`);
+      logger.debug(`Discord API response for guild ${guildId}:`, {
+        status: response?.status,
+        data: response?.data,
+        headers: response?.headers
+      });
+
+      // Update cache
+      const commandNames = new Set(commands.map(cmd => cmd.name));
+      this.registeredCommands.set(guildId, commandNames);
+      this.commandHashes.set(guildId, newHash);
+
+      logger.success(`Registered ${commands.length} commands for guild ${guild.name} (${guildId})`);
+      logger.debug(`Commands: ${commands.map(c => c.name).join(', ')}`);
     } catch (error) {
-      logger.error(`Failed to register commands for guild ${guildId}:`, error);
+      // Log the raw error first
+      logger.error(`Raw error object:`, error);
+      logger.error(`Error type:`, typeof error);
+      logger.error(`Error constructor:`, error?.constructor?.name);
+      
+      // Handle different types of errors more gracefully
+      if (error.code === 429) {
+        logger.warn(`Rate limited while registering commands for guild ${guild.name} (${guildId}), Discord will retry automatically`);
+        return;
+      }
+      
+      if (error.code === 50001) {
+        logger.warn(`Missing access for guild ${guild.name} (${guildId}), bot may not be in this server`);
+        return;
+      }
+      
+      if (error.code === 50013) {
+        logger.warn(`Missing permissions for guild ${guild.name} (${guildId}), bot lacks required permissions`);
+        return;
+      }
+      
+      // Check if it's an empty response (commands already registered)
+      if (error.message && error.message.includes('already registered') || 
+          (error.response && error.response.status === 200 && !error.response.data)) {
+        logger.debug(`Commands already registered for guild ${guild.name} (${guildId}), updating cache`);
+        // Update cache anyway since commands are registered
+        const commandNames = new Set(commands.map(cmd => cmd.name));
+        this.registeredCommands.set(guildId, commandNames);
+        this.commandHashes.set(guildId, newHash);
+        return;
+      }
+      
+      // Log the actual error details for debugging
+      logger.error(`Failed to register commands for guild ${guild.name} (${guildId}):`, {
+        code: error.code,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        stack: error.stack,
+        fullError: error
+      });
+      
+      // Also log the commands we were trying to register
+      logger.error(`Commands being registered:`, commands.map(cmd => ({
+        name: cmd.name,
+        description: cmd.description,
+        options: cmd.options?.length || 0
+      })));
     }
   }
 
@@ -320,22 +606,49 @@ export class BotClient {
    */
   async getEnabledPluginsForGuild(guildId) {
     try {
-      const guildPlugins = await this.getPrisma().guildPlugin.findMany({
-        where: {
-          guild_id: guildId,
-          enabled: true,
-        },
-        include: {
-          plugin: true,
-        },
+      // Get all plugins
+      const allPlugins = await this.getPrisma().plugin.findMany({
+        where: { enabled: true }, // Only globally enabled plugins
       });
 
-      return guildPlugins.map(gp => gp.plugin);
+      // Get guild-specific plugin settings
+      const guildPluginSettings = await this.getPrisma().guildPlugin.findMany({
+        where: { guild_id: guildId },
+      });
+
+      // Create a map of guild-specific settings for quick lookup
+      const guildSettingsMap = new Map();
+      guildPluginSettings.forEach(gp => {
+        guildSettingsMap.set(gp.plugin_id, gp.enabled);
+      });
+
+      // Filter plugins based on guild-specific settings or global enabled status
+      const enabledPlugins = allPlugins.filter(plugin => {
+        const guildSetting = guildSettingsMap.get(plugin.id);
+        
+        // If there's a guild-specific setting, use it
+        if (guildSetting !== undefined) {
+          return guildSetting;
+        }
+        
+        // If no guild-specific setting exists, use global enabled status
+        return plugin.enabled;
+      });
+
+      logger.debug(`Guild ${guildId} enabled plugins:`, {
+        totalPlugins: allPlugins.length,
+        guildSpecificSettings: guildPluginSettings.length,
+        enabledPlugins: enabledPlugins.length,
+        pluginIds: enabledPlugins.map(p => p.id)
+      });
+
+      return enabledPlugins;
     } catch (error) {
       logger.error(`Failed to get enabled plugins for guild ${guildId}:`, error);
       return [];
     }
   }
+
 
   /**
    * Start the bot

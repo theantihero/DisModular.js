@@ -46,6 +46,10 @@ try {
       refresh_token TEXT,
       is_admin INTEGER DEFAULT 0,
       admin_notes TEXT,
+      access_status TEXT DEFAULT 'pending',
+      access_requested_at DATETIME,
+      access_message TEXT,
+      access_request_message TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -71,6 +75,8 @@ try {
       edges TEXT NOT NULL,
       compiled TEXT NOT NULL,
       created_by TEXT,
+      is_template INTEGER DEFAULT 0,
+      template_category TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (created_by) REFERENCES users(id)
@@ -130,6 +136,65 @@ try {
     )
   `);
   console.log('✓ Command executions table created');
+
+  // Guilds table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS guilds (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      settings TEXT DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✓ Guilds table created');
+
+  // Guild plugins table (for guild-specific plugin settings)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS guild_plugins (
+      guild_id TEXT NOT NULL,
+      plugin_id TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      settings TEXT DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (guild_id, plugin_id),
+      FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE,
+      FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
+    )
+  `);
+  console.log('✓ Guild plugins table created');
+
+  // User guild permissions table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_guild_permissions (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      is_admin INTEGER DEFAULT 0,
+      permissions INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, guild_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+    )
+  `);
+  console.log('✓ User guild permissions table created');
+
+  // Discord API cache table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS discord_api_cache (
+      id TEXT PRIMARY KEY,
+      cache_key TEXT UNIQUE NOT NULL,
+      cache_type TEXT NOT NULL,
+      user_id TEXT,
+      data TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✓ Discord API cache table created');
 
   // Load sample plugins
   console.log('\nLoading sample plugins...');

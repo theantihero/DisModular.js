@@ -33,8 +33,8 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
     if (dropdownOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 8, // Remove window.scrollY for fixed positioning
+        left: rect.left, // Remove window.scrollX for fixed positioning
         width: rect.width
       });
     }
@@ -56,8 +56,8 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
       if (dropdownOpen && buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
         setDropdownPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX,
+          top: rect.bottom + 8, // Remove window.scrollY for fixed positioning
+          left: rect.left, // Remove window.scrollX for fixed positioning
           width: rect.width
         });
       }
@@ -93,20 +93,22 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
       const data = await response.json();
       
       if (data.success) {
-        setGuilds(data.data);
+        // Filter to only show guilds where the bot is present
+        const guildsWithBot = data.data.filter(guild => guild.bot_present);
+        setGuilds(guildsWithBot);
         
         // Smart guild selection: use cached guild if available, otherwise first guild
-        if (!selectedGuild && data.data.length > 0) {
+        if (!selectedGuild && guildsWithBot.length > 0) {
           let guildToSelect = null;
           
           // Try to find cached guild first
           if (cachedGuildId) {
-            guildToSelect = data.data.find(guild => guild.id === cachedGuildId);
+            guildToSelect = guildsWithBot.find(guild => guild.id === cachedGuildId);
           }
           
           // Fallback to first guild if cached guild not found
           if (!guildToSelect) {
-            guildToSelect = data.data[0];
+            guildToSelect = guildsWithBot[0];
           }
           
           onGuildSelect(guildToSelect);
@@ -125,21 +127,23 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
   const handleRefreshGuilds = async () => {
     try {
       const refreshedGuilds = await refreshGuilds();
-      setGuilds(refreshedGuilds);
+      // Filter to only show guilds where the bot is present
+      const guildsWithBot = refreshedGuilds.filter(guild => guild.bot_present);
+      setGuilds(guildsWithBot);
       toast.success('Guilds refreshed successfully!');
       
       // Smart guild selection: use cached guild if available, otherwise first guild
-      if (!selectedGuild && refreshedGuilds.length > 0) {
+      if (!selectedGuild && guildsWithBot.length > 0) {
         let guildToSelect = null;
         
         // Try to find cached guild first
         if (cachedGuildId) {
-          guildToSelect = refreshedGuilds.find(guild => guild.id === cachedGuildId);
+          guildToSelect = guildsWithBot.find(guild => guild.id === cachedGuildId);
         }
         
         // Fallback to first guild if cached guild not found
         if (!guildToSelect) {
-          guildToSelect = refreshedGuilds[0];
+          guildToSelect = guildsWithBot[0];
         }
         
         onGuildSelect(guildToSelect);
@@ -197,19 +201,23 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
     return (
       <div className={`macos-card p-6 ${className}`}>
         <div className="text-center">
-          <div className="text-yellow-400 text-lg mb-2">⚠️</div>
-          <p className="text-hologram-cyan mb-4">No Discord servers found where you have admin permissions.</p>
-          <p className="text-gray-400 text-sm">
-            Make sure you're the owner or have administrator permissions in at least one Discord server.
+          <div className="text-yellow-400 text-lg mb-2">🤖</div>
+          <p className="text-hologram-cyan mb-4">No Discord servers found where the bot is present.</p>
+          <p className="text-gray-400 text-sm mb-4">
+            The bot needs to be invited to your Discord server before you can configure plugins.
           </p>
+          <a
+            href={guilds.length > 0 ? guilds[0].bot_invite_url : '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="macos-button bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border-blue-500/30 hover:border-blue-500/50"
+          >
+            Invite Bot to Server
+          </a>
         </div>
       </div>
     );
   }
-
-  // Check if any guilds don't have the bot
-  const guildsWithoutBot = guilds.filter(guild => !guild.bot_present);
-  const botInviteUrl = guilds.length > 0 ? guilds[0].bot_invite_url : null;
 
   return (
     <div className={`macos-card p-6 ${className}`}>
@@ -220,7 +228,7 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
         </div>
         <div className="flex items-center space-x-3">
           <div className="text-hologram-cyan text-sm">
-            {guilds.length} server{guilds.length !== 1 ? 's' : ''} available
+            {guilds.length} server{guilds.length !== 1 ? 's' : ''} with bot
           </div>
           <button
             onClick={handleRefreshGuilds}
@@ -236,28 +244,6 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
           </button>
         </div>
       </div>
-
-      {/* Bot Invite Button */}
-      {guildsWithoutBot.length > 0 && botInviteUrl && (
-        <div className="mb-4 p-3 macos-glass rounded-lg border border-yellow-500/30 bg-yellow-500/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-yellow-400">🤖</span>
-              <span className="text-yellow-300 text-sm font-medium">
-                Bot not present in {guildsWithoutBot.length} server{guildsWithoutBot.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <a
-              href={botInviteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="macos-button text-xs font-medium bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border-yellow-500/30 hover:border-yellow-500/50"
-            >
-              Invite Bot
-            </a>
-          </div>
-        </div>
-      )}
 
       <div className="relative" ref={dropdownRef}>
         <button
@@ -345,8 +331,8 @@ export default function GuildSelector({ selectedGuild, onGuildSelect, cachedGuil
                             <span className="text-xs text-hologram-cyan">
                               {guild.owner ? '👑 Owner' : '⚡ Admin'}
                             </span>
-                            <span className={`text-xs ${guild.bot_present ? 'text-energy-green' : 'text-yellow-400'}`}>
-                              {guild.bot_present ? '🤖 Bot' : '⚠️ No Bot'}
+                            <span className="text-xs text-energy-green">
+                              🤖 Bot Present
                             </span>
                           </div>
                         </div>

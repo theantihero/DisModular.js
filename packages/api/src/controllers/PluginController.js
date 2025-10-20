@@ -521,7 +521,19 @@ export class PluginController {
   constructor(db, pluginsDir) {
     this.db = db;
     this.pluginsDir = pluginsDir;
-    this.compiler = new NodeCompiler();
+    
+    try {
+      this.compiler = new NodeCompiler();
+      logger.info('PluginController initialized with NodeCompiler');
+    } catch (error) {
+      logger.error('Failed to initialize NodeCompiler:', error);
+      this.compiler = null;
+    }
+    
+    // Validate database connection
+    if (!this.db) {
+      logger.warn('PluginController initialized without database connection');
+    }
   }
 
   /**
@@ -966,6 +978,14 @@ export class PluginController {
       const { id } = req.params;
       const { enabled } = req.body;
 
+      // Check if database is available
+      if (!this.db) {
+        return res.status(500).json({
+          success: false,
+          error: 'Database not available',
+        });
+      }
+
       // Validate plugin ID to prevent path traversal
       if (!validatePluginId(id)) {
         return res.status(400).json({
@@ -1144,6 +1164,15 @@ export class PluginController {
         });
       }
 
+      // Check if compiler is available
+      if (!this.compiler) {
+        logger.error('NodeCompiler not available');
+        return res.status(500).json({
+          success: false,
+          error: 'Compiler not available',
+        });
+      }
+
       // Validate
       const validation = this.compiler.validate(nodes, edges);
       if (!validation.valid) {
@@ -1159,16 +1188,14 @@ export class PluginController {
 
       res.json({
         success: true,
-        data: {
-          compiled,
-          validation,
-        },
+        compiled,
+        validation,
       });
     } catch (error) {
       logger.error('Failed to compile plugin:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to compile plugin',
+        error: 'Internal server error',
         details: error.message,
       });
     }
