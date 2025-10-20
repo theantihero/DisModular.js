@@ -668,12 +668,22 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Ensure test user exists and is in pending status
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        // Create test user if it doesn't exist
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'pending',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for approval test:', testUser);
       }
       
       // Ensure admin user exists

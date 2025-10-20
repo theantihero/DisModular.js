@@ -387,7 +387,19 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
 
     if (!plugin) {
-      console.error(`Plugin not found: ${pluginId}`);
+      // Helper to sanitize user input for log output. Removes line breaks, control chars, quotes it.
+      function sanitizeForLog(input) {
+        if (typeof input !== 'string') {
+          input = String(input);
+        }
+        // Remove all control chars (including \n, \r, tabs, etc.)
+        input = input.replace(/[\r\n\t\x00-\x1F\x7F]+/g, '');
+        // Escape any quotes (to avoid confusion in logs)
+        input = input.replace(/["']/g, '');
+        return `"${input}"`;
+      }
+      const safePluginId = sanitizeForLog(pluginId);
+      console.error(`Plugin not found: [pluginId=${safePluginId}]`);
       return res.status(404).json({
         success: false,
         error: `Plugin '${pluginId}' not found. Please ensure the plugin is loaded in the database.`,
@@ -395,12 +407,17 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     }
 
     // Upsert guild plugin relationship
-    console.log(`Toggling plugin ${pluginId} for guild ${guildId}:`, {
-      enabled,
-      settings,
-      pluginName: plugin.name,
-      globalEnabled: plugin.enabled
-    });
+    console.log(
+      "Toggling plugin %s for guild %s:",
+      pluginId,
+      guildId,
+      {
+        enabled,
+        settings,
+        pluginName: plugin.name,
+        globalEnabled: plugin.enabled
+      }
+    );
     
     const guildPlugin = await getPrisma().guildPlugin.upsert({
       where: {

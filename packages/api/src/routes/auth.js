@@ -438,26 +438,19 @@ export function createAuthRoutes() {
    * Logout
    */
   router.post('/logout', (req, res) => {
-    // Check if user is actually logged in
-    if (!req.user) {
-      return res.json({
-        success: true,
-        data: {
-          message: 'Already logged out',
-        },
-      });
-    }
-
-    // Destroy the session and logout
-    req.logout((err) => {
-      if (err) {
-        console.error('Logout error:', err);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to logout',
-          details: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    try {
+      // Check if user is actually logged in
+      if (!req.user) {
+        return res.json({
+          success: true,
+          data: {
+            message: 'Already logged out',
+          },
         });
       }
+
+      // Destroy the session and logout
+      req.logout();
       
       // Destroy the session completely
       req.session.destroy((sessionErr) => {
@@ -469,7 +462,15 @@ export function createAuthRoutes() {
             details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
           });
         }
-        
+
+        // Clear the session cookie
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
+
         res.json({
           success: true,
           data: {
@@ -477,7 +478,14 @@ export function createAuthRoutes() {
           },
         });
       });
-    });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
   });
 
   /**
