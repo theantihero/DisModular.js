@@ -143,18 +143,23 @@ describe('Access Request Flow', () => {
       process.env.DATABASE_URL = TEST_DATABASE_URL;
       process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
       
-      const { resetPrismaClient, getPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
+      // Import PrismaService and override it to use our test client
+      const PrismaServiceModule = await import('../../packages/api/src/services/PrismaService.js');
       
-      // Reset the Prisma client to force it to use the test database
-      resetPrismaClient();
+      // Reset the Prisma client
+      PrismaServiceModule.resetPrismaClient();
       
-      // Force Prisma client initialization with test database
-      const testPrismaClient = getPrismaClient();
-      if (!testPrismaClient) {
-        throw new Error('Failed to initialize Prisma client with test database');
-      }
+      // Override the getPrismaClient function to return our test client
+      const originalGetPrismaClient = PrismaServiceModule.getPrismaClient;
+      PrismaServiceModule.getPrismaClient = () => {
+        console.log('Using test database client in PrismaService');
+        return prisma;
+      };
       
-      console.log('PrismaService synchronized with test database');
+      // Store the original function for cleanup if needed
+      PrismaServiceModule._originalGetPrismaClient = originalGetPrismaClient;
+      
+      console.log('PrismaService overridden to use test database client');
       console.log('Environment variables:', {
         NODE_ENV: process.env.NODE_ENV,
         DATABASE_URL: process.env.DATABASE_URL,
