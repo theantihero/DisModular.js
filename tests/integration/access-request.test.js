@@ -1083,6 +1083,10 @@ describe('Access Request Flow', () => {
         where: { id: testUser.id }
       });
 
+      if (!user) {
+        throw new Error(`User with id ${testUser.id} not found after granting access`);
+      }
+
       expect(user.access_status).toBe('approved');
       expect(user.access_message).toBe(grantMessage);
     });
