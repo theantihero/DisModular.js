@@ -4,7 +4,7 @@
  * @date 2025-01-27
  */
 
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import HeartbeatIcon from '../../src/components/HeartbeatIcon';
 
