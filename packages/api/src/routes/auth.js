@@ -450,41 +450,32 @@ export function createAuthRoutes() {
       }
 
       // Destroy the session and logout
-      req.logout((err) => {
-        if (err) {
-          console.error('Logout error:', err);
+      req.logout();
+      
+      // Destroy the session completely
+      req.session.destroy((sessionErr) => {
+        if (sessionErr) {
+          console.error('Session destroy error:', sessionErr);
           return res.status(500).json({
             success: false,
-            error: 'Failed to logout',
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined,
+            error: 'Failed to destroy session',
+            details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
           });
         }
-        
-        // Destroy the session completely
-        req.session.destroy((sessionErr) => {
-          if (sessionErr) {
-            console.error('Session destroy error:', sessionErr);
-            return res.status(500).json({
-              success: false,
-              error: 'Failed to destroy session',
-              details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
-            });
-          }
 
-          // Clear the session cookie
-          res.clearCookie('connect.sid', {
-            path: '/',
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-          });
+        // Clear the session cookie
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
 
-          res.json({
-            success: true,
-            data: {
-              message: 'Logged out successfully',
-            },
-          });
+        res.json({
+          success: true,
+          data: {
+            message: 'Logged out successfully',
+          },
         });
       });
     } catch (error) {
