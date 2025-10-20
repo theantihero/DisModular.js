@@ -388,8 +388,11 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
 
     if (!plugin) {
       // Sanitize pluginId to avoid log injection
-      const safePluginId = typeof pluginId === 'string' ? pluginId.replace(/[\r\n]+/g, '') : String(pluginId);
-      console.error(`Plugin not found: ${safePluginId}`);
+      // Sanitize pluginId to prevent log injection (remove control chars & quote it)
+      const safePluginId = typeof pluginId === 'string'
+        ? pluginId.replace(/[\r\n\t\x00-\x1F\x7F]+/g, '')
+        : String(pluginId);
+      console.error(`Plugin not found: [pluginId="${safePluginId}"]`);
       return res.status(404).json({
         success: false,
         error: `Plugin '${pluginId}' not found. Please ensure the plugin is loaded in the database.`,
