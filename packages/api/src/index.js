@@ -202,7 +202,16 @@ app.get('*', apiLimiter, (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, _next) => {
-  logger.error('Unhandled error:', err);
+  logger.error('Unhandled error:', {
+    message: err.message,
+    stack: err.stack,
+    name: err.name,
+    code: err.code,
+    status: err.status,
+    statusCode: err.statusCode,
+    url: req.url,
+    method: req.method,
+  });
   res.status(500).json({
     success: false,
     error: 'Internal server error',

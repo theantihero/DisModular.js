@@ -449,27 +449,63 @@ export function createAuthRoutes() {
         });
       }
 
+      // Log the logout attempt
+      console.log('Logging out user:', req.user.username || req.user.discord_id);
+
       // Destroy the session and logout
-      req.logout();
+      try {
+        req.logout();
+        console.log('Passport logout successful');
+      } catch (logoutError) {
+        console.error('Passport logout error:', logoutError);
+        // Continue with session destruction even if passport logout fails
+      }
       
       // Destroy the session completely
-      req.session.destroy((sessionErr) => {
-        if (sessionErr) {
-          console.error('Session destroy error:', sessionErr);
-          return res.status(500).json({
-            success: false,
-            error: 'Failed to destroy session',
-            details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
-          });
-        }
+      if (req.session) {
+        req.session.destroy((sessionErr) => {
+          if (sessionErr) {
+            console.error('Session destroy error:', sessionErr);
+            return res.status(500).json({
+              success: false,
+              error: 'Failed to destroy session',
+              details: process.env.NODE_ENV === 'development' ? sessionErr.message : undefined,
+            });
+          }
 
-        // Clear the session cookie
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          // Clear the session cookie
+          try {
+            res.clearCookie('connect.sid', {
+              path: '/',
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            });
+            console.log('Session cookie cleared');
+          } catch (cookieError) {
+            console.error('Cookie clear error:', cookieError);
+            // Continue even if cookie clearing fails
+          }
+
+          res.json({
+            success: true,
+            data: {
+              message: 'Logged out successfully',
+            },
+          });
         });
+      } else {
+        // No session to destroy, just clear cookie and respond
+        try {
+          res.clearCookie('connect.sid', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+          });
+        } catch (cookieError) {
+          console.error('Cookie clear error:', cookieError);
+        }
 
         res.json({
           success: true,
@@ -477,9 +513,10 @@ export function createAuthRoutes() {
             message: 'Logged out successfully',
           },
         });
-      });
+      }
     } catch (error) {
       console.error('Logout error:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({
         success: false,
         error: 'Internal server error',
