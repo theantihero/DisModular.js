@@ -421,28 +421,39 @@ describe('Access Request Flow', () => {
         throw new Error('Test user not found in database');
       }
       
-      // Use the main app but temporarily override the authentication middleware
-      // to ensure the user is properly authenticated
-      const originalMiddleware = app._router.stack.find(layer => 
-        layer.name === 'middleware' && layer.regexp.test('/')
-      );
-      
-      // Create a temporary middleware that sets the user correctly
-      app.use((req, res, next) => {
-        // Only override if this is our test request
-        if (req.path === '/auth/request-access' && req.method === 'POST') {
-          req.isAuthenticated = () => true;
-          req.user = { 
-            id: user.id,
-            username: 'testuser', 
-            is_admin: false,
-            access_status: 'denied'
-          };
+      // Create a separate app instance for this test (following the pattern of working tests)
+      const messageTestApp = express();
+      messageTestApp.use(express.json());
+      messageTestApp.use(session({
+        secret: 'test-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          sameSite: 'lax'
         }
+      }));
+      
+      messageTestApp.use(mockPassport.initialize());
+      messageTestApp.use(mockPassport.session());
+      
+      // Set up authentication middleware BEFORE registering routes
+      messageTestApp.use((req, res, next) => {
+        req.isAuthenticated = () => true;
+        req.user = { 
+          id: user.id,
+          username: 'testuser', 
+          is_admin: false,
+          access_status: 'denied'
+        };
         next();
       });
+      
+      // Register auth routes AFTER setting up authentication
+      messageTestApp.use('/auth', createAuthRoutes());
 
-      const response = await request(app)
+      const response = await request(messageTestApp)
         .post('/auth/request-access')
         .send({ message: requestMessage });
 
