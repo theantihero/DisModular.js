@@ -656,9 +656,21 @@ describe('Access Request Flow', () => {
         where: { id: adminUserId }
       });
       console.log('Admin user in database:', adminUser);
-      // Set up pending user
+      
+      // Ensure test user exists and get the actual ID
+      const testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        throw new Error('Test user not found in database');
+      }
+      
+      console.log('Test user in database:', testUser);
+      
+      // Set up pending user using the actual database ID
       await prisma.user.update({
-        where: { id: testUserId },
+        where: { id: testUser.id },
         data: {
           access_status: 'pending',
           access_requested_at: new Date(),
@@ -673,7 +685,7 @@ describe('Access Request Flow', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].id).toBe(testUserId);
+      expect(response.body.data[0].id).toBe(testUser.id);
       expect(response.body.data[0].access_request_message).toBe('I need access for my server');
     });
 
