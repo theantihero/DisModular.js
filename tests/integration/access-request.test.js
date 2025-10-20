@@ -1017,12 +1017,21 @@ describe('Access Request Flow', () => {
       });
       console.log('Admin user in database for revoke test:', adminUser);
 
-      // Set up approved user
-      await prisma.user.update({
+      // Set up approved user - use upsert to ensure user exists
+      await prisma.user.upsert({
         where: { id: testUser.id },
-        data: {
+        update: {
           access_status: 'approved',
           access_message: 'Welcome!'
+        },
+        create: {
+          id: testUser.id,
+          discord_id: testUser.discord_id,
+          username: testUser.username,
+          discriminator: testUser.discriminator,
+          access_status: 'approved',
+          access_message: 'Welcome!',
+          is_admin: false
         }
       });
 

@@ -629,8 +629,34 @@ describe('Multi-Guild Plugin System', () => {
       
       // Create test plugin first
       if (prisma) {
-        await prisma.plugin.create({
-          data: {
+        // Ensure guild exists first
+        await prisma.guild.upsert({
+          where: { id: testGuildId1 },
+          update: {},
+          create: {
+            id: testGuildId1,
+            name: 'Test Guild 1',
+            enabled: true
+          }
+        });
+
+        // Create or update test plugin
+        await prisma.plugin.upsert({
+          where: { id: testPluginId },
+          update: {
+            name: 'Test Plugin',
+            version: '1.0.0',
+            description: 'A test plugin',
+            author: 'Test Author',
+            type: 'slash',
+            enabled: true,
+            trigger_command: 'test',
+            compiled: 'console.log("test");',
+            is_template: false,
+            nodes: [],
+            edges: []
+          },
+          create: {
             id: testPluginId,
             name: 'Test Plugin',
             version: '1.0.0',
@@ -646,9 +672,19 @@ describe('Multi-Guild Plugin System', () => {
           }
         });
         
-        // Create a guild plugin relationship
-        await prisma.guildPlugin.create({
-          data: {
+        // Create or update guild plugin relationship
+        await prisma.guildPlugin.upsert({
+          where: {
+            guild_id_plugin_id: {
+              guild_id: testGuildId1,
+              plugin_id: testPluginId
+            }
+          },
+          update: {
+            enabled: true,
+            settings: {}
+          },
+          create: {
             guild_id: testGuildId1,
             plugin_id: testPluginId,
             enabled: true,
@@ -689,8 +725,34 @@ describe('Multi-Guild Plugin System', () => {
       
       // Create test plugin first
       if (prisma) {
-        await prisma.plugin.create({
-          data: {
+        // Ensure guild exists first
+        await prisma.guild.upsert({
+          where: { id: testGuildId1 },
+          update: {},
+          create: {
+            id: testGuildId1,
+            name: 'Test Guild 1',
+            enabled: true
+          }
+        });
+
+        // Create or update test plugin
+        await prisma.plugin.upsert({
+          where: { id: testPluginId },
+          update: {
+            name: 'Test Plugin',
+            version: '1.0.0',
+            description: 'A test plugin',
+            author: 'Test Author',
+            type: 'slash',
+            enabled: true,
+            trigger_command: 'test',
+            compiled: 'console.log("test");',
+            is_template: false,
+            nodes: [],
+            edges: []
+          },
+          create: {
             id: testPluginId,
             name: 'Test Plugin',
             version: '1.0.0',
@@ -706,9 +768,19 @@ describe('Multi-Guild Plugin System', () => {
           }
         });
         
-        // Create a disabled guild plugin relationship
-        await prisma.guildPlugin.create({
-          data: {
+        // Create or update disabled guild plugin relationship
+        await prisma.guildPlugin.upsert({
+          where: {
+            guild_id_plugin_id: {
+              guild_id: testGuildId1,
+              plugin_id: testPluginId
+            }
+          },
+          update: {
+            enabled: false,
+            settings: {}
+          },
+          create: {
             guild_id: testGuildId1,
             plugin_id: testPluginId,
             enabled: false,
