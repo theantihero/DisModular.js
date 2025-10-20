@@ -585,12 +585,22 @@ describe('Access Request Flow', () => {
       const longMessage = 'a'.repeat(501); // 501 characters
 
       // Get the actual user from database to ensure we have the correct ID
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!user) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        user = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for message too long test:', user);
       }
 
       // Create a separate app instance for this test to ensure proper authentication
@@ -756,12 +766,22 @@ describe('Access Request Flow', () => {
       console.log('Admin user in database:', adminUser);
       
       // Ensure test user exists and get the actual ID
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for list pending requests test:', testUser);
       }
       
       console.log('Test user in database:', testUser);
@@ -979,12 +999,22 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Ensure test user exists and get the actual ID
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for require denial message test:', testUser);
       }
       
       // Set up pending user for denial test using the actual database ID
@@ -1011,12 +1041,22 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Get the actual test user from database
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for revoke access test:', testUser);
       }
       
       // Debug: Check if admin user exists in database
@@ -1067,12 +1107,22 @@ describe('Access Request Flow', () => {
       if (skipIfNoDatabase()) return;
       
       // Get the actual test user from database
-      const testUser = await prisma.user.findUnique({
+      let testUser = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!testUser) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for grant access test:', testUser);
       }
       
       // Set up denied user
@@ -1180,7 +1230,25 @@ describe('Access Request Flow', () => {
     it('should handle complete access request workflow', async () => {
       if (skipIfNoDatabase()) return;
       
-      // Ensure test user has denied status so they can request access
+      // Ensure test user exists and has denied status so they can request access
+      let testUser = await prisma.user.findUnique({
+        where: { discord_id: '111111111' }
+      });
+      
+      if (!testUser) {
+        console.error('Test user not found, creating one...');
+        testUser = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for complete access flow test:', testUser);
+      }
+      
       await prisma.user.update({
         where: { discord_id: '111111111' },
         data: {
@@ -1211,6 +1279,10 @@ describe('Access Request Flow', () => {
       const user = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
+      
+      if (!user) {
+        throw new Error('User should exist at this point in the test');
+      }
 
       // 3. Admin approves the request
       const approvalMessage = 'Welcome to the platform!';
