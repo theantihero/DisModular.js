@@ -387,12 +387,18 @@ router.put('/:guildId/plugins/:pluginId', requireAuth, expensiveOperationLimiter
     });
 
     if (!plugin) {
-      // Sanitize pluginId to avoid log injection
-      // Sanitize pluginId to prevent log injection (remove control chars & quote it)
-      // Enhanced log injection mitigation: remove control chars, escape double quotes, wrap in quotes
-      const safePluginId = typeof pluginId === 'string'
-        ? `'${pluginId.replace(/[\r\n\t\x00-\x1F\x7F]+/g, '').replace(/"/g, '\\"')}'`
-        : `'${String(pluginId).replace(/"/g, '\\"')}'`;
+      // Helper to sanitize user input for log output. Removes line breaks, control chars, quotes it.
+      function sanitizeForLog(input) {
+        if (typeof input !== 'string') {
+          input = String(input);
+        }
+        // Remove all control chars (including \n, \r, tabs, etc.)
+        input = input.replace(/[\r\n\t\x00-\x1F\x7F]+/g, '');
+        // Escape any quotes (to avoid confusion in logs)
+        input = input.replace(/["']/g, '');
+        return `"${input}"`;
+      }
+      const safePluginId = sanitizeForLog(pluginId);
       console.error(`Plugin not found: [pluginId=${safePluginId}]`);
       return res.status(404).json({
         success: false,
