@@ -280,7 +280,7 @@ describe('Multi-Guild Plugin System', () => {
 
       // Create test user
       try {
-        await prisma.user.upsert({
+        const testUser = await prisma.user.upsert({
           where: { id: 'test-admin' },
           update: {
             username: 'test-admin',
@@ -296,7 +296,12 @@ describe('Multi-Guild Plugin System', () => {
             is_admin: true
           }
         });
-        console.log('Test admin user created/updated successfully');
+        console.log('Test admin user created/updated successfully:', testUser);
+        
+        // Verify the user was created successfully
+        if (!testUser) {
+          throw new Error('Failed to create test admin user');
+        }
       } catch (error) {
         console.error('Failed to create test admin user:', error);
         throw error;
@@ -328,43 +333,50 @@ describe('Multi-Guild Plugin System', () => {
       }
 
       // Create user guild permissions
-      await prisma.userGuildPermission.upsert({
-        where: {
-          user_id_guild_id: {
+      try {
+        await prisma.userGuildPermission.upsert({
+          where: {
+            user_id_guild_id: {
+              user_id: 'test-admin',
+              guild_id: testGuildId1
+            }
+          },
+          update: {
+            is_admin: true,
+            permissions: 8n // Administrator permission
+          },
+          create: {
             user_id: 'test-admin',
-            guild_id: testGuildId1
+            guild_id: testGuildId1,
+            is_admin: true,
+            permissions: 8n // Administrator permission
           }
-        },
-        update: {
-          is_admin: true,
-          permissions: 8n // Administrator permission
-        },
-        create: {
-          user_id: 'test-admin',
-          guild_id: testGuildId1,
-          is_admin: true,
-          permissions: 8n // Administrator permission
-        }
-      });
+        });
 
-      await prisma.userGuildPermission.upsert({
-        where: {
-          user_id_guild_id: {
+        await prisma.userGuildPermission.upsert({
+          where: {
+            user_id_guild_id: {
+              user_id: 'test-admin',
+              guild_id: testGuildId2
+            }
+          },
+          update: {
+            is_admin: true,
+            permissions: 8n // Administrator permission
+          },
+          create: {
             user_id: 'test-admin',
-            guild_id: testGuildId2
+            guild_id: testGuildId2,
+            is_admin: true,
+            permissions: 8n // Administrator permission
           }
-        },
-        update: {
-          is_admin: true,
-          permissions: 8n // Administrator permission
-        },
-        create: {
-          user_id: 'test-admin',
-          guild_id: testGuildId2,
-          is_admin: true,
-          permissions: 8n // Administrator permission
-        }
-      });
+        });
+        
+        console.log('User guild permissions created successfully');
+      } catch (error) {
+        console.error('Failed to create user guild permissions:', error);
+        throw error;
+      }
     }
   });
 
