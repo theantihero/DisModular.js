@@ -484,12 +484,38 @@ describe('Access Request Flow', () => {
       const requestMessage = 'I want to use this platform for my community server';
       
       // Get the actual user from database to ensure we have the correct ID
-      const user = await prisma.user.findUnique({
+      let user = await prisma.user.findUnique({
         where: { discord_id: '111111111' }
       });
       
       if (!user) {
-        throw new Error('Test user not found in database');
+        console.error('Test user not found, creating one...');
+        user = await prisma.user.create({
+          data: {
+            discord_id: '111111111',
+            username: 'testuser',
+            discriminator: '1234',
+            access_status: 'denied',
+            is_admin: false
+          }
+        });
+        console.log('Created test user for request test:', user);
+      }
+      
+      console.log('Using user for request test:', { id: user.id, discord_id: user.discord_id, access_status: user.access_status });
+      
+      // Ensure user is in 'denied' status before making the request
+      if (user.access_status !== 'denied') {
+        console.log('Resetting user access status to denied...');
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            access_status: 'denied',
+            access_requested_at: null,
+            access_request_message: null
+          }
+        });
+        console.log('User access status reset to denied');
       }
       
       // Create a separate app instance for this test (following the pattern of working tests)
@@ -524,6 +550,9 @@ describe('Access Request Flow', () => {
       // Register auth routes AFTER setting up authentication
       messageTestApp.use('/auth', createAuthRoutes());
 
+      console.log('Making request with user:', { id: user.id, username: user.username });
+      console.log('Request message:', requestMessage);
+      
       const response = await request(messageTestApp)
         .post('/auth/request-access')
         .send({ message: requestMessage });

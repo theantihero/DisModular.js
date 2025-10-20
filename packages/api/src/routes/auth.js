@@ -569,14 +569,39 @@ export function createAuthRoutes() {
       }
 
       // Update user's access_requested_at timestamp, message, and status
-      const updatedUser = await prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          access_requested_at: new Date(),
-          access_request_message: message || null,
-          access_status: 'pending',
-        },
-      });
+      let updatedUser;
+      try {
+        updatedUser = await prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            access_requested_at: new Date(),
+            access_request_message: message || null,
+            access_status: 'pending',
+          },
+        });
+      } catch (error) {
+        console.error('Failed to update user access request:', {
+          userId: req.user.id,
+          error: error.message,
+          code: error.code
+        });
+        
+        // Check if user exists
+        const userExists = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { id: true }
+        });
+        
+        if (!userExists) {
+          return res.status(404).json({
+            success: false,
+            error: 'User not found in database',
+          });
+        }
+        
+        // Re-throw other errors
+        throw error;
+      }
 
       console.log(`Access request submitted for user ${req.user.id}:`, {
         userId: req.user.id,
