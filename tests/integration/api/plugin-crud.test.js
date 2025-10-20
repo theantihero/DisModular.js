@@ -31,6 +31,9 @@ describe('Plugin CRUD Integration Tests', () => {
     prisma = testDb.getClient();
     await testDb.cleanup();
     
+    // Reset mock plugins array to ensure clean state
+    mockPlugins = [];
+    
     // Additional cleanup to ensure no plugins exist (including templates)
     if (prisma) {
       // Delete all plugins first
