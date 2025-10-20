@@ -45,6 +45,58 @@ function skipIfNoDatabase() {
   return false;
 }
 
+// Helper function to get test user with fallback creation
+async function getTestUser() {
+  if (!prisma) {
+    throw new Error('Prisma client not available');
+  }
+  
+  let user = await prisma.user.findUnique({
+    where: { discord_id: '111111111' }
+  });
+  
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        discord_id: '111111111',
+        username: 'testuser',
+        discriminator: '1234',
+        access_status: 'denied',
+        is_admin: false
+      }
+    });
+    console.log('Test user created via helper:', user);
+  }
+  
+  return user;
+}
+
+// Helper function to get admin user with fallback creation
+async function getAdminUser() {
+  if (!prisma) {
+    throw new Error('Prisma client not available');
+  }
+  
+  let adminUser = await prisma.user.findUnique({
+    where: { discord_id: '222222222' }
+  });
+  
+  if (!adminUser) {
+    adminUser = await prisma.user.create({
+      data: {
+        discord_id: '222222222',
+        username: 'adminuser',
+        discriminator: '5678',
+        access_status: 'approved',
+        is_admin: true
+      }
+    });
+    console.log('Admin user created via helper:', adminUser);
+  }
+  
+  return adminUser;
+}
+
 // Helper function to create authenticated request
 function createAuthenticatedRequest(app, userId = 'test-user-123') {
   return request(app)
@@ -84,19 +136,44 @@ describe('Access Request Flow', () => {
     await testDb.setup();
     prisma = testDb.getClient();
 
+    // Ensure PrismaService uses the same client as the test setup
+    if (prisma) {
+      // Set environment variables for PrismaService
+      process.env.NODE_ENV = 'test';
+      process.env.CI = 'true'; // Explicitly set CI flag
+      process.env.DATABASE_URL = TEST_DATABASE_URL;
+      process.env.TEST_DATABASE_URL = TEST_DATABASE_URL;
+      
+      // Store the test client globally so PrismaService can use it
+      global.testPrismaClient = prisma;
+      
+      console.log('Test Prisma client stored globally for PrismaService');
+      console.log('Environment variables:', {
+        NODE_ENV: process.env.NODE_ENV,
+        CI: process.env.CI,
+        DATABASE_URL: process.env.DATABASE_URL,
+        TEST_DATABASE_URL: process.env.TEST_DATABASE_URL
+      });
+      
+      // Verify the global client is accessible
+      console.log('Global test client verification:', {
+        exists: !!global.testPrismaClient,
+        type: typeof global.testPrismaClient,
+        hasUser: !!global.testPrismaClient?.user
+      });
+    }
+
     // Create admin user in database
     if (prisma) {
       try {
-        await prisma.user.upsert({
+        const adminUser = await prisma.user.upsert({
           where: { discord_id: '222222222' },
           update: {
-            id: adminUserId,
             username: 'adminuser',
             access_status: 'approved',
             is_admin: true
           },
           create: {
-            id: adminUserId,
             discord_id: '222222222',
             username: 'adminuser',
             discriminator: '5678',
@@ -104,7 +181,22 @@ describe('Access Request Flow', () => {
             is_admin: true
           }
         });
-        console.log('Admin user created/updated successfully');
+        
+        // Update adminUserId to use the actual database ID
+        adminUserId = adminUser.id;
+        
+        console.log('Admin user created/updated successfully:', adminUser);
+        
+        // Verify admin user exists
+        const verifyAdmin = await prisma.user.findUnique({
+          where: { id: adminUserId }
+        });
+        
+        if (!verifyAdmin) {
+          throw new Error('Admin user verification failed');
+        }
+        
+        console.log('Admin user verified:', verifyAdmin);
       } catch (error) {
         console.error('Failed to create admin user:', error);
         throw error;
@@ -298,19 +390,11 @@ describe('Access Request Flow', () => {
       });
       
       // Use the real admin routes with mocked middleware
-      // Ensure PrismaService uses the test database for admin routes
-      const { resetPrismaClient, getPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
-      
-      // Reset the Prisma client to force it to use the test database
-      resetPrismaClient();
-      
-      // Set the test database URL for the PrismaService
-      process.env.DATABASE_URL = TEST_DATABASE_URL;
-      
-      // Force Prisma client initialization with test database
-      const testPrismaClient = getPrismaClient();
-      if (!testPrismaClient) {
-        throw new Error('Failed to initialize Prisma client with test database for admin routes');
+      // Ensure PrismaService uses the same client for admin routes
+      if (prisma) {
+        // Store the test client globally so PrismaService can use it
+        global.testPrismaClient = prisma;
+        console.log('Admin app: Test Prisma client stored globally');
       }
       
       const adminRoutes = createAdminRoutes();
@@ -351,14 +435,22 @@ describe('Access Request Flow', () => {
     // Reset user access status before each test
     if (prisma) {
       try {
-        // First, ensure the test user exists
-        let user = await prisma.user.findUnique({
-          where: { discord_id: '111111111' }
+        // Use helper functions to ensure users exist
+        const user = await getTestUser();
+        const adminUser = await getAdminUser();
+        
+        // Update IDs to use the actual database IDs
+        testUserId = user.id;
+        adminUserId = adminUser.id;
+        
+        // Verify the user exists before attempting update
+        const existingUser = await prisma.user.findUnique({
+          where: { id: testUserId }
         });
         
-        if (!user) {
-          // Create the test user if it doesn't exist
-          user = await prisma.user.create({
+        if (!existingUser) {
+          console.error('User not found for update, creating new one');
+          const newUser = await prisma.user.create({
             data: {
               discord_id: '111111111',
               username: 'testuser',
@@ -367,14 +459,11 @@ describe('Access Request Flow', () => {
               is_admin: false
             }
           });
-        }
-        
-        // Update testUserId to use the actual database ID
-        testUserId = user.id;
-        
-        // Reset user access status (only if user exists)
-        if (user) {
-          await prisma.user.update({
+          testUserId = newUser.id;
+          console.log('Created new user in beforeEach:', newUser);
+        } else {
+          // Reset user access status
+          const updatedUser = await prisma.user.update({
             where: { id: testUserId },
             data: {
               access_status: 'denied', // Reset to denied so user can request access
@@ -383,31 +472,17 @@ describe('Access Request Flow', () => {
               access_message: null
             }
           });
+          
+          console.log('Users reset in beforeEach:', { 
+            testUserId, 
+            adminUserId, 
+            updatedUser: updatedUser.id 
+          });
         }
       } catch (error) {
         console.error('Error in beforeEach:', error);
         throw error;
       }
-      
-      // Ensure admin user exists
-      let adminUser = await prisma.user.findUnique({
-        where: { discord_id: '222222222' }
-      });
-      
-      if (!adminUser) {
-        adminUser = await prisma.user.create({
-          data: {
-            discord_id: '222222222',
-            username: 'adminuser',
-            discriminator: '5678',
-            access_status: 'approved',
-            is_admin: true
-          }
-        });
-      }
-      
-      // Update adminUserId to use the actual database ID
-      adminUserId = adminUser.id;
       
       // Clean up any existing access requests to prevent test conflicts
       await prisma.user.updateMany({
@@ -468,21 +543,6 @@ describe('Access Request Flow', () => {
       });
       
       // Register auth routes AFTER setting up authentication
-      // Ensure PrismaService uses the test database
-      const { resetPrismaClient, getPrismaClient } = await import('../../packages/api/src/services/PrismaService.js');
-      
-      // Reset the Prisma client to force it to use the test database
-      resetPrismaClient();
-      
-      // Set the test database URL for the PrismaService
-      process.env.DATABASE_URL = TEST_DATABASE_URL;
-      
-      // Force Prisma client initialization with test database
-      const testPrismaClient = getPrismaClient();
-      if (!testPrismaClient) {
-        throw new Error('Failed to initialize Prisma client with test database');
-      }
-      
       messageTestApp.use('/auth', createAuthRoutes());
 
       const response = await request(messageTestApp)
@@ -838,14 +898,8 @@ describe('Access Request Flow', () => {
         console.log('Created test user for deny test:', testUser);
       }
       
-      // Ensure admin user exists
-      const adminUser = await prisma.user.findUnique({
-        where: { discord_id: '222222222' }
-      });
-      
-      if (!adminUser) {
-        throw new Error('Admin user not found in database');
-      }
+      // Ensure admin user exists using helper function
+      const adminUser = await getAdminUser();
       
       // Set up pending user
       await prisma.user.update({
