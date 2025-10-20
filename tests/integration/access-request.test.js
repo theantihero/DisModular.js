@@ -390,6 +390,13 @@ describe('Access Request Flow', () => {
       });
       
       // Use the real admin routes with mocked middleware
+      // Ensure PrismaService uses the same client for admin routes
+      if (prisma) {
+        // Store the test client globally so PrismaService can use it
+        global.testPrismaClient = prisma;
+        console.log('Admin app: Test Prisma client stored globally');
+      }
+      
       const adminRoutes = createAdminRoutes();
       
       // Override the requireAdmin middleware for testing
