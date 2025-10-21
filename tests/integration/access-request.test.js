@@ -1025,6 +1025,12 @@ describe('Access Request Flow', () => {
       
       // Register auth routes AFTER setting up authentication
       messageTestApp.use('/auth', createAuthRoutes());
+      
+      // Ensure PrismaService uses the test client for this isolated app
+      if (prisma) {
+        global.testPrismaClient = prisma;
+        console.log('Isolated test app: Test Prisma client stored globally');
+      }
 
       console.log('Making request with user:', { id: user.id, username: user.username });
       console.log('Request message:', requestMessage);
@@ -1108,6 +1114,12 @@ describe('Access Request Flow', () => {
       });
       
       messageTestApp.use('/auth', createAuthRoutes());
+      
+      // Ensure PrismaService uses the test client for this isolated app
+      if (prisma) {
+        global.testPrismaClient = prisma;
+        console.log('Isolated test app (message too long): Test Prisma client stored globally');
+      }
 
       const response = await request(messageTestApp)
         .post('/auth/request-access')
