@@ -137,17 +137,17 @@ app.use(passport.initialize());
 app.use(passport.session());
 initializePassport(config.discord);
 
-// Add CSRF protection middleware (disabled in development for easier testing)
-if (process.env.NODE_ENV === 'production') {
-  app.use(lusca.csrf());
-} else {
-  // In development, skip CSRF protection to avoid token issues
-  app.use((req, res, next) => {
-    // Mock CSRF token for development
-    req.csrfToken = () => 'dev-csrf-token';
-    next();
-  });
-}
+// Add CSRF protection middleware
+app.use(lusca.csrf({
+  cookie: {
+    name: '_csrf',
+    options: {
+      httpOnly: false, // Allow client-side access
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    }
+  }
+}));
 
 // Initialize controllers
 const pluginController = new PluginController(db, config.pluginsDir);
@@ -170,6 +170,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// CSRF token endpoint (after URL rewriting)
+app.get('/csrf-token', (req, res) => {
+  res.json({
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+});
+
 // API routes (no /api prefix since Traefik handles routing)
 // Registering routes...
 app.use('/auth', authLimiter, createAuthRoutes());
@@ -178,6 +185,24 @@ app.use('/bot', apiLimiter, createBotRoutes(db));
 app.use('/admin', requireAdmin, expensiveOperationLimiter, createAdminRoutes());
 app.use('/guilds', requireAdmin, expensiveOperationLimiter, createGuildRoutes());
 // Routes registered successfully
+
+// Middleware to inject CSRF token into HTML responses
+app.use((req, res, next) => {
+  // Only process HTML files
+  if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {
+    const originalSend = res.send;
+    res.send = function(data) {
+      if (typeof data === 'string' && data.includes('<!DOCTYPE html>')) {
+        // Inject CSRF token into HTML head
+        const csrfToken = req.csrfToken ? req.csrfToken() : '';
+        const metaTag = `<meta name="csrf-token" content="${csrfToken}">`;
+        data = data.replace('<head>', `<head>${metaTag}`);
+      }
+      return originalSend.call(this, data);
+    };
+  }
+  next();
+});
 
 // Serve static dashboard files with rate limiting
 app.use('/', apiLimiter, express.static(config.dashboardDir));

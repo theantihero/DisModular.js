@@ -10,6 +10,42 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
 /**
+ * Get CSRF token from meta tag, cookie, or API endpoint
+ * @returns {Promise<string|null>} CSRF token or null if not found
+ */
+async function getCsrfToken() {
+  // Try to get from meta tag first (set by server)
+  const metaTag = document.querySelector('meta[name="csrf-token"]');
+  if (metaTag) {
+    return metaTag.getAttribute('content');
+  }
+  
+  // Try to get from cookie
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === '_csrf') {
+      return decodeURIComponent(value);
+    }
+  }
+  
+  // Fallback: fetch from API endpoint
+  try {
+    const response = await fetch(`${API_URL}/api/csrf-token`, {
+      credentials: 'include'
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.csrfToken || null;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch CSRF token from API:', error);
+  }
+  
+  return null;
+}
+
+/**
  * Create axios instance with default config
  */
 const apiClient = axios.create({
@@ -22,10 +58,22 @@ const apiClient = axios.create({
 });
 
 /**
- * Request interceptor
+ * Request interceptor - adds CSRF token to requests
  */
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Add CSRF token for POST, PUT, PATCH, DELETE requests
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      try {
+        // Get CSRF token from meta tag, cookie, or API endpoint
+        const csrfToken = await getCsrfToken();
+        if (csrfToken) {
+          config.headers['X-CSRF-Token'] = csrfToken;
+        }
+      } catch (error) {
+        console.warn('Failed to get CSRF token:', error);
+      }
+    }
     return config;
   },
   (error) => {
