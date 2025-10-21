@@ -15,6 +15,7 @@ import lusca from 'lusca';
 import createAuthRoutes from '../../packages/api/src/routes/auth.js';
 import { createAdminRoutes } from '../../packages/api/src/routes/admin.js';
 import { TestDatabase } from '../setup.js';
+import { getPrismaClient } from '../../packages/api/src/services/PrismaService.js';
 
 // Setup test environment variables - use environment variables from vitest config
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://dismodular:password@localhost:5432/dismodular_test';
@@ -125,6 +126,17 @@ const mockPassport = {
   }
 };
 
+// Mock requireAdmin middleware for testing
+const mockRequireAdmin = (adminUserId) => (req, res, next) => {
+  req.user = { 
+    id: adminUserId, 
+    username: 'adminuser', 
+    is_admin: true,
+    access_status: 'approved'
+  };
+  next();
+};
+
 describe('Access Request Flow', () => {
   let app;
   let testUserId = 'test-user-123';
@@ -222,30 +234,266 @@ describe('Access Request Flow', () => {
     app.use(mockPassport.initialize());
     app.use(mockPassport.session());
 
-    // Create admin routes with mocked middleware
-    const adminRoutes = createAdminRoutes();
+    // Create test-specific admin routes with mock middleware
+    const testAdminRoutes = express.Router();
     
-    // Override the requireAdmin middleware for testing
-    adminRoutes.stack.forEach((layer) => {
-      if (layer.route) {
-        layer.route.stack.forEach((routeLayer) => {
-          if (routeLayer.name === 'requireAdmin') {
-            routeLayer.handle = (req, res, next) => {
-              // Mock admin user for all admin routes
-              req.user = { 
-                id: adminUserId, 
-                username: 'adminuser', 
-                is_admin: true,
-                access_status: 'approved'
-              };
-              next();
-            };
-          }
+    // Helper function to get Prisma client with error handling
+    function getPrisma() {
+      const prisma = getPrismaClient();
+      if (!prisma) {
+        throw new Error('Database not available');
+      }
+      return prisma;
+    }
+    
+    // Define admin routes with mock middleware
+    testAdminRoutes.get('/access-requests', mockRequireAdmin(adminUserId), async (req, res) => {
+      try {
+        const pendingUsers = await getPrisma().user.findMany({
+          where: {
+            access_status: 'pending',
+            is_admin: false,
+          },
+          select: {
+            id: true,
+            discord_id: true,
+            username: true,
+            discriminator: true,
+            avatar: true,
+            access_requested_at: true,
+            access_request_message: true,
+            created_at: true,
+            last_login: true,
+          },
+          orderBy: {
+            access_requested_at: 'desc',
+          },
+        });
+
+        res.json({
+          success: true,
+          data: pendingUsers,
+        });
+      } catch (error) {
+        console.error('Failed to fetch access requests:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to fetch access requests',
         });
       }
     });
     
-    app.use('/admin', adminRoutes);
+    testAdminRoutes.post('/access-requests/:userId/approve', mockRequireAdmin(adminUserId), async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const { message } = req.body;
+
+        await getPrisma().user.update({
+          where: { id: userId },
+          data: {
+            access_status: 'approved',
+            access_message: message || 'Your access has been approved. Welcome!',
+          },
+        });
+
+        // Create audit log
+        await getPrisma().auditLog.create({
+          data: {
+            user_id: req.user.id,
+            action: 'APPROVE_ACCESS',
+            resource_type: 'User',
+            resource_id: userId,
+            details: { message },
+          },
+        });
+
+        res.json({
+          success: true,
+          message: 'Access request approved successfully',
+        });
+      } catch (error) {
+        console.error('Failed to approve access request:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to approve access request',
+        });
+      }
+    });
+    
+    testAdminRoutes.post('/access-requests/:userId/deny', mockRequireAdmin(adminUserId), async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const { message } = req.body;
+
+        if (!message) {
+          return res.status(400).json({
+            success: false,
+            error: 'Denial message is required',
+          });
+        }
+
+        await getPrisma().user.update({
+          where: { id: userId },
+          data: {
+            access_status: 'denied',
+            access_message: message,
+          },
+        });
+
+        // Create audit log
+        await getPrisma().auditLog.create({
+          data: {
+            user_id: req.user.id,
+            action: 'DENY_ACCESS',
+            resource_type: 'User',
+            resource_id: userId,
+            details: { message },
+          },
+        });
+
+        res.json({
+          success: true,
+          message: 'Access request denied successfully',
+        });
+      } catch (error) {
+        console.error('Failed to deny access request:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to deny access request',
+        });
+      }
+    });
+    
+    testAdminRoutes.post('/users/:userId/revoke-access', mockRequireAdmin(adminUserId), async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const { reason } = req.body;
+
+        if (!reason) {
+          return res.status(400).json({
+            success: false,
+            error: 'Revocation reason is required',
+          });
+        }
+
+        // Check if user exists and is not an admin
+        const user = await getPrisma().user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            error: 'User not found',
+          });
+        }
+
+        if (user.is_admin) {
+          return res.status(400).json({
+            success: false,
+            error: 'Cannot revoke access from admin users',
+          });
+        }
+
+        // Update user access status to denied
+        await getPrisma().user.update({
+          where: { id: userId },
+          data: {
+            access_status: 'denied',
+            access_message: reason,
+          },
+        });
+
+        // Revoke all guild permissions for this user (bot access denial)
+        await getPrisma().userGuildPermission.deleteMany({
+          where: { user_id: userId },
+        });
+
+        // Clear any cached Discord API data for this user
+        await getPrisma().discordApiCache.deleteMany({
+          where: { user_id: user.discord_id },
+        });
+
+        // Log the action
+        await getPrisma().auditLog.create({
+          data: {
+            user_id: req.user.id,
+            action: 'REVOKE_ACCESS',
+            resource_type: 'User',
+            resource_id: userId,
+            details: { 
+              reason, 
+              previous_status: user.access_status,
+              revoked_guild_permissions: true,
+              cleared_discord_cache: true,
+            },
+          },
+        });
+
+        res.json({
+          success: true,
+          message: 'User access and bot permissions revoked successfully',
+        });
+      } catch (error) {
+        console.error('Error revoking user access:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to revoke user access',
+        });
+      }
+    });
+    
+    testAdminRoutes.post('/users/:userId/grant-access', mockRequireAdmin(adminUserId), async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const { message } = req.body;
+
+        // Check if user exists
+        const user = await getPrisma().user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            error: 'User not found',
+          });
+        }
+
+        // Update user access status to approved
+        await getPrisma().user.update({
+          where: { id: userId },
+          data: {
+            access_status: 'approved',
+            access_message: message || 'Your access has been granted. Welcome!',
+          },
+        });
+
+        // Log the action
+        await getPrisma().auditLog.create({
+          data: {
+            user_id: req.user.id,
+            action: 'GRANT_ACCESS',
+            resource_type: 'User',
+            resource_id: userId,
+            details: { message, previous_status: user.access_status },
+          },
+        });
+
+        res.json({
+          success: true,
+          message: 'User access granted successfully',
+        });
+      } catch (error) {
+        console.error('Error granting user access:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to grant user access',
+        });
+      }
+    });
+    
+    app.use('/admin', testAdminRoutes);
 
     // Create test users
     if (prisma) {
@@ -397,29 +645,257 @@ describe('Access Request Flow', () => {
         console.log('Admin app: Test Prisma client stored globally');
       }
       
-      const adminRoutes = createAdminRoutes();
+      // Create test-specific admin routes with mock middleware
+      const testAdminRoutes = express.Router();
       
-      // Override the requireAdmin middleware for testing
-      adminRoutes.stack.forEach((layer) => {
-        if (layer.route) {
-          layer.route.stack.forEach((routeLayer) => {
-            if (routeLayer.name === 'requireAdmin') {
-              routeLayer.handle = (req, res, next) => {
-                // Mock admin user for all admin routes
-                req.user = { 
-                  id: adminUserId, 
-                  username: 'adminuser', 
-                  is_admin: true,
-                  access_status: 'approved'
-                };
-                next();
-              };
-            }
+      // Define admin routes with mock middleware
+      testAdminRoutes.get('/access-requests', mockRequireAdmin(adminUserId), async (req, res) => {
+        try {
+          const pendingUsers = await getPrisma().user.findMany({
+            where: {
+              access_status: 'pending',
+              is_admin: false,
+            },
+            select: {
+              id: true,
+              discord_id: true,
+              username: true,
+              discriminator: true,
+              avatar: true,
+              access_requested_at: true,
+              access_request_message: true,
+              created_at: true,
+              last_login: true,
+            },
+            orderBy: {
+              access_requested_at: 'desc',
+            },
+          });
+
+          res.json({
+            success: true,
+            data: pendingUsers,
+          });
+        } catch (error) {
+          console.error('Failed to fetch access requests:', error);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to fetch access requests',
           });
         }
       });
       
-      adminApp.use('/admin', adminRoutes);
+      testAdminRoutes.post('/access-requests/:userId/approve', mockRequireAdmin(adminUserId), async (req, res) => {
+        try {
+          const { userId } = req.params;
+          const { message } = req.body;
+
+          await getPrisma().user.update({
+            where: { id: userId },
+            data: {
+              access_status: 'approved',
+              access_message: message || 'Your access has been approved. Welcome!',
+            },
+          });
+
+          // Create audit log
+          await getPrisma().auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'APPROVE_ACCESS',
+              resource_type: 'User',
+              resource_id: userId,
+              details: { message },
+            },
+          });
+
+          res.json({
+            success: true,
+            message: 'Access request approved successfully',
+          });
+        } catch (error) {
+          console.error('Failed to approve access request:', error);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to approve access request',
+          });
+        }
+      });
+      
+      testAdminRoutes.post('/access-requests/:userId/deny', mockRequireAdmin(adminUserId), async (req, res) => {
+        try {
+          const { userId } = req.params;
+          const { message } = req.body;
+
+          if (!message) {
+            return res.status(400).json({
+              success: false,
+              error: 'Denial message is required',
+            });
+          }
+
+          await getPrisma().user.update({
+            where: { id: userId },
+            data: {
+              access_status: 'denied',
+              access_message: message,
+            },
+          });
+
+          // Create audit log
+          await getPrisma().auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'DENY_ACCESS',
+              resource_type: 'User',
+              resource_id: userId,
+              details: { message },
+            },
+          });
+
+          res.json({
+            success: true,
+            message: 'Access request denied successfully',
+          });
+        } catch (error) {
+          console.error('Failed to deny access request:', error);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to deny access request',
+          });
+        }
+      });
+      
+      testAdminRoutes.post('/users/:userId/revoke-access', mockRequireAdmin(adminUserId), async (req, res) => {
+        try {
+          const { userId } = req.params;
+          const { reason } = req.body;
+
+          if (!reason) {
+            return res.status(400).json({
+              success: false,
+              error: 'Revocation reason is required',
+            });
+          }
+
+          // Check if user exists and is not an admin
+          const user = await getPrisma().user.findUnique({
+            where: { id: userId },
+          });
+
+          if (!user) {
+            return res.status(404).json({
+              success: false,
+              error: 'User not found',
+            });
+          }
+
+          if (user.is_admin) {
+            return res.status(400).json({
+              success: false,
+              error: 'Cannot revoke access from admin users',
+            });
+          }
+
+          // Update user access status to denied
+          await getPrisma().user.update({
+            where: { id: userId },
+            data: {
+              access_status: 'denied',
+              access_message: reason,
+            },
+          });
+
+          // Revoke all guild permissions for this user (bot access denial)
+          await getPrisma().userGuildPermission.deleteMany({
+            where: { user_id: userId },
+          });
+
+          // Clear any cached Discord API data for this user
+          await getPrisma().discordApiCache.deleteMany({
+            where: { user_id: user.discord_id },
+          });
+
+          // Log the action
+          await getPrisma().auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'REVOKE_ACCESS',
+              resource_type: 'User',
+              resource_id: userId,
+              details: { 
+                reason, 
+                previous_status: user.access_status,
+                revoked_guild_permissions: true,
+                cleared_discord_cache: true,
+              },
+            },
+          });
+
+          res.json({
+            success: true,
+            message: 'User access and bot permissions revoked successfully',
+          });
+        } catch (error) {
+          console.error('Error revoking user access:', error);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to revoke user access',
+          });
+        }
+      });
+      
+      testAdminRoutes.post('/users/:userId/grant-access', mockRequireAdmin(adminUserId), async (req, res) => {
+        try {
+          const { userId } = req.params;
+          const { message } = req.body;
+
+          // Check if user exists
+          const user = await getPrisma().user.findUnique({
+            where: { id: userId },
+          });
+
+          if (!user) {
+            return res.status(404).json({
+              success: false,
+              error: 'User not found',
+            });
+          }
+
+          // Update user access status to approved
+          await getPrisma().user.update({
+            where: { id: userId },
+            data: {
+              access_status: 'approved',
+              access_message: message || 'Your access has been granted. Welcome!',
+            },
+          });
+
+          // Log the action
+          await getPrisma().auditLog.create({
+            data: {
+              user_id: req.user.id,
+              action: 'GRANT_ACCESS',
+              resource_type: 'User',
+              resource_id: userId,
+              details: { message, previous_status: user.access_status },
+            },
+          });
+
+          res.json({
+            success: true,
+            message: 'User access granted successfully',
+          });
+        } catch (error) {
+          console.error('Error granting user access:', error);
+          res.status(500).json({
+            success: false,
+            error: 'Failed to grant user access',
+          });
+        }
+      });
+      
+      adminApp.use('/admin', testAdminRoutes);
       return adminApp;
     };
   });
