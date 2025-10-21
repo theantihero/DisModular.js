@@ -29,7 +29,6 @@ describe('Plugin CRUD Integration Tests', () => {
     testDb = new TestDatabase();
     await testDb.setup();
     prisma = testDb.getClient();
-    await testDb.cleanup();
     
     // Reset mock plugins array to ensure clean state
     mockPlugins = [];
@@ -54,6 +53,8 @@ describe('Plugin CRUD Integration Tests', () => {
         }
       });
     }
+    
+    await testDb.cleanup();
 
     // Create Express app for testing
     app = express();
